@@ -159,6 +159,36 @@ function isOverdue(d: string | null) {
   return new Date(d) < new Date() && new Date(d).toDateString() !== new Date().toDateString()
 }
 
+// 인라인 제목 편집
+const editingTitleId = ref<number | null>(null)
+const editingTitleText = ref('')
+
+function startTitleEdit(issue: any) {
+  editingTitleId.value = issue.id
+  editingTitleText.value = issue.title
+}
+
+async function saveTitleEdit(issue: any) {
+  const title = editingTitleText.value.trim()
+  editingTitleId.value = null
+  if (!title || title === issue.title) return
+  const prev = issue.title
+  issue.title = title
+  try {
+    const { data } = await api.put(`/issues/${issue.id}`, { title })
+    const idx = issues.value.findIndex(i => i.id === data.id)
+    if (idx > -1) issues.value[idx] = data
+  } catch {
+    issue.title = prev
+    openToast({ message: '제목 수정에 실패했습니다.', type: 'error' })
+  }
+}
+
+function onTitleKeydown(e: KeyboardEvent, issue: any) {
+  if (e.key === 'Enter') { e.preventDefault(); saveTitleEdit(issue) }
+  if (e.key === 'Escape') { editingTitleId.value = null }
+}
+
 // 인라인 편집: 셀에서 바로 변경
 async function onInlineChange(issue: any, field: string, val: string | number) {
   const prev = issue[field]
@@ -189,18 +219,14 @@ async function onInlineChange(issue: any, field: string, val: string | number) {
 // ── 사이드 패널 ──
 const panelOpen = ref(false)
 const panelIssue = ref<any>(null)
-const panelForm = ref({ title: '', description: '', status: 'todo', priority: 'mid', assigneeId: '' })
+const panelForm = ref({ description: '' })
 const panelSaving = ref(false)
 const panelDeleting = ref(false)
 
 function openPanel(issue: any) {
   panelIssue.value = issue
   panelForm.value = {
-    title: issue.title,
     description: issue.description || '',
-    status: issue.status,
-    priority: issue.priority,
-    assigneeId: issue.assigneeId ? String(issue.assigneeId) : '',
   }
   panelOpen.value = true
 }
@@ -211,15 +237,11 @@ function closePanel() {
 }
 
 async function onPanelSave() {
-  if (!panelIssue.value || !panelForm.value.title.trim()) return
+  if (!panelIssue.value) return
   panelSaving.value = true
   try {
     const { data } = await api.put(`/issues/${panelIssue.value.id}`, {
-      title: panelForm.value.title,
       description: panelForm.value.description || null,
-      status: panelForm.value.status,
-      priority: panelForm.value.priority,
-      assigneeId: panelForm.value.assigneeId ? Number(panelForm.value.assigneeId) : null,
     })
     const idx = issues.value.findIndex(i => i.id === data.id)
     if (idx > -1) issues.value[idx] = data
@@ -449,7 +471,22 @@ onMounted(async () => {
               size="sm"
             >
               <template #cell-title="{ row }">
-                <span class="issue-title" @click="openPanel(row)">{{ row.title }}</span>
+                <div v-if="editingTitleId === row.id" class="issue-title-cell is-editing">
+                  <input
+                    v-model="editingTitleText"
+                    class="issue-title-input"
+                    @keydown="(e: KeyboardEvent) => onTitleKeydown(e, row)"
+                    @vue:mounted="($event: any) => $event.el.focus()"
+                  />
+                  <button class="issue-title-save" @click.stop="saveTitleEdit(row)" title="저장">✓</button>
+                  <button class="issue-title-cancel" @click.stop="editingTitleId = null" title="취소">✕</button>
+                </div>
+                <div v-else class="issue-title-cell">
+                    <span class="issue-title" @click="openPanel(row)" @dblclick.stop="startTitleEdit(row)">{{ row.title }}</span>
+                    <button class="issue-title-edit" @click.stop="startTitleEdit(row)" title="제목 수정">
+                      <i class="icon-edit size-12" />
+                    </button>
+                </div>
               </template>
               <template #cell-status="{ row }">
                 <div @click.stop>
@@ -589,15 +626,9 @@ onMounted(async () => {
     </UiDrawer>
 
     <!-- 이슈 상세 Drawer -->
-    <UiDrawer v-model:open="panelOpen" title="이슈 상세" width="480px" min-width="380px" max-width="700px">
+    <UiDrawer v-model:open="panelOpen" :title="panelIssue?.title || '이슈 상세'" width="480px" min-width="380px" max-width="700px">
       <form v-if="panelIssue" class="drawer-form" @submit.prevent="onPanelSave">
-        <UiInput v-model="panelForm.title" label="제목" placeholder="이슈 제목" />
-        <div class="drawer-row">
-          <UiSelect v-model="panelForm.status" label="상태" :options="statusOptions" />
-          <UiSelect v-model="panelForm.priority" label="우선순위" :options="priorityOptions" />
-        </div>
-        <UiSelect v-model="panelForm.assigneeId" label="담당자" :options="memberOptions" />
-        <UiTextarea v-model="panelForm.description" label="설명" placeholder="이슈에 대한 메모를 작성하세요..." :rows="6" />
+        <UiTextarea v-model="panelForm.description" label="설명" placeholder="이슈에 대한 메모를 작성하세요..." :rows="8" />
       </form>
       <template #footer>
         <div class="drawer-footer-between">
@@ -771,15 +802,71 @@ onMounted(async () => {
   height: auto !important;
   padding: 4px 12px !important;
 }
+.issue-title-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  &.is-editing { display: flex; width: 100%; }
+  &:hover .issue-title-edit { opacity: 1; }
+}
 .issue-title {
   font-size: 14px;
   font-weight: 500;
   color: #1f2937;
   word-break: break-word;
   cursor: pointer;
-  padding: 2px 4px;
+  &:hover { color: #2563eb; }
+}
+.issue-title-input {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border: 1px solid #3b82f6;
   border-radius: 4px;
-  &:hover { background: #eff6ff; color: #2563eb; }
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.issue-title-save,
+.issue-title-cancel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.issue-title-save {
+  background: #eff6ff;
+  color: #2563eb;
+  &:hover { background: #dbeafe; }
+}
+.issue-title-cancel {
+  background: #f3f4f6;
+  color: #6b7280;
+  &:hover { background: #e5e7eb; }
+}
+.issue-title-edit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  color: #9ca3af;
+  flex-shrink: 0;
+  &:hover { background: #f3f4f6; color: #374151; }
 }
 
 // ── 멤버 ──
