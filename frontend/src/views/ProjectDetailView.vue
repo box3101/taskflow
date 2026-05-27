@@ -178,6 +178,7 @@ async function saveTitleEdit(issue: any) {
     const { data } = await api.put(`/issues/${issue.id}`, { title })
     const idx = issues.value.findIndex(i => i.id === data.id)
     if (idx > -1) issues.value[idx] = data
+    openToast({ message: '제목이 수정되었습니다.', type: 'success' })
   } catch {
     issue.title = prev
     openToast({ message: '제목 수정에 실패했습니다.', type: 'error' })
@@ -627,9 +628,78 @@ onMounted(async () => {
 
     <!-- 이슈 상세 Drawer -->
     <UiDrawer v-model:open="panelOpen" :title="panelIssue?.title || '이슈 상세'" width="480px" min-width="380px" max-width="700px">
-      <form v-if="panelIssue" class="drawer-form" @submit.prevent="onPanelSave">
-        <UiTextarea v-model="panelForm.description" label="설명" placeholder="이슈에 대한 메모를 작성하세요..." :rows="8" />
-      </form>
+      <div v-if="panelIssue" class="panel-detail">
+        <!-- 속성 테이블 -->
+        <div class="panel-props">
+          <div class="panel-prop">
+            <span class="panel-prop-label">상태</span>
+            <UiDropdownMenu :items="statusMenuItems" @select="(val: string) => onInlineChange(panelIssue, 'status', val)">
+              <template #trigger>
+                <button class="cell-badge-btn">
+                  <UiBadge :variant="panelIssue.status === 'done' ? 'success' : panelIssue.status === 'doing' ? 'primary' : 'default'" size="sm">
+                    {{ panelIssue.status === 'done' ? '완료' : panelIssue.status === 'doing' ? '진행중' : '할 일' }}
+                  </UiBadge>
+                </button>
+              </template>
+            </UiDropdownMenu>
+          </div>
+          <div class="panel-prop">
+            <span class="panel-prop-label">우선순위</span>
+            <UiDropdownMenu :items="priorityMenuItems" @select="(val: string) => onInlineChange(panelIssue, 'priority', val)">
+              <template #trigger>
+                <button class="cell-badge-btn">
+                  <UiBadge :variant="(priorityMap[panelIssue.priority]?.variant || 'default') as any" size="sm">
+                    {{ priorityMap[panelIssue.priority]?.label || '낮음' }}
+                  </UiBadge>
+                </button>
+              </template>
+            </UiDropdownMenu>
+          </div>
+          <div class="panel-prop">
+            <span class="panel-prop-label">담당자</span>
+            <UiDropdownMenu :items="assigneeMenuItems" @select="(val: string) => onInlineChange(panelIssue, 'assigneeId', val)">
+              <template #trigger>
+                <button class="cell-badge-btn">
+                  <span v-if="panelIssue.assignee">{{ panelIssue.assignee.name }}</span>
+                  <span v-else style="color:#9ca3af">미배정</span>
+                </button>
+              </template>
+            </UiDropdownMenu>
+          </div>
+          <div class="panel-prop">
+            <span class="panel-prop-label">요청일</span>
+            <div class="panel-prop-date">
+              <UiDatePicker
+                :model-value="toCalendarDateOrUndef(panelIssue.requestedAt)"
+                size="sm"
+                @update:model-value="(v: any) => onInlineChange(panelIssue, 'requestedAt', fromDateValue(v) || '')"
+              />
+            </div>
+          </div>
+          <div class="panel-prop">
+            <span class="panel-prop-label">마감일</span>
+            <div class="panel-prop-date">
+              <UiDatePicker
+                :model-value="toCalendarDateOrUndef(panelIssue.dueAt)"
+                size="sm"
+                @update:model-value="(v: any) => onInlineChange(panelIssue, 'dueAt', fromDateValue(v) || '')"
+              />
+            </div>
+          </div>
+          <div class="panel-prop">
+            <span class="panel-prop-label">생성일</span>
+            <span class="panel-prop-value">{{ new Date(panelIssue.createdAt).toLocaleDateString('ko-KR') }}</span>
+          </div>
+        </div>
+
+        <!-- 구분선 -->
+        <hr class="panel-divider" />
+
+        <!-- 설명 -->
+        <form class="drawer-form" @submit.prevent="onPanelSave">
+          <UiTextarea v-model="panelForm.description" label="설명" placeholder="이슈에 대한 메모를 작성하세요..." :rows="6" />
+        </form>
+      </div>
       <template #footer>
         <div class="drawer-footer-between">
           <UiButton variant="danger" size="sm" :loading="panelDeleting" @click="onPanelDelete">삭제</UiButton>
@@ -792,6 +862,43 @@ onMounted(async () => {
   color: #374151;
   &--empty { color: #9ca3af; }
 }
+// ── 패널 상세 ──
+.panel-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.panel-props {
+  display: flex;
+  flex-direction: column;
+}
+.panel-prop {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+  &:last-child { border-bottom: none; }
+}
+.panel-prop-label {
+  width: 80px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+}
+.panel-prop-value {
+  font-size: 13px;
+  color: #374151;
+}
+.panel-prop-date {
+  flex: 1;
+}
+.panel-divider {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 16px 0;
+}
+
 .cell-datepicker {
   &.is-overdue :deep(.ui-datepicker-segments) {
     color: #ef4444;
