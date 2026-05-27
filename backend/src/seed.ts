@@ -1,7 +1,6 @@
-import { PrismaClient } from '../generated/prisma'
+import 'dotenv/config'
 import bcrypt from 'bcryptjs'
-
-const prisma = new PrismaClient()
+import prisma from './prisma'
 
 async function main() {
   // 기존 데이터 정리
