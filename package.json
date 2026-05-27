@@ -11,6 +11,6 @@
     "db:migrate": "cd backend && npx prisma migrate deploy",
     "db:seed": "cd backend && npx ts-node-dev src/seed.ts",
     "start": "cd backend && node dist/src/app.js",
-    "postinstall": "npm run install:all && npm run db:generate && npm run build"
+    "postinstall": "npm run install:all && npm run db:generate && npm run db:migrate && npm run build"
   }
 }
