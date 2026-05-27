@@ -26,10 +26,19 @@ router.put('/reorder', async (req, res) => {
 // 이슈 수정 (상태, 담당자, 우선순위 변경)
 router.put('/:id', async (req, res) => {
   try {
-    const { title, description, status, priority, assigneeId } = req.body
+    const { title, description, status, priority, urgency, requestedAt, dueAt, assigneeId } = req.body
+    const data: Record<string, unknown> = {}
+    if (title !== undefined) data.title = title
+    if (description !== undefined) data.description = description
+    if (status !== undefined) data.status = status
+    if (priority !== undefined) data.priority = priority
+    if (urgency !== undefined) data.urgency = urgency
+    if (requestedAt !== undefined) data.requestedAt = requestedAt ? new Date(requestedAt) : null
+    if (dueAt !== undefined) data.dueAt = dueAt ? new Date(dueAt) : null
+    if (assigneeId !== undefined) data.assigneeId = assigneeId
     const issue = await prisma.issue.update({
       where: { id: Number(req.params.id) },
-      data: { title, description, status, priority, assigneeId },
+      data,
       include: { assignee: { select: { id: true, name: true } } },
     })
     res.json(issue)

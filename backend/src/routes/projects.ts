@@ -84,6 +84,16 @@ router.put('/:id', async (req, res) => {
   }
 })
 
+// 프로젝트 삭제
+router.delete('/:id', async (req, res) => {
+  try {
+    await prisma.project.delete({ where: { id: Number(req.params.id) } })
+    res.json({ success: true })
+  } catch {
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
+  }
+})
+
 // 멤버 목록
 router.get('/:id/members', async (req, res) => {
   try {
@@ -158,7 +168,7 @@ router.get('/:id/issues', async (req, res) => {
 // 이슈 생성
 router.post('/:id/issues', async (req, res) => {
   try {
-    const { title, priority, assigneeId, status } = req.body
+    const { title, priority, urgency, requestedAt, dueAt, assigneeId, status } = req.body
     // 해당 상태 컬럼의 마지막 order 값 + 1
     const maxOrder = await prisma.issue.aggregate({
       where: { projectId: Number(req.params.id), status: status || 'todo' },
@@ -171,6 +181,9 @@ router.post('/:id/issues', async (req, res) => {
         projectId: Number(req.params.id),
         title,
         priority: priority || 'mid',
+        urgency: urgency || 'normal',
+        requestedAt: requestedAt ? new Date(requestedAt) : null,
+        dueAt: dueAt ? new Date(dueAt) : null,
         assigneeId: assigneeId || null,
         status: status || 'todo',
         order: nextOrder,

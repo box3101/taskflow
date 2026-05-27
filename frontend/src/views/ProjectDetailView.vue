@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { UiTab, UiTable, UiBadge, UiLoading, UiEmpty, UiButton, UiModal, UiInput, UiSelect, UiTextarea, UiToast, UiConfirm, openToast, openConfirm } from '@leechanyong/ispark-ui'
-import type { TabItem, SelectOption, TableColumn } from '@leechanyong/ispark-ui'
+import { UiTab, UiTable, UiBadge, UiLoading, UiEmpty, UiButton, UiDrawer, UiDropdownMenu, UiDatePicker, UiModal, UiInput, UiSelect, UiTextarea, UiToast, UiConfirm, openToast, openConfirm } from '@leechanyong/ispark-ui'
+import type { TabItem, SelectOption, TableColumn, DropdownMenuItemDef } from '@leechanyong/ispark-ui'
+import { CalendarDate, type DateValue } from '@internationalized/date'
 import api from '../api/client'
 
 const route = useRoute()
@@ -37,38 +38,125 @@ const memberOptions = computed<SelectOption[]>(() => [
   ...members.value.map(m => ({ label: m.user.name, value: String(m.user.id) })),
 ])
 
-// ── 필터 ──
-const filterStatus = ref('')
-const filterPriority = ref('')
-const filterStatusOptions: SelectOption[] = [
-  { label: '전체', value: '' },
-  ...statusOptions,
+// ── 멀티 필터 (체크박스 중복 선택) ──
+const statusFilterItems = [
+  { label: '할 일', value: 'todo' },
+  { label: '진행중', value: 'doing' },
+  { label: '완료', value: 'done' },
 ]
-const filterPriorityOptions: SelectOption[] = [
-  { label: '전체', value: '' },
-  ...priorityOptions,
+const priorityFilterItems = [
+  { label: '높음', value: 'high' },
+  { label: '보통', value: 'mid' },
+  { label: '낮음', value: 'low' },
 ]
+
+const checkedStatuses = ref<string[]>([])
+const checkedPriorities = ref<string[]>([])
+const showStatusDropdown = ref(false)
+const showPriorityDropdown = ref(false)
+
+function toggleFilter(arr: string[], val: string) {
+  const idx = arr.indexOf(val)
+  if (idx >= 0) arr.splice(idx, 1)
+  else arr.push(val)
+  resetDisplay()
+}
+
+function filterLabel(checked: string[], items: { label: string; value: string }[]) {
+  if (checked.length === 0 || checked.length === items.length) return '전체'
+  return checked.map(v => items.find(i => i.value === v)?.label).join(', ')
+}
 
 const filteredIssues = computed(() => {
   return issues.value.filter(i => {
-    if (filterStatus.value && i.status !== filterStatus.value) return false
-    if (filterPriority.value && i.priority !== filterPriority.value) return false
+    if (checkedStatuses.value.length > 0 && !checkedStatuses.value.includes(i.status)) return false
+    if (checkedPriorities.value.length > 0 && !checkedPriorities.value.includes(i.priority)) return false
     return true
   })
 })
 
+// 더보기 (초기 20건, 이후 20건씩 추가)
+const PAGE_SIZE = 20
+const displayCount = ref(PAGE_SIZE)
+const displayedIssues = computed(() => filteredIssues.value.slice(0, displayCount.value))
+const hasMore = computed(() => displayCount.value < filteredIssues.value.length)
+function loadMore() { displayCount.value += PAGE_SIZE }
+// 필터 변경 시 표시 건수 리셋
+function resetDisplay() { displayCount.value = PAGE_SIZE }
+
+// 바깥 클릭 시 드롭다운 닫기
+function onClickOutside(e: MouseEvent) {
+  const t = e.target as HTMLElement
+  if (!t.closest('.multi-filter')) {
+    showStatusDropdown.value = false
+    showPriorityDropdown.value = false
+  }
+}
+onMounted(() => document.addEventListener('click', onClickOutside))
+
 // ── 이슈 테이블 ──
 const issueColumns: TableColumn[] = [
-  { key: 'title', label: '제목', align: 'left' },
-  { key: 'status', label: '상태', width: '110px', align: 'center' },
-  { key: 'priority', label: '우선순위', width: '110px', align: 'center' },
-  { key: 'assignee', label: '담당자', width: '130px', align: 'center' },
+  { key: 'title', label: '제목', align: 'left', sortable: true, sortType: 'string' },
+  { key: 'status', label: '상태', width: '90px', align: 'center', sortable: true },
+  { key: 'priority', label: '우선순위', width: '100px', align: 'center', sortable: true },
+  { key: 'requestedAt', label: '요청일', width: '150px', align: 'center', sortable: true, sortType: 'date' },
+  { key: 'dueAt', label: '마감일', width: '150px', align: 'center', sortable: true, sortType: 'date' },
+  { key: 'assignee', label: '담당자', width: '100px', align: 'center' },
 ]
 
-const priorityMap: Record<string, { label: string }> = {
-  high: { label: '높음' },
-  mid: { label: '보통' },
-  low: { label: '낮음' },
+// 상태/우선순위 드롭다운 메뉴 아이템
+const statusMenuItems: DropdownMenuItemDef[] = [
+  { label: '할 일', value: 'todo' },
+  { label: '진행중', value: 'doing' },
+  { label: '완료', value: 'done' },
+]
+const priorityMenuItems: DropdownMenuItemDef[] = [
+  { label: '긴급', value: 'urgent' },
+  { label: '높음', value: 'high' },
+  { label: '보통', value: 'mid' },
+  { label: '낮음', value: 'low' },
+]
+const urgencyMenuItems: DropdownMenuItemDef[] = [
+  { label: '긴급', value: 'urgent' },
+  { label: '높음', value: 'high' },
+  { label: '보통', value: 'normal' },
+  { label: '낮음', value: 'low' },
+]
+const urgencyMap: Record<string, { label: string; variant: string }> = {
+  urgent: { label: '긴급', variant: 'danger' },
+  high: { label: '높음', variant: 'warning' },
+  normal: { label: '보통', variant: 'default' },
+  low: { label: '낮음', variant: 'default' },
+}
+
+const assigneeMenuItems = computed<DropdownMenuItemDef[]>(() => [
+  { label: '미배정', value: '' },
+  ...members.value.map(m => ({ label: m.user.name, value: String(m.user.id) })),
+])
+
+const priorityMap: Record<string, { label: string; variant: string }> = {
+  urgent: { label: '긴급', variant: 'danger' },
+  high: { label: '높음', variant: 'warning' },
+  mid: { label: '보통', variant: 'primary' },
+  low: { label: '낮음', variant: 'default' },
+}
+
+// 날짜 변환: ISO string → CalendarDate
+function toCalendarDateOrUndef(d: string | null | undefined): DateValue | undefined {
+  if (!d) return undefined
+  const date = new Date(d)
+  return new CalendarDate(date.getFullYear(), date.getMonth() + 1, date.getDate())
+}
+
+// CalendarDate → ISO string
+function fromDateValue(d: DateValue | undefined): string | null {
+  if (!d) return null
+  return `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`
+}
+
+function isOverdue(d: string | null) {
+  if (!d) return false
+  return new Date(d) < new Date() && new Date(d).toDateString() !== new Date().toDateString()
 }
 
 // 인라인 편집: 셀에서 바로 변경
@@ -166,14 +254,13 @@ async function onPanelDelete() {
 }
 
 // ── 이슈 생성 (간단히 사이드 패널 재활용) ──
-const isCreating = ref(false)
+const createDrawerOpen = ref(false)
 const createForm = ref({ title: '', priority: 'mid', assigneeId: '' })
 const creatingLoading = ref(false)
 
 function startCreate() {
   createForm.value = { title: '', priority: 'mid', assigneeId: '' }
-  isCreating.value = true
-  panelOpen.value = true
+  createDrawerOpen.value = true
 }
 
 async function onCreateIssue() {
@@ -187,17 +274,11 @@ async function onCreateIssue() {
     })
     issues.value.unshift(data)
     openToast({ message: '이슈가 추가되었습니다.', type: 'success' })
-    isCreating.value = false
-    panelOpen.value = false
+    createDrawerOpen.value = false
   } finally {
     creatingLoading.value = false
   }
 }
-
-// 패널 닫을 때 생성 모드 해제
-watch(panelOpen, (v) => {
-  if (!v) isCreating.value = false
-})
 
 // ── 개요 탭 ──
 const issueStats = computed(() => ({
@@ -299,7 +380,7 @@ onMounted(async () => {
       <UiButton v-if="!loading" variant="primary" size="sm" @click="startCreate">+ 이슈 추가</UiButton>
     </header>
 
-    <div class="content-wrapper" :class="{ 'panel-open': panelOpen }">
+    <div>
       <main class="main">
         <UiLoading v-if="loading" />
         <template v-else>
@@ -307,24 +388,64 @@ onMounted(async () => {
 
           <!-- 이슈 탭 -->
           <div v-if="activeTab === 'board'" class="tab-content">
-            <!-- 필터 바 -->
+            <!-- 멀티 필터 바 -->
             <div class="filter-bar">
-              <div class="filter-item">
-                <span class="filter-label">상태</span>
-                <UiSelect v-model="filterStatus" :options="filterStatusOptions" size="sm" />
+              <div class="multi-filter" @click.stop>
+                <button class="multi-filter-btn" @click="showStatusDropdown = !showStatusDropdown; showPriorityDropdown = false">
+                  <span class="multi-filter-label">상태</span>
+                  <span class="multi-filter-value">{{ filterLabel(checkedStatuses, statusFilterItems) }}</span>
+                  <span class="multi-filter-arrow" :class="{ 'is-open': showStatusDropdown }">▾</span>
+                </button>
+                <div v-if="showStatusDropdown" class="multi-filter-dropdown">
+                  <label
+                    v-for="item in statusFilterItems"
+                    :key="item.value"
+                    class="multi-filter-option"
+                    :class="{ 'is-checked': checkedStatuses.includes(item.value) }"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="checkedStatuses.includes(item.value)"
+                      @change="toggleFilter(checkedStatuses, item.value)"
+                    />
+                    <span>{{ item.label }}</span>
+                    <span v-if="checkedStatuses.includes(item.value)" class="multi-filter-check">✓</span>
+                  </label>
+                </div>
               </div>
-              <div class="filter-item">
-                <span class="filter-label">우선순위</span>
-                <UiSelect v-model="filterPriority" :options="filterPriorityOptions" size="sm" />
+
+              <div class="multi-filter" @click.stop>
+                <button class="multi-filter-btn" @click="showPriorityDropdown = !showPriorityDropdown; showStatusDropdown = false">
+                  <span class="multi-filter-label">우선순위</span>
+                  <span class="multi-filter-value">{{ filterLabel(checkedPriorities, priorityFilterItems) }}</span>
+                  <span class="multi-filter-arrow" :class="{ 'is-open': showPriorityDropdown }">▾</span>
+                </button>
+                <div v-if="showPriorityDropdown" class="multi-filter-dropdown">
+                  <label
+                    v-for="item in priorityFilterItems"
+                    :key="item.value"
+                    class="multi-filter-option"
+                    :class="{ 'is-checked': checkedPriorities.includes(item.value) }"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="checkedPriorities.includes(item.value)"
+                      @change="toggleFilter(checkedPriorities, item.value)"
+                    />
+                    <span>{{ item.label }}</span>
+                    <span v-if="checkedPriorities.includes(item.value)" class="multi-filter-check">✓</span>
+                  </label>
+                </div>
               </div>
-              <span class="filter-count">{{ filteredIssues.length }}건</span>
+
+              <span class="filter-count">{{ filteredIssues.length }}건{{ filteredIssues.length !== issues.length ? ` / 전체 ${issues.length}건` : '' }}</span>
             </div>
 
             <UiEmpty v-if="filteredIssues.length === 0" title="이슈가 없습니다." />
             <UiTable
               v-else
               :columns="issueColumns"
-              :data="(filteredIssues as any)"
+              :data="(displayedIssues as any)"
               size="sm"
             >
               <template #cell-title="{ row }">
@@ -332,35 +453,77 @@ onMounted(async () => {
               </template>
               <template #cell-status="{ row }">
                 <div @click.stop>
-                  <UiSelect
-                    :model-value="row.status"
-                    :options="statusOptions"
-                    size="sm"
-                    @change="(val: string | number) => onInlineChange(row, 'status', val)"
-                  />
+                  <UiDropdownMenu
+                    :items="statusMenuItems"
+                    @select="(val: string) => onInlineChange(row, 'status', val)"
+                  >
+                    <template #trigger>
+                      <button class="cell-badge-btn">
+                        <UiBadge
+                          :variant="row.status === 'done' ? 'success' : row.status === 'doing' ? 'primary' : 'default'"
+                          size="sm"
+                        >{{ row.status === 'done' ? '완료' : row.status === 'doing' ? '진행중' : '할 일' }}</UiBadge>
+                      </button>
+                    </template>
+                  </UiDropdownMenu>
                 </div>
               </template>
               <template #cell-priority="{ row }">
                 <div @click.stop>
-                  <UiSelect
-                    :model-value="row.priority"
-                    :options="priorityOptions"
-                    size="sm"
-                    @change="(val: string | number) => onInlineChange(row, 'priority', val)"
+                  <UiDropdownMenu
+                    :items="priorityMenuItems"
+                    @select="(val: string) => onInlineChange(row, 'priority', val)"
+                  >
+                    <template #trigger>
+                      <button class="cell-badge-btn">
+                        <UiBadge
+                          :variant="(priorityMap[row.priority]?.variant || 'default') as any"
+                          size="sm"
+                        >{{ priorityMap[row.priority]?.label || '낮음' }}</UiBadge>
+                      </button>
+                    </template>
+                  </UiDropdownMenu>
+                </div>
+              </template>
+              <template #cell-requestedAt="{ row }">
+                <div @click.stop class="cell-datepicker">
+                  <UiDatePicker
+                    :model-value="toCalendarDateOrUndef(row.requestedAt)"
+                    size="xs"
+                    @update:model-value="(v: DateValue | undefined) => onInlineChange(row, 'requestedAt', fromDateValue(v) || '')"
+                  />
+                </div>
+              </template>
+              <template #cell-dueAt="{ row }">
+                <div @click.stop class="cell-datepicker" :class="{ 'is-overdue': isOverdue(row.dueAt) }">
+                  <UiDatePicker
+                    :model-value="toCalendarDateOrUndef(row.dueAt)"
+                    size="xs"
+                    @update:model-value="(v: DateValue | undefined) => onInlineChange(row, 'dueAt', fromDateValue(v) || '')"
                   />
                 </div>
               </template>
               <template #cell-assignee="{ row }">
                 <div @click.stop>
-                  <UiSelect
-                    :model-value="row.assigneeId ? String(row.assigneeId) : ''"
-                    :options="memberOptions"
-                    size="sm"
-                    @change="(val: string | number) => onInlineChange(row, 'assigneeId', val)"
-                  />
+                  <UiDropdownMenu
+                    :items="assigneeMenuItems"
+                    @select="(val: string) => onInlineChange(row, 'assigneeId', val)"
+                  >
+                    <template #trigger>
+                      <button class="cell-badge-btn">
+                        <span v-if="row.assignee" class="cell-assignee">{{ row.assignee.name }}</span>
+                        <span v-else class="cell-assignee cell-assignee--empty">미배정</span>
+                      </button>
+                    </template>
+                  </UiDropdownMenu>
                 </div>
               </template>
             </UiTable>
+            <div v-if="hasMore" class="load-more">
+              <button class="load-more-btn" @click="loadMore">
+                더보기 ({{ displayedIssues.length }} / {{ filteredIssues.length }})
+              </button>
+            </div>
           </div>
 
           <!-- 멤버 탭 -->
@@ -408,55 +571,44 @@ onMounted(async () => {
         </template>
       </main>
 
-      <!-- 사이드 패널 -->
-      <Transition name="slide">
-        <aside v-if="panelOpen" class="side-panel">
-          <!-- 생성 모드 -->
-          <template v-if="isCreating">
-            <div class="panel-header">
-              <h3>이슈 추가</h3>
-              <button class="panel-close" @click="closePanel">&times;</button>
-            </div>
-            <form class="panel-body" @submit.prevent="onCreateIssue">
-              <UiInput v-model="createForm.title" label="제목" placeholder="이슈 제목" />
-              <UiSelect v-model="createForm.priority" label="우선순위" :options="priorityOptions" />
-              <UiSelect v-model="createForm.assigneeId" label="담당자" :options="memberOptions" />
-              <div class="panel-actions">
-                <UiButton variant="ghost" size="md" @click="closePanel">취소</UiButton>
-                <UiButton variant="primary" size="md" type="submit" :loading="creatingLoading">추가</UiButton>
-              </div>
-            </form>
-          </template>
-
-          <!-- 상세/편집 모드 -->
-          <template v-else-if="panelIssue">
-            <div class="panel-header">
-              <h3>이슈 상세</h3>
-              <button class="panel-close" @click="closePanel">&times;</button>
-            </div>
-            <form class="panel-body" @submit.prevent="onPanelSave">
-              <UiInput v-model="panelForm.title" label="제목" placeholder="이슈 제목" />
-              <div class="panel-row">
-                <UiSelect v-model="panelForm.status" label="상태" :options="statusOptions" />
-                <UiSelect v-model="panelForm.priority" label="우선순위" :options="priorityOptions" />
-              </div>
-              <UiSelect v-model="panelForm.assigneeId" label="담당자" :options="memberOptions" />
-              <UiTextarea v-model="panelForm.description" label="설명" placeholder="이슈에 대한 메모를 작성하세요..." :rows="5" />
-              <div class="panel-actions">
-                <UiButton variant="danger" size="sm" :loading="panelDeleting" @click.prevent="onPanelDelete">삭제</UiButton>
-                <div class="panel-actions-right">
-                  <UiButton variant="ghost" size="md" @click.prevent="closePanel">취소</UiButton>
-                  <UiButton variant="primary" size="md" type="submit" :loading="panelSaving">저장</UiButton>
-                </div>
-              </div>
-            </form>
-          </template>
-        </aside>
-      </Transition>
     </div>
 
-    <!-- 오버레이 (패널 외부 클릭으로 닫기) -->
-    <div v-if="panelOpen" class="panel-overlay" @click="closePanel" />
+    <!-- 이슈 생성 Drawer -->
+    <UiDrawer v-model:open="createDrawerOpen" title="이슈 추가" width="420px" min-width="360px" max-width="600px">
+      <form class="drawer-form" @submit.prevent="onCreateIssue">
+        <UiInput v-model="createForm.title" label="제목" placeholder="이슈 제목" />
+        <UiSelect v-model="createForm.priority" label="우선순위" :options="priorityOptions" />
+        <UiSelect v-model="createForm.assigneeId" label="담당자" :options="memberOptions" />
+      </form>
+      <template #footer>
+        <div class="drawer-footer">
+          <UiButton variant="ghost" size="md" @click="createDrawerOpen = false">취소</UiButton>
+          <UiButton variant="primary" size="md" :loading="creatingLoading" @click="onCreateIssue">추가</UiButton>
+        </div>
+      </template>
+    </UiDrawer>
+
+    <!-- 이슈 상세 Drawer -->
+    <UiDrawer v-model:open="panelOpen" title="이슈 상세" width="480px" min-width="380px" max-width="700px">
+      <form v-if="panelIssue" class="drawer-form" @submit.prevent="onPanelSave">
+        <UiInput v-model="panelForm.title" label="제목" placeholder="이슈 제목" />
+        <div class="drawer-row">
+          <UiSelect v-model="panelForm.status" label="상태" :options="statusOptions" />
+          <UiSelect v-model="panelForm.priority" label="우선순위" :options="priorityOptions" />
+        </div>
+        <UiSelect v-model="panelForm.assigneeId" label="담당자" :options="memberOptions" />
+        <UiTextarea v-model="panelForm.description" label="설명" placeholder="이슈에 대한 메모를 작성하세요..." :rows="6" />
+      </form>
+      <template #footer>
+        <div class="drawer-footer-between">
+          <UiButton variant="danger" size="sm" :loading="panelDeleting" @click="onPanelDelete">삭제</UiButton>
+          <div class="drawer-footer">
+            <UiButton variant="ghost" size="md" @click="panelOpen = false">취소</UiButton>
+            <UiButton variant="primary" size="md" :loading="panelSaving" @click="onPanelSave">저장</UiButton>
+          </div>
+        </div>
+      </template>
+    </UiDrawer>
 
     <UiConfirm />
     <UiToast />
@@ -484,51 +636,141 @@ onMounted(async () => {
 .header-left { display: flex; align-items: center; gap: 12px; }
 .header-title { font-size: 18px; font-weight: 700; }
 
-// 컨텐츠 + 사이드 패널 레이아웃
-.content-wrapper {
-  display: flex;
-  transition: all 0.3s ease;
-}
 .main {
-  flex: 1;
-  min-width: 0;
   max-width: 1200px;
   margin: 0 auto;
   padding: 32px 24px;
-  transition: max-width 0.3s ease;
-  .panel-open & {
-    max-width: 100%;
-    padding-right: 16px;
-  }
 }
 .tab-content { margin-top: 24px; }
 
-// ── 필터 바 ──
+// ── Drawer 폼 ──
+.drawer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.drawer-row {
+  display: flex;
+  gap: 12px;
+  > * { flex: 1; }
+}
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.drawer-footer-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+// ── 멀티 필터 ──
 .filter-bar {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   margin-bottom: 16px;
-  padding: 8px 0;
-}
-.filter-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 160px;
-}
-.filter-label {
-  font-size: 13px;
-  color: #6b7280;
-  white-space: nowrap;
 }
 .filter-count {
   font-size: 13px;
   color: #9ca3af;
   margin-left: auto;
 }
+.multi-filter {
+  position: relative;
+}
+.multi-filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  transition: border-color 0.15s;
+  &:hover { border-color: #3b82f6; }
+}
+.multi-filter-label {
+  color: #6b7280;
+  font-weight: 500;
+}
+.multi-filter-value {
+  color: #1f2937;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.multi-filter-arrow {
+  font-size: 10px;
+  color: #9ca3af;
+  transition: transform 0.15s;
+  &.is-open { transform: rotate(180deg); }
+}
+.multi-filter-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 140px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  padding: 4px 0;
+  z-index: 100;
+}
+.multi-filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+  transition: background 0.1s;
+  &:hover { background: #f3f4f6; }
+  &.is-checked {
+    color: #2563eb;
+    font-weight: 600;
+  }
+  input[type="checkbox"] { display: none; }
+}
+.multi-filter-check {
+  margin-left: auto;
+  color: #2563eb;
+  font-weight: 700;
+}
 
 // ── 이슈 테이블 ──
+.cell-badge-btn {
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  transition: background 0.1s;
+  &:hover { background: #f3f4f6; }
+}
+.cell-assignee {
+  font-size: 13px;
+  color: #374151;
+  &--empty { color: #9ca3af; }
+}
+.cell-datepicker {
+  &.is-overdue :deep(.ui-datepicker-segments) {
+    color: #ef4444;
+    font-weight: 600;
+  }
+}
+:deep(.ui-table tbody td) {
+  height: auto !important;
+  padding: 4px 12px !important;
+}
 .issue-title {
   font-size: 14px;
   font-weight: 500;
@@ -538,59 +780,6 @@ onMounted(async () => {
   padding: 2px 4px;
   border-radius: 4px;
   &:hover { background: #eff6ff; color: #2563eb; }
-}
-
-// ── 사이드 패널 ──
-.side-panel {
-  width: 420px;
-  flex-shrink: 0;
-  background: #fff;
-  border-left: 1px solid #e5e7eb;
-  height: calc(100vh - 56px);
-  position: sticky;
-  top: 56px;
-  overflow-y: auto;
-  z-index: 10;
-}
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px 16px;
-  border-bottom: 1px solid #f0f1f3;
-  h3 { font-size: 16px; font-weight: 700; }
-}
-.panel-close {
-  display: flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; border: none; background: none;
-  border-radius: 6px; cursor: pointer; font-size: 20px; color: #9ca3af;
-  &:hover { background: #f3f4f6; color: #374151; }
-}
-.panel-body {
-  padding: 20px 24px;
-  display: flex; flex-direction: column; gap: 16px;
-}
-.panel-row {
-  display: flex; gap: 12px;
-  > * { flex: 1; }
-}
-.panel-actions {
-  display: flex; justify-content: space-between; align-items: center;
-  padding-top: 16px; border-top: 1px solid #e5e7eb; margin-top: 8px;
-}
-.panel-actions-right { display: flex; gap: 8px; }
-
-.panel-overlay {
-  display: none;
-}
-
-// 슬라이드 애니메이션
-.slide-enter-active, .slide-leave-active {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-.slide-enter-from, .slide-leave-to {
-  transform: translateX(100%);
-  opacity: 0;
 }
 
 // ── 멤버 ──
@@ -646,4 +835,26 @@ onMounted(async () => {
 .progress-bar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
 .progress-fill { height: 100%; background: #22c55e; border-radius: 4px; transition: width 0.3s ease; }
 .overview-meta { margin-top: 20px; font-size: 13px; color: #9ca3af; display: flex; gap: 8px; }
+// 더보기
+.load-more {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+}
+.load-more-btn {
+  padding: 8px 24px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+    background: #eff6ff;
+  }
+}
 </style>
+

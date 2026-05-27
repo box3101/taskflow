@@ -24,7 +24,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const userId = req.user!.id
-    const { title } = req.body
+    const { title, priority } = req.body
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
       res.status(400).json({ message: '할일 제목을 입력해주세요.' })
@@ -35,8 +35,11 @@ router.post('/', async (req, res) => {
       return
     }
 
+    const validPriorities = ['high', 'mid', 'low', 'none']
+    const safePriority = validPriorities.includes(priority) ? priority : 'none'
+
     const todo = await prisma.todo.create({
-      data: { userId, title: title.trim() },
+      data: { userId, title: title.trim(), priority: safePriority },
     })
     res.status(201).json({ data: todo })
   } catch {
@@ -49,7 +52,7 @@ router.patch('/:id', async (req, res) => {
   try {
     const userId = req.user!.id
     const id = Number(req.params.id)
-    const { done } = req.body
+    const { done, priority, title } = req.body
 
     // 본인 할일인지 확인
     const existing = await prisma.todo.findFirst({ where: { id, userId } })
@@ -58,9 +61,19 @@ router.patch('/:id', async (req, res) => {
       return
     }
 
+    const updateData: Record<string, unknown> = {}
+    if (done !== undefined) updateData.done = Boolean(done)
+    if (title !== undefined && typeof title === 'string' && title.trim().length > 0) {
+      updateData.title = title.trim()
+    }
+    if (priority !== undefined) {
+      const validPriorities = ['high', 'mid', 'low', 'none']
+      if (validPriorities.includes(priority)) updateData.priority = priority
+    }
+
     const todo = await prisma.todo.update({
       where: { id },
-      data: { done: Boolean(done) },
+      data: updateData,
     })
     res.json({ data: todo })
   } catch {
