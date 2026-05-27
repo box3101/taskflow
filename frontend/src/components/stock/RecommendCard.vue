@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { UiBadge, UiTab } from '@leechanyong/ispark-ui'
+import { fetchInvestor } from '../../api/stockApi'
+import type { InvestorData } from '../../api/stockApi'
 
 type RecItem = {
   code: string
@@ -12,7 +14,7 @@ type RecItem = {
   reason: string
 }
 
-defineProps<{
+const props = defineProps<{
   momentum: RecItem[]
   laggard: RecItem[]
   overheat: RecItem[]
@@ -28,6 +30,42 @@ const tabs = [
   { label: '🔥 과열 경보', value: 'overheat' },
 ]
 
+// 추천 종목별 외인/기관 데이터
+const investorMap = ref<Record<string, InvestorData>>({})
+const investorLoading = ref(false)
+
+async function loadInvestorForRecs(items: RecItem[]) {
+  // 상위 5종목만 로드 (API 부하 제한)
+  const codes = items.slice(0, 5).map(r => r.code).filter(c => !investorMap.value[c])
+  if (codes.length === 0) return
+  investorLoading.value = true
+  await Promise.all(codes.map(async (code) => {
+    investorMap.value[code] = await fetchInvestor(code)
+  }))
+  investorLoading.value = false
+}
+
+// 연속 매수일 계산
+function consecutiveDays(code: string, type: 'foreign' | 'institution'): number {
+  const data = investorMap.value[code]
+  if (!data?.trends?.length) return 0
+  let count = 0
+  for (const day of data.trends) {
+    if (day[type] > 0) count++
+    else break
+  }
+  return count
+}
+
+function investorLabel(code: string): string {
+  const f = consecutiveDays(code, 'foreign')
+  const i = consecutiveDays(code, 'institution')
+  const parts: string[] = []
+  if (f >= 2) parts.push(`외인${f}일`)
+  if (i >= 2) parts.push(`기관${i}일`)
+  return parts.length ? parts.join(' ') : ''
+}
+
 const loaded = ref(false)
 function onToggle(e: Event) {
   const el = e.target as HTMLDetailsElement
@@ -36,6 +74,18 @@ function onToggle(e: Event) {
     emit('loadData')
   }
 }
+
+// 추천 데이터 로드되면 외인/기관도 로드
+watch(() => props.momentum, (items) => {
+  if (items.length > 0) loadInvestorForRecs(items)
+})
+watch(() => props.laggard, (items) => {
+  if (items.length > 0 && activeTab.value === 'laggard') loadInvestorForRecs(items)
+})
+watch(activeTab, (tab) => {
+  const items = tab === 'momentum' ? props.momentum : tab === 'laggard' ? props.laggard : props.overheat
+  if (items.length > 0) loadInvestorForRecs(items)
+})
 
 const tabDescriptions: Record<string, string> = {
   momentum: '20일 +10~50% 구간에서 가속이 시작되는 종목. 과열 전 진입 기회.',
@@ -68,7 +118,7 @@ const tabDescriptions: Record<string, string> = {
             <span class="col-theme">테마</span>
             <span class="col-chg">5일</span>
             <span class="col-chg">20일</span>
-            <span class="col-reason">가속도</span>
+            <span class="col-investor">수급</span>
           </div>
           <div v-for="(r, i) in momentum" :key="r.code" class="rec-row rec-row--momentum">
             <span class="col-rank">{{ i + 1 }}</span>
@@ -76,7 +126,11 @@ const tabDescriptions: Record<string, string> = {
             <span class="col-theme"><UiBadge variant="default" size="sm">{{ r.theme }}</UiBadge></span>
             <span class="col-chg"><UiBadge variant="danger" size="sm">+{{ r.chg5.toFixed(1) }}%</UiBadge></span>
             <span class="col-chg"><UiBadge variant="danger" size="sm">+{{ r.chg20.toFixed(1) }}%</UiBadge></span>
-            <span class="col-reason reason-momentum">{{ r.reason }}</span>
+            <span class="col-investor">
+              <UiBadge v-if="investorLabel(r.code)" variant="warning" size="sm">{{ investorLabel(r.code) }}</UiBadge>
+              <span v-else-if="investorLoading" class="loading-dot">···</span>
+              <span v-else class="no-signal">-</span>
+            </span>
           </div>
         </div>
       </div>
@@ -93,7 +147,7 @@ const tabDescriptions: Record<string, string> = {
             <span class="col-theme">테마</span>
             <span class="col-chg">5일</span>
             <span class="col-chg">20일</span>
-            <span class="col-reason">괴리</span>
+            <span class="col-investor">수급</span>
           </div>
           <div v-for="(r, i) in laggard" :key="r.code" class="rec-row rec-row--laggard">
             <span class="col-rank">{{ i + 1 }}</span>
@@ -109,7 +163,11 @@ const tabDescriptions: Record<string, string> = {
                 {{ r.chg20 >= 0 ? '+' : '' }}{{ r.chg20.toFixed(1) }}%
               </UiBadge>
             </span>
-            <span class="col-reason reason-laggard">{{ r.reason }}</span>
+            <span class="col-investor">
+              <UiBadge v-if="investorLabel(r.code)" variant="warning" size="sm">{{ investorLabel(r.code) }}</UiBadge>
+              <span v-else-if="investorLoading" class="loading-dot">···</span>
+              <span v-else class="no-signal">-</span>
+            </span>
           </div>
         </div>
       </div>
@@ -198,7 +256,7 @@ const tabDescriptions: Record<string, string> = {
 
 .rec-row {
   display: grid;
-  grid-template-columns: 36px 1fr 80px 68px 68px 100px;
+  grid-template-columns: 36px 1fr 80px 68px 68px 110px;
   gap: 6px;
   align-items: center;
   padding: 7px 4px;
@@ -221,9 +279,9 @@ const tabDescriptions: Record<string, string> = {
 .col-chg { text-align: center; }
 .col-reason { text-align: center; font-size: 12px; }
 
-.reason-momentum { color: #16a34a; font-weight: 600; }
-.reason-laggard { color: #2563eb; font-weight: 600; }
-.reason-overheat { }
+.col-investor { text-align: center; }
+.loading-dot { color: #9ca3af; }
+.no-signal { color: #d1d5db; }
 
 .disclaimer {
   font-size: 11px;

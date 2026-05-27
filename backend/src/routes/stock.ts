@@ -14,22 +14,31 @@ router.get('/investor/:code', async (req, res) => {
     })
     const data = await response.json()
 
-    // dealTrendInfos에서 외인/기관/개인 5거래일 데이터 추출
-    const trends = data?.dealTrendInfos || []
-    const result = trends.map((day: any) => ({
-      date: day.date,
-      foreign: Number(day.foreignNetBuyVolume) || 0,
-      institution: Number(day.institutionNetBuyVolume) || 0,
-      individual: Number(day.individualNetBuyVolume) || 0,
-      foreignAmt: Number(day.foreignNetBuyAmount) || 0,
-      institutionAmt: Number(day.institutionNetBuyAmount) || 0,
+    // 네이버 integration API 응답 파싱
+    // dealTrendInfos 또는 최상위 배열 형태
+    const rawTrends = data?.dealTrendInfos || (Array.isArray(data) ? data : [])
+
+    // 파싱 헬퍼: "+529,897" → 529897, "-18,203" → -18203
+    const parseNum = (v: string | number) => {
+      if (typeof v === 'number') return v
+      if (!v) return 0
+      return Number(String(v).replace(/,/g, '').replace(/\+/g, '')) || 0
+    }
+
+    const trends = rawTrends.map((day: any) => ({
+      date: day.bizdate || day.date || '',
+      foreign: parseNum(day.foreignerPureBuyQuant || day.foreignNetBuyVolume),
+      institution: parseNum(day.organPureBuyQuant || day.institutionNetBuyVolume),
+      individual: parseNum(day.individualPureBuyQuant || day.individualNetBuyVolume),
+      foreignAmt: parseNum(day.foreignNetBuyAmount || 0),
+      institutionAmt: parseNum(day.institutionNetBuyAmount || 0),
     }))
 
-    // 종목 기본 정보도 추출
+    // 종목 기본 정보 추출
     const totalInfos = data?.totalInfos || []
-    const per = totalInfos.find((i: any) => i.key === 'PER')?.value || '-'
-    const pbr = totalInfos.find((i: any) => i.key === 'PBR')?.value || '-'
-    const marketCap = totalInfos.find((i: any) => i.key === '시가총액')?.value || '-'
+    const per = data?.per || totalInfos.find((i: any) => i.key === 'PER')?.value || '-'
+    const pbr = data?.pbr || totalInfos.find((i: any) => i.key === 'PBR')?.value || '-'
+    const marketCap = data?.marketCap || totalInfos.find((i: any) => i.key === '시가총액')?.value || '-'
 
     res.json({ trends, per, pbr, marketCap })
   } catch (e) {
