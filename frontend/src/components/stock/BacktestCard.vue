@@ -242,4 +242,11 @@ h4 { font-size: 14px; font-weight: 700; margin: 16px 0 8px; color: #374151; }
 .tw-pnl { font-weight: 700; font-size: 13px; }
 
 .disclaimer { font-size: 11px; color: #9ca3af; margin-top: 12px; }
+
+@media (max-width: 640px) {
+  .card-body { padding: 0 12px 12px; }
+  .summary-cards { grid-template-columns: 1fr 1fr; }
+  .period-summary { grid-template-columns: 1fr 1fr; }
+  .top-worst { grid-template-columns: 1fr; }
+}
 </style>

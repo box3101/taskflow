@@ -163,11 +163,12 @@ function themeAvg(theme: ThemeDef, field: 'changePct5' | 'changePct20') {
 
 @media (max-width: 640px) {
   .theme-overview { padding: 14px; }
+  .theme-stocks { padding: 6px 8px 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .stock-row {
+    min-width: 340px;
     grid-template-columns: 1fr 80px 60px 60px;
     font-size: 12px;
   }
   .theme-header { font-size: 13px; padding: 8px 10px; }
-  .theme-stocks { padding: 6px 8px 10px; }
 }
 </style>

@@ -165,7 +165,9 @@ function consecutiveBuyDays(trends: InvestorData['trends'], type: 'foreign' | 'i
 
 @media (max-width: 640px) {
   .investor-trend { padding: 14px; }
+  .investor-block { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .trend-row {
+    min-width: 320px;
     grid-template-columns: 70px 1fr 1fr 1fr;
     font-size: 12px;
   }

@@ -292,7 +292,9 @@ const tabDescriptions: Record<string, string> = {
 
 @media (max-width: 640px) {
   .card-body { padding: 0 12px 12px; }
+  .rec-list { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .rec-row {
+    min-width: 420px;
     grid-template-columns: 28px 1fr 60px 52px 52px;
     font-size: 12px;
     gap: 4px;

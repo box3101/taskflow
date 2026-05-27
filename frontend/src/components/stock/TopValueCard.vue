@@ -124,7 +124,9 @@ function onToggle() {
 
 @media (max-width: 640px) {
   .card-body { padding: 0 12px 12px; }
+  .stock-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .row {
+    min-width: 380px;
     grid-template-columns: 30px 1fr 80px 70px;
     font-size: 12px;
     .col-value { display: none; }
