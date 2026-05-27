@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, type Ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { UiTab, UiTable, UiBadge, UiLoading, UiEmpty, UiButton, UiDrawer, UiDropdownMenu, UiDatePicker, UiModal, UiInput, UiSelect, UiTextarea, UiToast, UiConfirm, openToast, openConfirm } from '@leechanyong/ispark-ui'
 import type { TabItem, SelectOption, TableColumn, DropdownMenuItemDef } from '@leechanyong/ispark-ui'
@@ -23,11 +23,6 @@ const tabs: TabItem[] = [
 ]
 
 // ── 옵션 정의 ──
-const statusOptions: SelectOption[] = [
-  { label: '할 일', value: 'todo' },
-  { label: '진행중', value: 'doing' },
-  { label: '완료', value: 'done' },
-]
 const priorityOptions: SelectOption[] = [
   { label: '높음', value: 'high' },
   { label: '보통', value: 'mid' },
@@ -116,19 +111,6 @@ const priorityMenuItems: DropdownMenuItemDef[] = [
   { label: '보통', value: 'mid' },
   { label: '낮음', value: 'low' },
 ]
-const urgencyMenuItems: DropdownMenuItemDef[] = [
-  { label: '긴급', value: 'urgent' },
-  { label: '높음', value: 'high' },
-  { label: '보통', value: 'normal' },
-  { label: '낮음', value: 'low' },
-]
-const urgencyMap: Record<string, { label: string; variant: string }> = {
-  urgent: { label: '긴급', variant: 'danger' },
-  high: { label: '높음', variant: 'warning' },
-  normal: { label: '보통', variant: 'default' },
-  low: { label: '낮음', variant: 'default' },
-}
-
 const assigneeMenuItems = computed<DropdownMenuItemDef[]>(() => [
   { label: '미배정', value: '' },
   ...members.value.map(m => ({ label: m.user.name, value: String(m.user.id) })),
@@ -471,7 +453,7 @@ onMounted(async () => {
               :data="(displayedIssues as any)"
               size="sm"
             >
-              <template #cell-title="{ row }">
+              <template #cell-title="{ row }: any">
                 <div v-if="editingTitleId === row.id" class="issue-title-cell is-editing">
                   <input
                     v-model="editingTitleText"
@@ -489,7 +471,7 @@ onMounted(async () => {
                     </button>
                 </div>
               </template>
-              <template #cell-status="{ row }">
+              <template #cell-status="{ row }: any">
                 <div @click.stop>
                   <UiDropdownMenu
                     :items="statusMenuItems"
@@ -506,7 +488,7 @@ onMounted(async () => {
                   </UiDropdownMenu>
                 </div>
               </template>
-              <template #cell-priority="{ row }">
+              <template #cell-priority="{ row }: any">
                 <div @click.stop>
                   <UiDropdownMenu
                     :items="priorityMenuItems"
@@ -523,7 +505,7 @@ onMounted(async () => {
                   </UiDropdownMenu>
                 </div>
               </template>
-              <template #cell-requestedAt="{ row }">
+              <template #cell-requestedAt="{ row }: any">
                 <div @click.stop class="cell-datepicker">
                   <UiDatePicker
                     :model-value="toCalendarDateOrUndef(row.requestedAt)"
@@ -532,7 +514,7 @@ onMounted(async () => {
                   />
                 </div>
               </template>
-              <template #cell-dueAt="{ row }">
+              <template #cell-dueAt="{ row }: any">
                 <div @click.stop class="cell-datepicker" :class="{ 'is-overdue': isOverdue(row.dueAt) }">
                   <UiDatePicker
                     :model-value="toCalendarDateOrUndef(row.dueAt)"
@@ -541,7 +523,7 @@ onMounted(async () => {
                   />
                 </div>
               </template>
-              <template #cell-assignee="{ row }">
+              <template #cell-assignee="{ row }: any">
                 <div @click.stop>
                   <UiDropdownMenu
                     :items="assigneeMenuItems"

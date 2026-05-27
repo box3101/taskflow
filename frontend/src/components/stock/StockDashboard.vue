@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useStockData } from '../../composables/useStockData'
 import HoldingSummary from './HoldingSummary.vue'
 import InvestorTrend from './InvestorTrend.vue'

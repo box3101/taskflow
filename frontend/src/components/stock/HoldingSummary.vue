@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+// vue
 import { UiInput, UiButton, UiBadge } from '@leechanyong/ispark-ui'
 import type { StockHolding, StockPrice, StockQuote } from '../../types/stock'
 

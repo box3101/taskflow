@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { UiAccordion, UiBadge } from '@leechanyong/ispark-ui'
+import { UiBadge } from '@leechanyong/ispark-ui'
 import type { ThemeDef, StockQuote } from '../../types/stock'
 
 const props = defineProps<{
