@@ -26,10 +26,10 @@ router.put('/reorder', async (req, res) => {
 // 이슈 수정 (상태, 담당자, 우선순위 변경)
 router.put('/:id', async (req, res) => {
   try {
-    const { title, status, priority, assigneeId } = req.body
+    const { title, description, status, priority, assigneeId } = req.body
     const issue = await prisma.issue.update({
       where: { id: Number(req.params.id) },
-      data: { title, status, priority, assigneeId },
+      data: { title, description, status, priority, assigneeId },
       include: { assignee: { select: { id: true, name: true } } },
     })
     res.json(issue)

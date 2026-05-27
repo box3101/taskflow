@@ -19,18 +19,19 @@ const mainTabs: TabItem[] = [
   { label: '개인할일', value: 'todos' },
 ]
 
-// 프로젝트
+// ── 프로젝트 ──
 const projectLoading = ref(true)
 const projects = ref<any[]>([])
-const columns: TableColumn[] = [
+const projectColumns: TableColumn[] = [
   { key: 'name', label: '프로젝트명', align: 'left' },
   { key: 'status', label: '상태', width: '100px' },
   { key: '_count.members', label: '멤버', width: '80px', align: 'center' },
   { key: '_count.issues', label: '이슈', width: '80px', align: 'center' },
 ]
 
-// 개인할일
+// ── 개인할일 ──
 type Priority = 'high' | 'mid' | 'low' | 'none'
+
 interface Todo {
   id: number
   title: string
@@ -46,10 +47,8 @@ const priorityConfig: Record<Priority, { label: string; dot: string }> = {
   none: { label: '기타', dot: '#d1d5db' },
 }
 
-// 중요도 그룹 순서
 const priorityGroups: Priority[] = ['high', 'mid', 'low', 'none']
 
-// UiSelect 옵션
 const priorityOptions: SelectOption[] = [
   { label: '🔴 높음', value: 'high' },
   { label: '🟡 보통', value: 'mid' },
@@ -58,6 +57,7 @@ const priorityOptions: SelectOption[] = [
 ]
 
 const todoLoading = ref(false)
+const todosLoaded = ref(false)
 const todos = ref<Todo[]>([])
 const newTodoTitle = ref('')
 const newTodoPriority = ref<Priority>('none')
@@ -100,7 +100,8 @@ async function loadTodos() {
 }
 
 function onTabChange(val: string) {
-  if (val === 'todos' && todos.value.length === 0) {
+  if (val === 'todos' && !todosLoaded.value) {
+    todosLoaded.value = true
     loadTodos()
   }
 }
@@ -144,10 +145,7 @@ function cancelEdit() {
 
 async function saveEdit(todo: Todo) {
   const title = editingTitle.value.trim()
-  if (!title || title === todo.title) {
-    cancelEdit()
-    return
-  }
+  if (!title || title === todo.title) { cancelEdit(); return }
   const { data } = await api.patch(`/todos/${todo.id}`, { title })
   const idx = todos.value.findIndex(t => t.id === todo.id)
   if (idx !== -1) todos.value[idx] = data.data
@@ -155,25 +153,8 @@ async function saveEdit(todo: Todo) {
 }
 
 function onEditKeydown(e: KeyboardEvent, todo: Todo) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault()
-    saveEdit(todo)
-  }
+  if (e.key === 'Enter') saveEdit(todo)
   if (e.key === 'Escape') cancelEdit()
-}
-
-function autoResize(e: Event) {
-  const el = e.target as HTMLTextAreaElement
-  el.style.height = 'auto'
-  el.style.height = el.scrollHeight + 'px'
-}
-
-function onEditMounted(e: any) {
-  const el = e.el as HTMLTextAreaElement
-  el.focus()
-  el.style.height = 'auto'
-  el.style.height = el.scrollHeight + 'px'
-  el.select()
 }
 
 async function deleteTodo(todo: Todo) {
@@ -190,10 +171,7 @@ const userMenuItems: DropdownMenuItemDef[] = [
 ]
 
 function onUserMenuSelect(value: string) {
-  if (value === 'logout') {
-    auth.logout()
-    router.push('/login')
-  }
+  if (value === 'logout') { auth.logout(); router.push('/login') }
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -235,7 +213,7 @@ function handleKeydown(e: KeyboardEvent) {
         <UiEmpty v-else-if="projects.length === 0" title="프로젝트가 없습니다." />
         <UiTable
           v-else
-          :columns="columns"
+          :columns="projectColumns"
           :data="projects"
           clickable
           @row-click="onRowClick"
@@ -260,11 +238,7 @@ function handleKeydown(e: KeyboardEvent) {
         <!-- 할일 입력 -->
         <div class="todo-input-row">
           <div class="todo-input-priority">
-            <UiSelect
-              v-model="newTodoPriority"
-              :options="priorityOptions"
-              size="sm"
-            />
+            <UiSelect v-model="newTodoPriority" :options="priorityOptions" size="sm" />
           </div>
           <UiInput
             v-model="newTodoTitle"
@@ -298,33 +272,27 @@ function handleKeydown(e: KeyboardEvent) {
                 :model-value="todo.done"
                 @update:model-value="toggleTodo(todo)"
               />
-              <div class="todo-content">
-                <div class="todo-title-row">
-                  <textarea
-                    v-if="editingId === todo.id"
-                    v-model="editingTitle"
-                    class="todo-edit-input"
-                    rows="1"
-                    @blur="saveEdit(todo)"
-                    @keydown="(e: KeyboardEvent) => onEditKeydown(e, todo)"
-                    @input="autoResize"
-                    @vue:mounted="onEditMounted"
+              <input
+                v-if="editingId === todo.id"
+                v-model="editingTitle"
+                class="todo-edit-input"
+                @blur="saveEdit(todo)"
+                @keydown="(e: KeyboardEvent) => onEditKeydown(e, todo)"
+                @vue:mounted="($event: any) => $event.el.focus()"
+              />
+              <span v-else class="todo-title" @click="startEdit(todo)">{{ todo.title }}</span>
+              <div class="todo-actions">
+                <div class="todo-priority-select">
+                  <UiSelect
+                    :model-value="todo.priority"
+                    :options="priorityOptions"
+                    size="sm"
+                    @change="(val: string | number) => onPriorityChange(todo, val)"
                   />
-                  <span v-else class="todo-title" @click="startEdit(todo)">{{ todo.title }}<i class="icon-edit size-12 todo-edit-icon" /></span>
                 </div>
-                <div class="todo-actions">
-                  <div class="todo-priority-select">
-                    <UiSelect
-                      :model-value="todo.priority"
-                      :options="priorityOptions"
-                      size="sm"
-                      @change="(val: string | number) => onPriorityChange(todo, val)"
-                    />
-                  </div>
-                  <button class="todo-delete" @click="deleteTodo(todo)">
-                    <i class="icon-close size-16" />
-                  </button>
-                </div>
+                <button class="todo-delete" @click="deleteTodo(todo)">
+                  <i class="icon-close size-16" />
+                </button>
               </div>
             </div>
           </div>
@@ -344,7 +312,7 @@ function handleKeydown(e: KeyboardEvent) {
                   :model-value="todo.done"
                   @update:model-value="toggleTodo(todo)"
                 />
-                <span class="todo-title todo-title--done">{{ todo.title }}</span>
+                <span class="todo-title todo-title--done" @click="toggleTodo(todo)">{{ todo.title }}</span>
                 <button class="todo-delete" @click="deleteTodo(todo)">
                   <i class="icon-close size-16" />
                 </button>
@@ -358,158 +326,88 @@ function handleKeydown(e: KeyboardEvent) {
 </template>
 
 <style scoped lang="scss">
-.layout {
-  min-height: 100vh;
-}
+.layout { min-height: 100vh; }
 .header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  height: 56px;
-  background: #fff;
-  border-bottom: 1px solid #e6e8ec;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; height: 56px; background: #fff; border-bottom: 1px solid #e6e8ec;
 }
-.header-title {
-  font-size: 18px;
-  font-weight: 700;
-}
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+.header-title { font-size: 18px; font-weight: 700; }
+.header-right { display: flex; align-items: center; gap: 12px; }
 .user-avatar-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 50%;
-  transition: background 0.15s;
-  &:hover {
-    background: #f3f4f6;
-  }
+  display: flex; align-items: center; background: none; border: none;
+  cursor: pointer; padding: 4px; border-radius: 50%; transition: background 0.15s;
+  &:hover { background: #f3f4f6; }
 }
 .user-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #4f6af6;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #4f6af6; color: #fff; font-size: 14px; font-weight: 600;
 }
-.main {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 32px 24px;
-}
-.tab-content {
-  margin-top: 24px;
-}
+.main { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+.tab-content { margin-top: 24px; }
 
-// 할일 입력
+// 개인할일
 .todo-input-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 24px;
+  display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
 }
 .todo-input-priority {
   width: 120px;
   flex-shrink: 0;
 }
+.todo-list { display: flex; flex-direction: column; }
 
-// 그룹
+// 중요도 그룹
 .todo-group {
-  margin-bottom: 20px;
+  margin-bottom: 8px;
 }
 .todo-group-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  margin-bottom: 2px;
-  border-bottom: 1px solid #e5e7eb;
-}
-.todo-group-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.todo-group-label {
+  gap: 6px;
+  padding: 8px;
   font-size: 13px;
   font-weight: 600;
   color: #374151;
 }
+.todo-group-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.todo-group-label {
+  font-size: 13px;
+}
 .todo-group-count {
   font-size: 12px;
   color: #9ca3af;
-  font-weight: 500;
+  background: #e5e7eb;
+  padding: 1px 7px;
+  border-radius: 10px;
 }
 
-// 할일 아이템
-.todo-list {
-  display: flex;
-  flex-direction: column;
-}
 .todo-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 8px 10px 20px;
-  border-bottom: 1px solid #f0f1f3;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 8px; border-bottom: 1px solid #f0f1f3;
   transition: background 0.1s;
   &:hover {
     background: #fafbfc;
-    .todo-delete {
-      opacity: 1;
-    }
-    .todo-priority-select {
-      opacity: 1;
-    }
+    .todo-delete { opacity: 1; }
   }
 }
-.todo-item--done {
-  opacity: 0.6;
-}
+.todo-item--done { opacity: 0.6; }
 .todo-title {
-  flex: 1;
-  font-size: 14px;
-  line-height: 1.5;
-  cursor: text;
+  flex: 1; font-size: 14px; line-height: 1.5;
+  cursor: pointer; word-break: break-word;
 }
-.todo-edit-icon {
-  display: inline-block;
-  margin-left: 4px;
-  vertical-align: middle;
-  color: #9ca3af;
-  opacity: 0;
-  transition: opacity 0.15s;
-  .todo-item:hover & {
-    opacity: 1;
-  }
-}
+.todo-title--done { text-decoration: line-through; color: #9ca3af; }
 .todo-edit-input {
   flex: 1;
   font-size: 14px;
   line-height: 1.5;
-  padding: 2px 6px;
-  border: 1px solid #4f6af6;
+  padding: 4px 8px;
+  border: 1px solid #3b82f6;
   border-radius: 4px;
   outline: none;
-  background: #fff;
-}
-.todo-title--done {
-  text-decoration: line-through;
-  color: #9ca3af;
 }
 .todo-actions {
   display: flex;
@@ -519,45 +417,19 @@ function handleKeydown(e: KeyboardEvent) {
 }
 .todo-priority-select {
   width: 100px;
-  opacity: 0;
-  transition: opacity 0.15s;
 }
 .todo-delete {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: none;
-  border-radius: 6px;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s, background 0.15s;
-  color: #9ca3af;
-  &:hover {
-    background: #fee2e2;
-    color: #ef4444;
-  }
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border: none; background: none;
+  border-radius: 6px; cursor: pointer; opacity: 0; flex-shrink: 0;
+  transition: opacity 0.15s, background 0.15s; color: #9ca3af;
+  &:hover { background: #fee2e2; color: #ef4444; }
 }
-
-// 완료 섹션
-.todo-done-section {
-  margin-top: 16px;
-}
+.todo-done-section { margin-top: 16px; }
 .todo-done-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 8px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 13px;
-  color: #6b7280;
-  font-weight: 500;
-  &:hover {
-    color: #374151;
-  }
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 8px; background: none; border: none; cursor: pointer;
+  font-size: 13px; color: #6b7280; font-weight: 500;
+  &:hover { color: #374151; }
 }
 </style>

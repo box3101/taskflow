@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@leechanyong/ispark-ui": "^0.5.3",
+    "@leechanyong/ispark-ui": "^0.5.4",
     "axios": "^1.16.1",
     "pinia": "^3.0.4",
     "vue": "^3.5.34",

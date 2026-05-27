@@ -132,6 +132,7 @@ async function main() {
 
   // ── 개인 할일 (이찬용) ──
   const todos = [
+    // 업무
     { title: 'KPI 피드백 삭제 오류 핫픽스 배포', done: true, priority: 'high' as const },
     { title: '홍다래 QA 확인 요청 전달', done: true, priority: 'mid' as const },
     { title: 'Railway 환경변수 정리', done: false, priority: 'high' as const },
@@ -139,6 +140,14 @@ async function main() {
     { title: 'OKR 매니저/공유자 탭 분리 건 김정의 리뷰 요청', done: false, priority: 'mid' as const },
     { title: '칸반보드 성능 최적화 리서치', done: false, priority: 'low' as const },
     { title: '주간 회의 안건 정리', done: false, priority: 'none' as const },
+    // 개인
+    { title: '베개, 꽈배기 세탁', done: false, priority: 'mid' as const },
+    { title: '쇼파뒤 청소', done: false, priority: 'mid' as const },
+    { title: '젖병세척기 세척', done: false, priority: 'mid' as const },
+    { title: '지영이 집 가서 물건 받아 오기', done: false, priority: 'high' as const },
+    { title: '아기침대 바퀴 닦기', done: false, priority: 'low' as const },
+    { title: '아기욕조 수세미+바디워시 닦고 말려두기', done: false, priority: 'low' as const },
+    { title: '지영이가 준 트레이 물티슈로 닦아두기', done: false, priority: 'low' as const },
   ]
 
   for (const todo of todos) {
