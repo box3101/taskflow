@@ -321,4 +321,18 @@ function calcReturn(h: StockHolding) {
   justify-content: flex-end;
   margin-top: 12px;
 }
+
+@media (max-width: 640px) {
+  .holding-summary { padding: 14px; }
+  .section-header { flex-wrap: wrap; gap: 8px; }
+  .holding-name-row { flex-wrap: wrap; }
+  .code-input { width: 100%; }
+  .current-price { font-size: 22px; }
+  .price-main { flex-wrap: wrap; gap: 6px; }
+  .return-cards { grid-template-columns: 1fr; }
+  .return-value { font-size: 16px; }
+  .day-count { font-size: 18px; }
+  .ohlc-bar { flex-wrap: wrap; font-size: 12px; }
+  .holding-fields { grid-template-columns: 1fr 1fr; }
+}
 </style>

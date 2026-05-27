@@ -121,4 +121,14 @@ function onToggle() {
 .col-value { text-align: right; color: #6b7280; font-size: 12px; }
 
 .empty { text-align: center; padding: 20px; color: #9ca3af; font-size: 14px; }
+
+@media (max-width: 640px) {
+  .card-body { padding: 0 12px 12px; }
+  .row {
+    grid-template-columns: 30px 1fr 80px 70px;
+    font-size: 12px;
+    .col-value { display: none; }
+  }
+  .row--header .col-value { display: none; }
+}
 </style>

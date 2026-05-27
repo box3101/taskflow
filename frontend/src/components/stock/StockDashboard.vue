@@ -7,6 +7,7 @@ import FearGreedGauge from './FearGreedGauge.vue'
 import RecommendCard from './RecommendCard.vue'
 import ThemeOverview from './ThemeOverview.vue'
 import TopValueCard from './TopValueCard.vue'
+import BacktestCard from './BacktestCard.vue'
 
 const {
   holdings, prices, quotes, themes, themeQuotes,
@@ -68,6 +69,9 @@ onUnmounted(() => {
       @load-data="loadThemeQuotes"
     />
 
+    <!-- 백테스트 결과 -->
+    <BacktestCard />
+
     <!-- 테마 동향 -->
     <ThemeOverview
       :themes="themes"
@@ -97,5 +101,11 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 1fr 300px;
   gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .two-col {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -162,4 +162,12 @@ function consecutiveBuyDays(trends: InvestorData['trends'], type: 'foreign' | 'i
   color: #9ca3af;
   font-size: 14px;
 }
+
+@media (max-width: 640px) {
+  .investor-trend { padding: 14px; }
+  .trend-row {
+    grid-template-columns: 70px 1fr 1fr 1fr;
+    font-size: 12px;
+  }
+}
 </style>

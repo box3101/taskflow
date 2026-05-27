@@ -289,4 +289,15 @@ const tabDescriptions: Record<string, string> = {
   margin-top: 12px;
   line-height: 1.5;
 }
+
+@media (max-width: 640px) {
+  .card-body { padding: 0 12px 12px; }
+  .rec-row {
+    grid-template-columns: 28px 1fr 60px 52px 52px;
+    font-size: 12px;
+    gap: 4px;
+    .col-investor { display: none; }
+  }
+  .rec-row--header .col-investor { display: none; }
+}
 </style>

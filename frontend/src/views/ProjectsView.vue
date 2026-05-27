@@ -469,6 +469,11 @@ function handleKeydown(e: KeyboardEvent) {
 .main { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
 .tab-content { margin-top: 24px; }
 
+@media (max-width: 640px) {
+  .main { padding: 16px 12px; }
+  .tab-content { margin-top: 16px; }
+}
+
 // 프로젝트
 .project-header {
   display: flex;

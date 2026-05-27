@@ -160,4 +160,14 @@ function themeAvg(theme: ThemeDef, field: 'changePct5' | 'changePct20') {
 .col-price { text-align: right; color: #374151; }
 .col-chg { text-align: center; }
 .no-data { color: #d1d5db; }
+
+@media (max-width: 640px) {
+  .theme-overview { padding: 14px; }
+  .stock-row {
+    grid-template-columns: 1fr 80px 60px 60px;
+    font-size: 12px;
+  }
+  .theme-header { font-size: 13px; padding: 8px 10px; }
+  .theme-stocks { padding: 6px 8px 10px; }
+}
 </style>
