@@ -36,6 +36,10 @@ function syncIssuesByStatus() {
   issues.value.forEach(issue => {
     if (grouped[issue.status]) grouped[issue.status].push(issue)
   })
+  // order 기준 정렬
+  for (const key of Object.keys(grouped)) {
+    grouped[key].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  }
   issuesByStatus.value = grouped
 }
 
@@ -46,18 +50,31 @@ const priorityMap: Record<string, { label: string; color: string; border: string
   low: { label: '낮음', color: 'gray', border: '#d1d5db' },
 }
 
+// 칸반 컬럼 라벨 맵
+const colLabelMap: Record<string, string> = { todo: '할 일', doing: '진행중', done: '완료' }
+
 // 드래그 앤 드롭 (vuedraggable)
 const isDragging = ref(false)
 
+function onDragEnd() {
+  isDragging.value = false
+  // 모든 컬럼의 현재 순서를 서버에 반영
+  const items: { id: number; status: string; order: number }[] = []
+  for (const colKey of Object.keys(issuesByStatus.value)) {
+    issuesByStatus.value[colKey].forEach((issue, idx) => {
+      items.push({ id: issue.id, status: colKey, order: idx })
+      issue.status = colKey
+      issue.order = idx
+    })
+  }
+  api.put('/issues/reorder', { items }).catch(() => {
+    syncIssuesByStatus()
+  })
+}
+
 function onDragChange(colKey: string, evt: any) {
   if (evt.added) {
-    const issue = evt.added.element
-    const prevStatus = issue.status
-    issue.status = colKey
-    api.put(`/issues/${issue.id}`, { status: colKey }).catch(() => {
-      issue.status = prevStatus
-      syncIssuesByStatus()
-    })
+    openToast({ message: `이슈를 '${colLabelMap[colKey]}'(으)로 이동했습니다.`, type: 'success' })
   }
 }
 
@@ -243,7 +260,7 @@ onMounted(async () => {
                 drag-class="kanban-card--drag"
                 :animation="200"
                 @start="isDragging = true"
-                @end="isDragging = false"
+                @end="onDragEnd"
                 @change="onDragChange(col.key, $event)"
               >
                 <template #item="{ element: issue }">

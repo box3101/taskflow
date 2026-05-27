@@ -116,7 +116,7 @@ router.get('/:id/issues', async (req, res) => {
   try {
     const issues = await prisma.issue.findMany({
       where: { projectId: Number(req.params.id) },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
       include: { assignee: { select: { id: true, name: true } } },
     })
     res.json(issues)
@@ -128,13 +128,22 @@ router.get('/:id/issues', async (req, res) => {
 // 이슈 생성
 router.post('/:id/issues', async (req, res) => {
   try {
-    const { title, priority, assigneeId } = req.body
+    const { title, priority, assigneeId, status } = req.body
+    // 해당 상태 컬럼의 마지막 order 값 + 1
+    const maxOrder = await prisma.issue.aggregate({
+      where: { projectId: Number(req.params.id), status: status || 'todo' },
+      _max: { order: true },
+    })
+    const nextOrder = (maxOrder._max.order ?? -1) + 1
+
     const issue = await prisma.issue.create({
       data: {
         projectId: Number(req.params.id),
         title,
         priority: priority || 'mid',
         assigneeId: assigneeId || null,
+        status: status || 'todo',
+        order: nextOrder,
       },
       include: { assignee: { select: { id: true, name: true } } },
     })
