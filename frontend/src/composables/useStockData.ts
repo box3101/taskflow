@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import type { StockHolding, StockPrice, StockQuote, ThemeDef, TopValueStock, MindsetEntry } from '../types/stock'
-import { fetchPrice, fetchQuotes, fetchTopValue } from '../api/stockApi'
+import { fetchPrice, fetchQuotes, fetchTopValue, fetchInvestor, fetchFearGreed } from '../api/stockApi'
+import type { InvestorData, FearGreedData } from '../api/stockApi'
 
 const STORAGE_HOLDINGS = 'stock-holdings-v2'
 const STORAGE_MINDSET = 'stock-mindsets'
@@ -27,6 +28,8 @@ export function useStockData() {
   const kospiTop = ref<TopValueStock[]>([])
   const kosdaqTop = ref<TopValueStock[]>([])
   const mindsetHistory = ref<MindsetEntry[]>([])
+  const investorData = ref<Record<string, InvestorData>>({})
+  const fearGreed = ref<FearGreedData>({ value: null, text: 'N/A', previous_close: null })
   const loading = ref(false)
   const lastUpdated = ref('')
   let refreshTimer: ReturnType<typeof setInterval> | null = null
@@ -97,6 +100,21 @@ export function useStockData() {
     lastUpdated.value = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
   }
 
+  // 외인/기관 동향 로드
+  async function loadInvestor() {
+    const codes = holdings.value.map(h => h.code).filter(Boolean)
+    const results: Record<string, InvestorData> = {}
+    await Promise.all(codes.map(async (code) => {
+      results[code] = await fetchInvestor(code)
+    }))
+    investorData.value = results
+  }
+
+  // 공포탐욕지수 로드
+  async function loadFearGreed() {
+    fearGreed.value = await fetchFearGreed()
+  }
+
   // 테마 로드
   async function loadThemes() {
     try {
@@ -133,32 +151,86 @@ export function useStockData() {
     kosdaqTop.value = d
   }
 
-  // 주식 추천 (테마 등락률 기반)
-  const recommendations = computed(() => {
-    if (Object.keys(themeQuotes.value).length === 0) return []
-    const recs: { code: string; name: string; theme: string; chg20: number; chg5: number; score: number }[] = []
+  // 종목 데이터 헬퍼
+  type RecItem = { code: string; name: string; theme: string; chg20: number; chg5: number; score: number; reason: string }
+
+  function allStocksWithQuotes() {
+    const items: { code: string; name: string; theme: string; chg20: number; chg5: number }[] = []
     for (const theme of themes.value) {
       for (const stock of theme.stocks) {
         const q = themeQuotes.value[stock.code]
         if (!q) continue
-        // 점수: 20일 모멘텀 + 5일 가속도
-        const chg20 = q.changePct20 || 0
-        const chg5 = q.changePct5 || 0
-        // 20일 +10%↑ & 5일 양수 = 상승 모멘텀
-        if (chg20 >= 10 && chg5 > 0) {
-          recs.push({
-            code: stock.code,
-            name: stock.name,
-            theme: theme.label,
-            chg20,
-            chg5,
-            score: chg20 * 0.6 + chg5 * 0.4,
-          })
-        }
+        items.push({ code: stock.code, name: stock.name, theme: theme.label, chg20: q.changePct20 || 0, chg5: q.changePct5 || 0 })
       }
     }
-    // 점수 높은 순 TOP 10
-    return recs.sort((a, b) => b.score - a.score).slice(0, 10)
+    return items
+  }
+
+  // 테마별 평균 20일 등락률
+  function themeAvgChg20(themeLabel: string) {
+    const items = allStocksWithQuotes().filter(s => s.theme === themeLabel)
+    if (items.length === 0) return 0
+    return items.reduce((sum, s) => sum + s.chg20, 0) / items.length
+  }
+
+  // ── 탭 1: 모멘텀 초기 (가속 시작 종목) ──
+  // 20일 +10~50% & 5일 양수 & 가속도 적정 → 과열 전 진입 기회
+  const recMomentum = computed<RecItem[]>(() => {
+    if (Object.keys(themeQuotes.value).length === 0) return []
+    return allStocksWithQuotes()
+      .filter(s => s.chg20 >= 10 && s.chg20 <= 50 && s.chg5 > 0)
+      .map(s => {
+        // 종형 점수: 30% 지점이 최적, 멀어질수록 감점
+        const optimalDist = Math.abs(s.chg20 - 30)
+        const momentumScore = Math.max(0, 100 - optimalDist * 2)
+        // 가속도: 5일이 20일의 20~40%면 건강한 가속
+        const accelRatio = s.chg5 / Math.max(s.chg20, 1)
+        const accelScore = accelRatio >= 0.15 && accelRatio <= 0.5 ? 30 : accelRatio > 0.5 ? 10 : 15
+        const score = momentumScore * 0.7 + accelScore
+        return { ...s, score, reason: `가속 ${(accelRatio * 100).toFixed(0)}%` }
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10)
+  })
+
+  // ── 탭 2: 테마 낙오주 (저평가 기회) ──
+  // 같은 테마 평균 대비 덜 오른 종목 → 후발주자 기회
+  const recLaggard = computed<RecItem[]>(() => {
+    if (Object.keys(themeQuotes.value).length === 0) return []
+    return allStocksWithQuotes()
+      .filter(s => s.chg20 >= 0) // 최소 하락하지 않는 종목
+      .map(s => {
+        const avg = themeAvgChg20(s.theme)
+        const gap = avg - s.chg20 // 양수면 테마 평균보다 덜 오름
+        if (gap <= 0) return null // 테마 평균보다 더 올랐으면 제외
+        const gapScore = Math.min(gap * 2, 80) // 괴리 클수록 점수, 최대 80
+        const safetyScore = s.chg20 >= 5 ? 20 : s.chg20 >= 0 ? 10 : 0 // 최소 상승 확인
+        const score = gapScore + safetyScore
+        return { ...s, score, reason: `테마 평균 대비 -${gap.toFixed(1)}%p` }
+      })
+      .filter((s): s is RecItem => s !== null)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10)
+  })
+
+  // ── 탭 3: 과열 경보 (매도/회피 참고) ──
+  // 20일 +80%↑ → 차익실현 위험 구간, 사지 말라는 경고
+  const recOverheat = computed<RecItem[]>(() => {
+    if (Object.keys(themeQuotes.value).length === 0) return []
+    return allStocksWithQuotes()
+      .filter(s => s.chg20 >= 80)
+      .map(s => {
+        // 과열도: 높을수록 위험
+        const heatScore = s.chg20
+        // 5일 가속이 극단적이면 추가 위험
+        const accelRatio = s.chg5 / Math.max(s.chg20, 1)
+        const accelPenalty = accelRatio > 0.5 ? 20 : 0
+        const score = heatScore + accelPenalty
+        const warning = s.chg20 >= 100 ? '극단 과열' : s.chg20 >= 90 ? '과열' : '주의'
+        return { ...s, score, reason: warning }
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10)
   })
 
   // 전체 로드
@@ -166,7 +238,9 @@ export function useStockData() {
     loading.value = true
     loadHoldings()
     loadMindsets()
-    await Promise.all([refreshPrices(), loadThemes()])
+    await Promise.all([refreshPrices(), loadThemes(), loadFearGreed()])
+    // 외인/기관은 별도 (약간 느림)
+    loadInvestor()
     loading.value = false
   }
 
@@ -191,8 +265,9 @@ export function useStockData() {
     holdings, prices, quotes, themes, themeQuotes,
     kospiTop, kosdaqTop, mindsetHistory,
     loading, lastUpdated, streak,
-    recommendations,
-    loadAll, refreshPrices, loadThemes, loadThemeQuotes, loadTopValue,
+    recMomentum, recLaggard, recOverheat,
+    investorData, fearGreed,
+    loadAll, refreshPrices, loadThemes, loadThemeQuotes, loadTopValue, loadInvestor, loadFearGreed,
     saveHoldings, addHolding, removeHolding,
     saveMindset,
     startAutoRefresh, stopAutoRefresh,

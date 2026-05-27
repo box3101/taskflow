@@ -1,35 +1,28 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useStockData } from '../../composables/useStockData'
 import HoldingSummary from './HoldingSummary.vue'
+import InvestorTrend from './InvestorTrend.vue'
+import FearGreedGauge from './FearGreedGauge.vue'
+import RecommendCard from './RecommendCard.vue'
 import ThemeOverview from './ThemeOverview.vue'
 import TopValueCard from './TopValueCard.vue'
-import RecommendCard from './RecommendCard.vue'
 
 const {
   holdings, prices, quotes, themes, themeQuotes,
   kospiTop, kosdaqTop,
   loading, lastUpdated,
-  recommendations,
+  recMomentum, recLaggard, recOverheat,
+  investorData, fearGreed,
   loadAll, refreshPrices, loadThemeQuotes, loadTopValue,
   saveHoldings, addHolding, removeHolding,
   startAutoRefresh, stopAutoRefresh,
 } = useStockData()
 
-const holdingSaved = ref(false)
+const holdingCodes = computed(() => holdings.value.map(h => h.code).filter(Boolean))
 
 function onSaveHoldings() {
   saveHoldings()
-  holdingSaved.value = true
-  setTimeout(() => { holdingSaved.value = false }, 2000)
-}
-
-async function onLoadThemeQuotes() {
-  await loadThemeQuotes()
-}
-
-async function onLoadTopValue() {
-  await loadTopValue()
 }
 
 onMounted(async () => {
@@ -44,7 +37,7 @@ onUnmounted(() => {
 
 <template>
   <div class="stock-dashboard">
-    <!-- 보유 종목 (핵심) -->
+    <!-- 보유 종목 -->
     <HoldingSummary
       :holdings="holdings"
       :prices="prices"
@@ -57,11 +50,22 @@ onUnmounted(() => {
       @refresh="refreshPrices"
     />
 
-    <!-- AI 추천 -->
+    <!-- 외인/기관 + 공포탐욕 (2열) -->
+    <div class="two-col">
+      <InvestorTrend
+        :data="investorData"
+        :holding-codes="holdingCodes"
+      />
+      <FearGreedGauge :data="fearGreed" />
+    </div>
+
+    <!-- AI 종목 분석 (3탭) -->
     <RecommendCard
-      :recommendations="recommendations"
+      :momentum="recMomentum"
+      :laggard="recLaggard"
+      :overheat="recOverheat"
       :loading="loading"
-      @load-data="onLoadThemeQuotes"
+      @load-data="loadThemeQuotes"
     />
 
     <!-- 테마 동향 -->
@@ -69,7 +73,7 @@ onUnmounted(() => {
       :themes="themes"
       :theme-quotes="themeQuotes"
       :loading="loading"
-      @load-quotes="onLoadThemeQuotes"
+      @load-quotes="loadThemeQuotes"
     />
 
     <!-- 거래대금 TOP -->
@@ -77,7 +81,7 @@ onUnmounted(() => {
       :kospi-stocks="kospiTop"
       :kosdaq-stocks="kosdaqTop"
       :loading="loading"
-      @load="onLoadTopValue"
+      @load="loadTopValue"
     />
   </div>
 </template>
@@ -86,6 +90,12 @@ onUnmounted(() => {
 .stock-dashboard {
   display: flex;
   flex-direction: column;
+  gap: 16px;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 300px;
   gap: 16px;
 }
 </style>

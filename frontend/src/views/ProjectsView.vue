@@ -466,7 +466,7 @@ function handleKeydown(e: KeyboardEvent) {
   width: 32px; height: 32px; border-radius: 50%;
   background: #4f6af6; color: #fff; font-size: 14px; font-weight: 600;
 }
-.main { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+.main { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
 .tab-content { margin-top: 24px; }
 
 // 프로젝트

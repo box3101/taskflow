@@ -82,6 +82,64 @@ export async function fetchTopValue(
   }
 }
 
+// ── TaskFlow 백엔드 프록시 (네이버 CORS 우회) ──
+import api from './client'
+
+// 외인/기관 5거래일 동향
+export interface InvestorTrend {
+  date: string
+  foreign: number       // 외국인 순매수량
+  institution: number   // 기관 순매수량
+  individual: number    // 개인 순매수량
+  foreignAmt: number    // 외국인 순매수금액 (백만원)
+  institutionAmt: number
+}
+
+export interface InvestorData {
+  trends: InvestorTrend[]
+  per: string
+  pbr: string
+  marketCap: string
+}
+
+export async function fetchInvestor(code: string): Promise<InvestorData> {
+  try {
+    const { data } = await api.get(`/stock/investor/${code}`)
+    return data
+  } catch (e) {
+    console.warn('[stockApi] fetchInvestor 실패:', e)
+    return { trends: [], per: '-', pbr: '-', marketCap: '-' }
+  }
+}
+
+// 공포탐욕지수
+export interface FearGreedData {
+  value: number | null
+  text: string
+  previous_close: number | null
+}
+
+export async function fetchFearGreed(): Promise<FearGreedData> {
+  try {
+    // FearGreedChart.com은 CORS OK → 직접 호출
+    const res = await fetch('https://feargreedchart.com/api/?action=all')
+    const data = await res.json()
+    return {
+      value: data.fear_greed?.value ?? data.value ?? null,
+      text: data.fear_greed?.text ?? data.text ?? 'N/A',
+      previous_close: data.fear_greed?.previous_close ?? null,
+    }
+  } catch {
+    // 폴백: 백엔드 프록시
+    try {
+      const { data } = await api.get('/stock/fear-greed')
+      return { value: data.value, text: data.text || 'N/A', previous_close: null }
+    } catch {
+      return { value: null, text: 'N/A', previous_close: null }
+    }
+  }
+}
+
 // 종목 뉴스
 export async function fetchNews(code: string): Promise<NewsItem[]> {
   try {

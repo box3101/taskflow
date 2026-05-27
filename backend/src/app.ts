@@ -6,6 +6,7 @@ import authRouter from './routes/auth'
 import projectRouter from './routes/projects'
 import issueRouter from './routes/issues'
 import todoRouter from './routes/todos'
+import stockRouter from './routes/stock'
 
 const app = express()
 
@@ -17,6 +18,7 @@ app.use('/auth', authRouter)
 app.use('/projects', projectRouter)
 app.use('/issues', issueRouter)
 app.use('/todos', todoRouter)
+app.use('/stock', stockRouter)
 
 // 헬스체크
 app.get('/health', (_req, res) => {
