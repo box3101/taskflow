@@ -1032,5 +1032,12 @@ onMounted(async () => {
     background: #eff6ff;
   }
 }
+
+@media (max-width: 640px) {
+  .main { padding: 16px 12px; }
+  :deep(.ui-table-wrap) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  :deep(.ui-table) { min-width: 700px; }
+  .filter-bar { flex-wrap: wrap; }
+}
 </style>
 

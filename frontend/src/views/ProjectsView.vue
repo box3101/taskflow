@@ -472,6 +472,8 @@ function handleKeydown(e: KeyboardEvent) {
 @media (max-width: 640px) {
   .main { padding: 16px 12px; }
   .tab-content { margin-top: 16px; }
+  :deep(.ui-table-wrap) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  :deep(.ui-table) { min-width: 600px; }
 }
 
 // 프로젝트
