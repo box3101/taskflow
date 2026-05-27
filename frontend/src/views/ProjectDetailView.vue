@@ -205,6 +205,70 @@ function getAvatarColor(name: string) {
   return avatarColors[Math.abs(hash) % avatarColors.length]
 }
 
+// 멤버 관리
+const roleOptions: SelectOption[] = [
+  { label: 'Owner', value: 'owner' },
+  { label: 'Dev', value: 'dev' },
+  { label: 'Viewer', value: 'viewer' },
+]
+
+const showAddMemberModal = ref(false)
+const addMemberEmail = ref('')
+const addMemberRole = ref('dev')
+const addingMember = ref(false)
+
+async function onAddMember() {
+  const email = addMemberEmail.value.trim()
+  if (!email) return
+  addingMember.value = true
+  try {
+    const { data } = await api.post(`/projects/${projectId}/members`, {
+      email,
+      role: addMemberRole.value,
+    })
+    project.value.members.push(data)
+    members.value = project.value.members
+    showAddMemberModal.value = false
+    addMemberEmail.value = ''
+    addMemberRole.value = 'dev'
+    openToast({ message: '멤버가 추가되었습니다.', type: 'success' })
+  } catch (err: any) {
+    const msg = err.response?.data?.message || '멤버 추가에 실패했습니다.'
+    openToast({ message: msg, type: 'error' })
+  } finally {
+    addingMember.value = false
+  }
+}
+
+async function onChangeRole(member: any, val: string | number) {
+  const role = String(val)
+  if (role === member.role) return
+  try {
+    const { data } = await api.put(`/projects/${projectId}/members/${member.id}`, { role })
+    member.role = data.role
+    openToast({ message: '역할이 변경되었습니다.', type: 'success' })
+  } catch {
+    openToast({ message: '역할 변경에 실패했습니다.', type: 'error' })
+  }
+}
+
+async function onRemoveMember(member: any) {
+  const confirmed = await openConfirm({
+    title: '멤버 삭제',
+    message: `<strong>${member.user.name}</strong>을(를) 프로젝트에서 삭제하시겠습니까?`,
+    confirmText: '삭제',
+  })
+  if (!confirmed) return
+  try {
+    await api.delete(`/projects/${projectId}/members/${member.id}`)
+    project.value.members = project.value.members.filter((m: any) => m.id !== member.id)
+    members.value = project.value.members
+    openToast({ message: '멤버가 삭제되었습니다.', type: 'success' })
+  } catch {
+    openToast({ message: '멤버 삭제에 실패했습니다.', type: 'error' })
+  }
+}
+
 onMounted(async () => {
   try {
     const [projRes, issueRes] = await Promise.all([
@@ -294,6 +358,10 @@ onMounted(async () => {
 
         <!-- 멤버 탭 -->
         <div v-if="activeTab === 'members'" class="tab-content">
+          <div class="member-header">
+            <span class="member-count">{{ project.members?.length || 0 }}명</span>
+            <UiButton variant="primary" size="sm" @click="showAddMemberModal = true">+ 멤버 추가</UiButton>
+          </div>
           <UiEmpty v-if="!project.members?.length" title="멤버가 없습니다." />
           <ul v-else class="member-list">
             <li v-for="m in project.members" :key="m.id" class="member-item">
@@ -304,7 +372,19 @@ onMounted(async () => {
                 <strong>{{ m.user.name }}</strong>
                 <span>{{ m.user.email }}</span>
               </div>
-              <UiBadge variant="primary" size="sm">{{ m.role }}</UiBadge>
+              <div class="member-actions">
+                <div class="member-role-select">
+                  <UiSelect
+                    :model-value="m.role"
+                    :options="roleOptions"
+                    size="sm"
+                    @change="(val: string | number) => onChangeRole(m, val)"
+                  />
+                </div>
+                <button class="member-delete-btn" @click="onRemoveMember(m)" title="멤버 삭제">
+                  &times;
+                </button>
+              </div>
             </li>
           </ul>
         </div>
@@ -418,6 +498,26 @@ onMounted(async () => {
         </div>
       </form>
     </UiModal>
+
+    <!-- 멤버 추가 모달 -->
+    <UiModal v-model:open="showAddMemberModal" title="멤버 추가" size="sm">
+      <form class="create-form" @submit.prevent="onAddMember">
+        <UiInput
+          v-model="addMemberEmail"
+          label="이메일"
+          placeholder="추가할 사용자의 이메일을 입력하세요"
+        />
+        <UiSelect
+          v-model="addMemberRole"
+          label="역할"
+          :options="roleOptions"
+        />
+        <div class="create-form-actions">
+          <UiButton variant="ghost" size="md" @click="showAddMemberModal = false">취소</UiButton>
+          <UiButton variant="primary" size="md" type="submit" :loading="addingMember">추가</UiButton>
+        </div>
+      </form>
+    </UiModal>
   </div>
 </template>
 
@@ -508,7 +608,7 @@ onMounted(async () => {
 .kanban-col-body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   min-height: 200px;
 }
 
@@ -518,7 +618,7 @@ onMounted(async () => {
   border: 1px solid #e5e7eb;
   border-left: 3px solid #d1d5db;
   border-radius: 8px;
-  padding: 14px;
+  padding: 10px 12px;
   cursor: grab;
   transition: box-shadow 0.15s, transform 0.15s;
   &:hover {
@@ -542,10 +642,10 @@ onMounted(async () => {
   }
 }
 .kanban-card-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: #1f2937;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 .kanban-card-meta {
   display: flex;
@@ -556,12 +656,12 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: #4f6af6;
   color: #fff;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   &--empty {
     background: #d1d5db;
@@ -570,6 +670,16 @@ onMounted(async () => {
 }
 
 // 멤버
+.member-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.member-count {
+  font-size: 14px;
+  color: #6b7280;
+}
 .member-list {
   list-style: none;
   padding: 0;
@@ -580,6 +690,9 @@ onMounted(async () => {
   gap: 12px;
   padding: 12px 0;
   border-bottom: 1px solid #eef0f3;
+  &:hover .member-delete-btn {
+    opacity: 1;
+  }
 }
 .member-avatar {
   display: flex;
@@ -597,8 +710,36 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1;
   strong { font-size: 14px; }
   span { font-size: 13px; color: #6b7280; }
+}
+.member-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.member-role-select {
+  width: 100px;
+}
+.member-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  font-size: 18px;
+  color: #9ca3af;
+  &:hover {
+    background: #fee2e2;
+    color: #ef4444;
+  }
 }
 
 // 이슈 생성 폼

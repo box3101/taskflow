@@ -97,17 +97,47 @@ router.get('/:id/members', async (req, res) => {
   }
 })
 
-// 멤버 추가
+// 멤버 추가 (이메일로 검색하여 추가)
 router.post('/:id/members', async (req, res) => {
   try {
-    const { userId, role } = req.body
+    const { email, role } = req.body
+    const user = await prisma.user.findUnique({ where: { email } })
+    if (!user) {
+      res.status(404).json({ message: '해당 이메일의 사용자를 찾을 수 없습니다.' })
+      return
+    }
     const member = await prisma.member.create({
-      data: { projectId: Number(req.params.id), userId, role: role || 'dev' },
+      data: { projectId: Number(req.params.id), userId: user.id, role: role || 'dev' },
       include: { user: { select: { id: true, name: true, email: true } } },
     })
     res.status(201).json(member)
   } catch {
     res.status(500).json({ message: '이미 등록된 멤버이거나 서버 오류입니다.' })
+  }
+})
+
+// 멤버 역할 변경
+router.put('/:id/members/:memberId', async (req, res) => {
+  try {
+    const { role } = req.body
+    const member = await prisma.member.update({
+      where: { id: Number(req.params.memberId) },
+      data: { role },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    })
+    res.json(member)
+  } catch {
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
+  }
+})
+
+// 멤버 삭제
+router.delete('/:id/members/:memberId', async (req, res) => {
+  try {
+    await prisma.member.delete({ where: { id: Number(req.params.memberId) } })
+    res.status(204).send()
+  } catch {
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
   }
 })
 

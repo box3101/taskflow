@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   UiTable, UiBadge, UiLoading, UiEmpty, UiDropdownMenu,
-  UiTab, UiInput, UiButton, UiCheckbox,
+  UiTab, UiInput, UiButton, UiCheckbox, UiSelect,
 } from '@leechanyong/ispark-ui'
-import type { DropdownMenuItemDef, TableColumn, TabItem } from '@leechanyong/ispark-ui'
+import type { DropdownMenuItemDef, TableColumn, TabItem, SelectOption } from '@leechanyong/ispark-ui'
 import { useAuthStore } from '../stores/auth'
 import api from '../api/client'
 
@@ -14,7 +14,7 @@ const auth = useAuthStore()
 
 // 탭
 const activeTab = ref('projects')
-const tabs: TabItem[] = [
+const mainTabs: TabItem[] = [
   { label: '프로젝트', value: 'projects' },
   { label: '개인할일', value: 'todos' },
 ]
@@ -30,20 +30,55 @@ const columns: TableColumn[] = [
 ]
 
 // 개인할일
+type Priority = 'high' | 'mid' | 'low' | 'none'
 interface Todo {
   id: number
   title: string
   done: boolean
+  priority: Priority
   createdAt: string
 }
+
+const priorityConfig: Record<Priority, { label: string; dot: string }> = {
+  high: { label: '높음', dot: '#ef4444' },
+  mid: { label: '보통', dot: '#f59e0b' },
+  low: { label: '낮음', dot: '#3b82f6' },
+  none: { label: '기타', dot: '#d1d5db' },
+}
+
+// 중요도 그룹 순서
+const priorityGroups: Priority[] = ['high', 'mid', 'low', 'none']
+
+// UiSelect 옵션
+const priorityOptions: SelectOption[] = [
+  { label: '🔴 높음', value: 'high' },
+  { label: '🟡 보통', value: 'mid' },
+  { label: '🔵 낮음', value: 'low' },
+  { label: '없음', value: 'none' },
+]
+
 const todoLoading = ref(false)
 const todos = ref<Todo[]>([])
 const newTodoTitle = ref('')
+const newTodoPriority = ref<Priority>('none')
 const showDone = ref(true)
 
-// 미완료 / 완료 분리
-const incompleteTodos = () => todos.value.filter(t => !t.done)
-const completedTodos = () => todos.value.filter(t => t.done)
+// 미완료를 중요도별 그룹으로 분리
+const groupedTodos = computed(() => {
+  const incomplete = todos.value.filter(t => !t.done)
+  return priorityGroups
+    .map(key => ({
+      key,
+      label: priorityConfig[key].label,
+      dot: priorityConfig[key].dot,
+      items: incomplete
+        .filter(t => t.priority === key)
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+    }))
+    .filter(group => group.items.length > 0)
+})
+
+const completedTodos = computed(() => todos.value.filter(t => t.done))
 
 onMounted(async () => {
   try {
@@ -64,7 +99,6 @@ async function loadTodos() {
   }
 }
 
-// 탭 전환 시 할일 로드
 function onTabChange(val: string) {
   if (val === 'todos' && todos.value.length === 0) {
     loadTodos()
@@ -74,25 +108,72 @@ function onTabChange(val: string) {
 async function addTodo() {
   const title = newTodoTitle.value.trim()
   if (!title) return
-  const { data } = await api.post('/todos', { title })
-  todos.value.unshift(data.data)
-  // 미완료 목록에 추가 후 정렬 (createdAt asc)
-  todos.value.sort((a, b) => {
-    if (a.done !== b.done) return a.done ? 1 : -1
-    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-  })
+  const { data } = await api.post('/todos', { title, priority: newTodoPriority.value })
+  todos.value.push(data.data)
   newTodoTitle.value = ''
+  newTodoPriority.value = 'none'
 }
 
 async function toggleTodo(todo: Todo) {
   const { data } = await api.patch(`/todos/${todo.id}`, { done: !todo.done })
   const idx = todos.value.findIndex(t => t.id === todo.id)
   if (idx !== -1) todos.value[idx] = data.data
-  // 재정렬
-  todos.value.sort((a, b) => {
-    if (a.done !== b.done) return a.done ? 1 : -1
-    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-  })
+}
+
+async function onPriorityChange(todo: Todo, val: string | number) {
+  const priority = val as Priority
+  if (priority === todo.priority) return
+  const { data } = await api.patch(`/todos/${todo.id}`, { priority })
+  const idx = todos.value.findIndex(t => t.id === todo.id)
+  if (idx !== -1) todos.value[idx] = data.data
+}
+
+// 인라인 수정
+const editingId = ref<number | null>(null)
+const editingTitle = ref('')
+
+function startEdit(todo: Todo) {
+  editingId.value = todo.id
+  editingTitle.value = todo.title
+}
+
+function cancelEdit() {
+  editingId.value = null
+  editingTitle.value = ''
+}
+
+async function saveEdit(todo: Todo) {
+  const title = editingTitle.value.trim()
+  if (!title || title === todo.title) {
+    cancelEdit()
+    return
+  }
+  const { data } = await api.patch(`/todos/${todo.id}`, { title })
+  const idx = todos.value.findIndex(t => t.id === todo.id)
+  if (idx !== -1) todos.value[idx] = data.data
+  cancelEdit()
+}
+
+function onEditKeydown(e: KeyboardEvent, todo: Todo) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    saveEdit(todo)
+  }
+  if (e.key === 'Escape') cancelEdit()
+}
+
+function autoResize(e: Event) {
+  const el = e.target as HTMLTextAreaElement
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
+}
+
+function onEditMounted(e: any) {
+  const el = e.el as HTMLTextAreaElement
+  el.focus()
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
+  el.select()
 }
 
 async function deleteTodo(todo: Todo) {
@@ -143,7 +224,7 @@ function handleKeydown(e: KeyboardEvent) {
     <main class="main">
       <UiTab
         v-model="activeTab"
-        :tabs="tabs"
+        :tabs="mainTabs"
         alignment="left"
         @update:model-value="onTabChange"
       />
@@ -176,7 +257,15 @@ function handleKeydown(e: KeyboardEvent) {
 
       <!-- 개인할일 탭 -->
       <div v-if="activeTab === 'todos'" class="tab-content">
+        <!-- 할일 입력 -->
         <div class="todo-input-row">
+          <div class="todo-input-priority">
+            <UiSelect
+              v-model="newTodoPriority"
+              :options="priorityOptions"
+              size="sm"
+            />
+          </div>
           <UiInput
             v-model="newTodoTitle"
             placeholder="할일을 입력하세요..."
@@ -188,30 +277,66 @@ function handleKeydown(e: KeyboardEvent) {
         <UiLoading v-if="todoLoading" />
         <UiEmpty v-else-if="todos.length === 0" title="할일이 없습니다." description="위에서 추가해보세요." />
         <div v-else class="todo-list">
-          <!-- 미완료 -->
+          <!-- 중요도별 그룹 -->
           <div
-            v-for="todo in incompleteTodos()"
-            :key="todo.id"
-            class="todo-item"
+            v-for="group in groupedTodos"
+            :key="group.key"
+            class="todo-group"
           >
-            <UiCheckbox
-              :model-value="todo.done"
-              @update:model-value="toggleTodo(todo)"
-            />
-            <span class="todo-title">{{ todo.title }}</span>
-            <button class="todo-delete" @click="deleteTodo(todo)">
-              <i class="icon-close size-16" />
-            </button>
+            <div class="todo-group-header">
+              <span class="todo-group-dot" :style="{ background: group.dot }" />
+              <span class="todo-group-label">{{ group.label }}</span>
+              <span class="todo-group-count">{{ group.items.length }}</span>
+            </div>
+
+            <div
+              v-for="todo in group.items"
+              :key="todo.id"
+              class="todo-item"
+            >
+              <UiCheckbox
+                :model-value="todo.done"
+                @update:model-value="toggleTodo(todo)"
+              />
+              <div class="todo-content">
+                <div class="todo-title-row">
+                  <textarea
+                    v-if="editingId === todo.id"
+                    v-model="editingTitle"
+                    class="todo-edit-input"
+                    rows="1"
+                    @blur="saveEdit(todo)"
+                    @keydown="(e: KeyboardEvent) => onEditKeydown(e, todo)"
+                    @input="autoResize"
+                    @vue:mounted="onEditMounted"
+                  />
+                  <span v-else class="todo-title" @click="startEdit(todo)">{{ todo.title }}<i class="icon-edit size-12 todo-edit-icon" /></span>
+                </div>
+                <div class="todo-actions">
+                  <div class="todo-priority-select">
+                    <UiSelect
+                      :model-value="todo.priority"
+                      :options="priorityOptions"
+                      size="sm"
+                      @change="(val: string | number) => onPriorityChange(todo, val)"
+                    />
+                  </div>
+                  <button class="todo-delete" @click="deleteTodo(todo)">
+                    <i class="icon-close size-16" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- 완료 섹션 -->
-          <div v-if="completedTodos().length > 0" class="todo-done-section">
+          <div v-if="completedTodos.length > 0" class="todo-done-section">
             <button class="todo-done-toggle" @click="showDone = !showDone">
-              {{ showDone ? '▾' : '▸' }} 완료 ({{ completedTodos().length }})
+              {{ showDone ? '▾' : '▸' }} 완료 ({{ completedTodos.length }})
             </button>
             <template v-if="showDone">
               <div
-                v-for="todo in completedTodos()"
+                v-for="todo in completedTodos"
                 :key="todo.id"
                 class="todo-item todo-item--done"
               >
@@ -289,12 +414,48 @@ function handleKeydown(e: KeyboardEvent) {
   margin-top: 24px;
 }
 
-// 개인할일
+// 할일 입력
 .todo-input-row {
   display: flex;
+  align-items: center;
   gap: 8px;
+  margin-bottom: 24px;
+}
+.todo-input-priority {
+  width: 120px;
+  flex-shrink: 0;
+}
+
+// 그룹
+.todo-group {
   margin-bottom: 20px;
 }
+.todo-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.todo-group-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.todo-group-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+.todo-group-count {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+// 할일 아이템
 .todo-list {
   display: flex;
   flex-direction: column;
@@ -302,13 +463,16 @@ function handleKeydown(e: KeyboardEvent) {
 .todo-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 8px;
+  gap: 8px;
+  padding: 10px 8px 10px 20px;
   border-bottom: 1px solid #f0f1f3;
   transition: background 0.1s;
   &:hover {
     background: #fafbfc;
     .todo-delete {
+      opacity: 1;
+    }
+    .todo-priority-select {
       opacity: 1;
     }
   }
@@ -320,10 +484,43 @@ function handleKeydown(e: KeyboardEvent) {
   flex: 1;
   font-size: 14px;
   line-height: 1.5;
+  cursor: text;
+}
+.todo-edit-icon {
+  display: inline-block;
+  margin-left: 4px;
+  vertical-align: middle;
+  color: #9ca3af;
+  opacity: 0;
+  transition: opacity 0.15s;
+  .todo-item:hover & {
+    opacity: 1;
+  }
+}
+.todo-edit-input {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 2px 6px;
+  border: 1px solid #4f6af6;
+  border-radius: 4px;
+  outline: none;
+  background: #fff;
 }
 .todo-title--done {
   text-decoration: line-through;
   color: #9ca3af;
+}
+.todo-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.todo-priority-select {
+  width: 100px;
+  opacity: 0;
+  transition: opacity 0.15s;
 }
 .todo-delete {
   display: flex;
@@ -343,6 +540,8 @@ function handleKeydown(e: KeyboardEvent) {
     color: #ef4444;
   }
 }
+
+// 완료 섹션
 .todo-done-section {
   margin-top: 16px;
 }
