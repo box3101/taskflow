@@ -10,6 +10,7 @@ import type { DropdownMenuItemDef, TableColumn, TabItem, SelectOption } from '@l
 import { useAuthStore } from '../stores/auth'
 import api from '../api/client'
 import StockDashboard from '../components/stock/StockDashboard.vue'
+import AiToolsTab from '../components/ai-tools/AiToolsTab.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -19,6 +20,7 @@ const activeTab = ref('projects')
 const mainTabs: TabItem[] = [
   { label: '프로젝트', value: 'projects' },
   { label: '개인할일', value: 'todos' },
+  { label: 'AI Tools', value: 'ai-tools' },
   { label: '주식', value: 'stock', disabled: true },
 ]
 
@@ -451,6 +453,11 @@ function handleKeydown(e: KeyboardEvent) {
             </div>
           </template>
         </UiTable>
+      </div>
+
+      <!-- AI Tools 탭 -->
+      <div v-if="activeTab === 'ai-tools'" class="tab-content">
+        <AiToolsTab />
       </div>
 
       <!-- 주식 대시보드 탭 -->
