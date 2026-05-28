@@ -192,6 +192,7 @@ async function onInlineChange(issue: any, field: string, val: string | number) {
     const { data } = await api.put(`/issues/${issue.id}`, updateData)
     const idx = issues.value.findIndex(i => i.id === data.id)
     if (idx > -1) issues.value[idx] = data
+    openToast({ message: '수정되었습니다.', type: 'success' })
   } catch {
     // 롤백
     issue[field] = prev

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   UiTable, UiBadge, UiLoading, UiEmpty, UiDropdownMenu, UiDrawer,
@@ -19,7 +19,7 @@ const activeTab = ref('projects')
 const mainTabs: TabItem[] = [
   { label: '프로젝트', value: 'projects' },
   { label: '개인할일', value: 'todos' },
-  { label: '주식', value: 'stock' },
+  { label: '주식', value: 'stock', disabled: true },
 ]
 
 
@@ -120,9 +120,11 @@ type Priority = 'high' | 'mid' | 'low' | 'none'
 interface Todo {
   id: number
   title: string
+  memo: string | null
   done: boolean
   priority: Priority
   createdAt: string
+  deletedAt?: string | null
 }
 
 const priorityConfig: Record<Priority, { label: string; dot: string }> = {
@@ -147,6 +149,9 @@ const todos = ref<Todo[]>([])
 const newTodoTitle = ref('')
 const newTodoPriority = ref<Priority>('none')
 const showDone = ref(true)
+const showTrash = ref(false)
+const trashTodos = ref<Todo[]>([])
+const trashLoaded = ref(false)
 
 // 미완료를 중요도별 그룹으로 분리
 const groupedTodos = computed(() => {
@@ -194,24 +199,39 @@ function onTabChange(val: string) {
 async function addTodo() {
   const title = newTodoTitle.value.trim()
   if (!title) return
-  const { data } = await api.post('/todos', { title, priority: newTodoPriority.value })
-  todos.value.push(data.data)
-  newTodoTitle.value = ''
-  newTodoPriority.value = 'none'
+  try {
+    const { data } = await api.post('/todos', { title, priority: newTodoPriority.value })
+    todos.value.push(data.data)
+    newTodoTitle.value = ''
+    newTodoPriority.value = 'none'
+    openToast({ message: '할일이 추가되었습니다.', type: 'success' })
+  } catch {
+    openToast({ message: '할일 추가에 실패했습니다.', type: 'error' })
+  }
 }
 
 async function toggleTodo(todo: Todo) {
-  const { data } = await api.patch(`/todos/${todo.id}`, { done: !todo.done })
-  const idx = todos.value.findIndex(t => t.id === todo.id)
-  if (idx !== -1) todos.value[idx] = data.data
+  try {
+    const { data } = await api.patch(`/todos/${todo.id}`, { done: !todo.done })
+    const idx = todos.value.findIndex(t => t.id === todo.id)
+    if (idx !== -1) todos.value[idx] = data.data
+    openToast({ message: data.data.done ? '완료 처리되었습니다.' : '미완료로 변경되었습니다.', type: 'success' })
+  } catch {
+    openToast({ message: '상태 변경에 실패했습니다.', type: 'error' })
+  }
 }
 
 async function onPriorityChange(todo: Todo, val: string | number) {
   const priority = val as Priority
   if (priority === todo.priority) return
-  const { data } = await api.patch(`/todos/${todo.id}`, { priority })
-  const idx = todos.value.findIndex(t => t.id === todo.id)
-  if (idx !== -1) todos.value[idx] = data.data
+  try {
+    const { data } = await api.patch(`/todos/${todo.id}`, { priority })
+    const idx = todos.value.findIndex(t => t.id === todo.id)
+    if (idx !== -1) todos.value[idx] = data.data
+    openToast({ message: '우선순위가 변경되었습니다.', type: 'success' })
+  } catch {
+    openToast({ message: '우선순위 변경에 실패했습니다.', type: 'error' })
+  }
 }
 
 // 인라인 수정
@@ -231,10 +251,15 @@ function cancelEdit() {
 async function saveEdit(todo: Todo) {
   const title = editingTitle.value.trim()
   if (!title || title === todo.title) { cancelEdit(); return }
-  const { data } = await api.patch(`/todos/${todo.id}`, { title })
-  const idx = todos.value.findIndex(t => t.id === todo.id)
-  if (idx !== -1) todos.value[idx] = data.data
-  cancelEdit()
+  try {
+    const { data } = await api.patch(`/todos/${todo.id}`, { title })
+    const idx = todos.value.findIndex(t => t.id === todo.id)
+    if (idx !== -1) todos.value[idx] = data.data
+    cancelEdit()
+    openToast({ message: '할일이 수정되었습니다.', type: 'success' })
+  } catch {
+    openToast({ message: '할일 수정에 실패했습니다.', type: 'error' })
+  }
 }
 
 function onEditKeydown(e: KeyboardEvent, todo: Todo) {
@@ -242,9 +267,108 @@ function onEditKeydown(e: KeyboardEvent, todo: Todo) {
   if (e.key === 'Escape') cancelEdit()
 }
 
+// 메모 펼치기/접기
+const expandedId = ref<number | null>(null)
+const editingMemo = ref('')
+
+function onDocumentClick(e: MouseEvent) {
+  if (!expandedId.value) return
+  const target = e.target as HTMLElement
+  if (target.closest('.todo-memo-area') || target.closest('.todo-title')) return
+  expandedId.value = null
+}
+onMounted(() => document.addEventListener('click', onDocumentClick))
+onUnmounted(() => document.removeEventListener('click', onDocumentClick))
+
+function toggleExpand(todo: Todo) {
+  if (editingId.value) return // 제목 수정 중이면 무시
+  if (expandedId.value === todo.id) {
+    expandedId.value = null
+  } else {
+    expandedId.value = todo.id
+    editingMemo.value = todo.memo ?? ''
+  }
+}
+
+async function saveMemo(todo: Todo) {
+  const memo = editingMemo.value.trim() || null
+  if (memo === (todo.memo ?? null)) {
+    expandedId.value = null
+    return
+  }
+  try {
+    const { data } = await api.patch(`/todos/${todo.id}`, { memo })
+    const idx = todos.value.findIndex(t => t.id === todo.id)
+    if (idx !== -1) todos.value[idx] = data.data
+    expandedId.value = null
+    openToast({ message: '메모가 저장되었습니다.', type: 'success' })
+  } catch {
+    openToast({ message: '메모 저장에 실패했습니다.', type: 'error' })
+  }
+}
+
 async function deleteTodo(todo: Todo) {
-  await api.delete(`/todos/${todo.id}`)
-  todos.value = todos.value.filter(t => t.id !== todo.id)
+  try {
+    const { data } = await api.delete(`/todos/${todo.id}`)
+    todos.value = todos.value.filter(t => t.id !== todo.id)
+    trashTodos.value.unshift(data.data)
+    openToast({ message: '휴지통으로 이동했습니다.', type: 'success' })
+  } catch {
+    openToast({ message: '할일 삭제에 실패했습니다.', type: 'error' })
+  }
+}
+
+async function loadTrash() {
+  try {
+    const { data } = await api.get('/todos/trash')
+    trashTodos.value = data.data
+    trashLoaded.value = true
+  } catch {
+    openToast({ message: '휴지통 조회에 실패했습니다.', type: 'error' })
+  }
+}
+
+async function restoreTodo(todo: Todo) {
+  try {
+    const { data } = await api.patch(`/todos/${todo.id}/restore`)
+    trashTodos.value = trashTodos.value.filter(t => t.id !== todo.id)
+    todos.value.push(data.data)
+    openToast({ message: '할일이 복원되었습니다.', type: 'success' })
+  } catch {
+    openToast({ message: '복원에 실패했습니다.', type: 'error' })
+  }
+}
+
+async function permanentDeleteTodo(todo: Todo) {
+  const confirmed = await openConfirm({
+    title: '영구 삭제',
+    message: `<strong>${todo.title}</strong>을(를) 영구 삭제하시겠습니까?<br>이 작업은 되돌릴 수 없습니다.`,
+    confirmText: '영구 삭제',
+  })
+  if (!confirmed) return
+  try {
+    await api.delete(`/todos/${todo.id}/permanent`)
+    trashTodos.value = trashTodos.value.filter(t => t.id !== todo.id)
+    openToast({ message: '영구 삭제되었습니다.', type: 'success' })
+  } catch {
+    openToast({ message: '삭제에 실패했습니다.', type: 'error' })
+  }
+}
+
+async function emptyTrash() {
+  const confirmed = await openConfirm({
+    title: '휴지통 비우기',
+    message: `휴지통의 모든 할일(${trashTodos.value.length}건)을 영구 삭제하시겠습니까?<br>이 작업은 되돌릴 수 없습니다.`,
+    confirmText: '전체 삭제',
+  })
+  if (!confirmed) return
+  try {
+    await api.delete('/todos/trash/empty')
+    trashTodos.value = []
+    openToast({ message: '휴지통을 비웠습니다.', type: 'success' })
+  } catch {
+    openToast({ message: '휴지통 비우기에 실패했습니다.', type: 'error' })
+  }
 }
 
 function onRowClick(row: any) {
@@ -369,33 +493,61 @@ function handleKeydown(e: KeyboardEvent) {
             <div
               v-for="todo in group.items"
               :key="todo.id"
-              class="todo-item"
+              class="todo-item-wrapper"
             >
-              <UiCheckbox
-                :model-value="todo.done"
-                @update:model-value="toggleTodo(todo)"
-              />
-              <input
-                v-if="editingId === todo.id"
-                v-model="editingTitle"
-                class="todo-edit-input"
-                @blur="saveEdit(todo)"
-                @keydown="(e: KeyboardEvent) => onEditKeydown(e, todo)"
-                @vue:mounted="($event: any) => $event.el.focus()"
-              />
-              <span v-else class="todo-title" @click="startEdit(todo)">{{ todo.title }}</span>
-              <div class="todo-actions">
-                <div class="todo-priority-select">
-                  <UiSelect
-                    :model-value="todo.priority"
-                    :options="priorityOptions"
-                    size="sm"
-                    @change="(val: string | number) => onPriorityChange(todo, val)"
+              <div class="todo-item">
+                <UiCheckbox
+                  :model-value="todo.done"
+                  @update:model-value="toggleTodo(todo)"
+                />
+                <div v-if="editingId === todo.id" class="todo-title-editing">
+                  <input
+                    v-model="editingTitle"
+                    class="todo-edit-input"
+                    @blur="cancelEdit()"
+                    @keydown="(e: KeyboardEvent) => onEditKeydown(e, todo)"
+                    @vue:mounted="($event: any) => $event.el.focus()"
                   />
+                  <button class="todo-edit-save" @mousedown.prevent="saveEdit(todo)" title="저장">✓</button>
+                  <button class="todo-edit-cancel" @mousedown.prevent="cancelEdit()" title="취소">✕</button>
                 </div>
-                <button class="todo-delete" @click="deleteTodo(todo)">
-                  <i class="icon-close size-16" />
-                </button>
+                <div v-else class="todo-title-wrap">
+                  <span class="todo-title" @click="toggleExpand(todo)">
+                    {{ todo.title }}
+                    <i v-if="todo.memo" class="todo-memo-indicator">📝</i>
+                  </span>
+                  <button
+                    class="todo-edit-btn"
+                    @click.stop="startEdit(todo)"
+                    title="제목 수정"
+                  >
+                    <i class="icon-edit size-12" />
+                  </button>
+                </div>
+                <div class="todo-actions">
+                  <div class="todo-priority-select">
+                    <UiSelect
+                      :model-value="todo.priority"
+                      :options="priorityOptions"
+                      size="sm"
+                      @change="(val: string | number) => onPriorityChange(todo, val)"
+                    />
+                  </div>
+                  <button class="todo-delete" @click="deleteTodo(todo)">
+                    <i class="icon-close size-16" />
+                  </button>
+                </div>
+              </div>
+              <div v-if="expandedId === todo.id" class="todo-memo-area">
+                <UiTextarea
+                  v-model="editingMemo"
+                  placeholder="메모를 입력하세요..."
+                  :rows="3"
+                />
+                <div class="todo-memo-actions">
+                  <UiButton size="sm" variant="primary" @click="saveMemo(todo)">저장</UiButton>
+                  <UiButton size="sm" variant="ghost" @click="expandedId = null">취소</UiButton>
+                </div>
               </div>
             </div>
           </div>
@@ -420,6 +572,29 @@ function handleKeydown(e: KeyboardEvent) {
                   <i class="icon-close size-16" />
                 </button>
               </div>
+            </template>
+          </div>
+
+          <!-- 휴지통 섹션 -->
+          <div class="todo-done-section">
+            <button class="todo-done-toggle" @click="showTrash = !showTrash; if (!trashLoaded) loadTrash()">
+              {{ showTrash ? '▾' : '▸' }} 휴지통 ({{ trashTodos.length }})
+              <span v-if="showTrash && trashTodos.length > 0" class="todo-trash-empty" @click.stop="emptyTrash">비우기</span>
+            </button>
+            <template v-if="showTrash">
+              <div
+                v-for="todo in trashTodos"
+                :key="todo.id"
+                class="todo-item todo-item--trash"
+              >
+                <span class="todo-title todo-title--done">{{ todo.title }}</span>
+                <span class="todo-deleted-date">{{ new Date(todo.deletedAt!).toLocaleDateString('ko-KR') }}</span>
+                <button class="todo-restore-btn" @click="restoreTodo(todo)" title="복원">↩</button>
+                <button class="todo-delete todo-delete--visible" @click="permanentDeleteTodo(todo)" title="영구 삭제">
+                  <i class="icon-close size-16" />
+                </button>
+              </div>
+              <div v-if="trashTodos.length === 0" class="todo-trash-empty-msg">휴지통이 비어있습니다.</div>
             </template>
           </div>
         </div>
@@ -541,12 +716,15 @@ function handleKeydown(e: KeyboardEvent) {
   transition: background 0.1s;
   &:hover {
     background: #fafbfc;
-    .todo-delete { opacity: 1; }
   }
 }
 .todo-item--done { opacity: 0.6; }
+.todo-title-wrap {
+  display: flex; align-items: center; gap: 4px;
+  flex: 1; min-width: 0;
+}
 .todo-title {
-  flex: 1; font-size: 14px; line-height: 1.5;
+  font-size: 14px; line-height: 1.5;
   cursor: pointer; word-break: break-word;
 }
 .todo-title--done { text-decoration: line-through; color: #9ca3af; }
@@ -575,12 +753,93 @@ function handleKeydown(e: KeyboardEvent) {
   transition: opacity 0.15s, background 0.15s; color: #9ca3af;
   &:hover { background: #fee2e2; color: #ef4444; }
 }
+.todo-item-wrapper {
+  &:hover .todo-delete { opacity: 1; }
+}
+.todo-memo-indicator {
+  font-size: 12px;
+  margin-left: 4px;
+  opacity: 0.5;
+  font-style: normal;
+}
+.todo-title-editing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+.todo-edit-save, .todo-edit-cancel {
+  display: flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border: none; background: none;
+  border-radius: 4px; cursor: pointer; font-size: 14px; flex-shrink: 0;
+}
+.todo-edit-save {
+  color: #22c55e;
+  &:hover { background: #dcfce7; }
+}
+.todo-edit-cancel {
+  color: #ef4444;
+  &:hover { background: #fee2e2; }
+}
+.todo-edit-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border: none; background: none;
+  border-radius: 4px; cursor: pointer; opacity: 0; flex-shrink: 0;
+  color: #9ca3af; transition: opacity 0.15s;
+  &:hover { background: #f3f4f6; color: #374151; }
+}
+.todo-item-wrapper:hover .todo-edit-btn {
+  opacity: 1;
+}
+.todo-memo-area {
+  padding: 4px 8px 12px 38px;
+  border-bottom: 1px solid #f0f1f3;
+}
+.todo-memo-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
 .todo-done-section { margin-top: 16px; }
 .todo-done-toggle {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 6px 8px; background: none; border: none; cursor: pointer;
   font-size: 13px; color: #6b7280; font-weight: 500;
   &:hover { color: #374151; }
+}
+
+// 휴지통
+.todo-item--trash {
+  opacity: 0.6;
+}
+.todo-deleted-date {
+  font-size: 12px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+.todo-restore-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border: none; background: none;
+  border-radius: 6px; cursor: pointer; font-size: 16px; color: #3b82f6;
+  flex-shrink: 0;
+  &:hover { background: #dbeafe; }
+}
+.todo-delete--visible {
+  opacity: 1;
+}
+.todo-trash-empty {
+  font-size: 12px;
+  color: #ef4444;
+  margin-left: 8px;
+  cursor: pointer;
+  &:hover { text-decoration: underline; }
+}
+.todo-trash-empty-msg {
+  padding: 16px 8px;
+  font-size: 13px;
+  color: #9ca3af;
+  text-align: center;
 }
 
 </style>
