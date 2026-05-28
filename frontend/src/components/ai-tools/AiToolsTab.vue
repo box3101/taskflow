@@ -204,17 +204,16 @@ defineExpose({ loadTools })
     justify-content: space-between;
     align-items: flex-start;
     gap: 16px;
-    margin-bottom: 24px;
     flex-wrap: wrap;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 24px;
   }
 
   &__filters {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #e5e7eb;
-    margin-bottom: 8px;
   }
 
   &__actions {
