@@ -19,6 +19,7 @@ model User {
   members  Member[]
   assigned Issue[]  @relation("assignee")
   todos    Todo[]
+  aiTools  AiTool[]
 
   @@map("users")
 }
@@ -88,4 +89,20 @@ model Todo {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("todos")
+}
+
+// AI 도구 가이드
+model AiTool {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  content     String   @db.Text
+  tags        String[]
+  icon        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  authorId    Int      @map("author_id")
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("ai_tools")
 }
