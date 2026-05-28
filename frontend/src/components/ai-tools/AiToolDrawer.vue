@@ -3,23 +3,18 @@
     :open="open"
     :title="isEditing ? (form.id ? '도구 수정' : '새 도구 추가') : form.title"
     width="560px"
-    @close="$emit('close')"
+    @update:open="(v: boolean) => { if (!v) $emit('close') }"
   >
     <!-- 보기 모드 -->
     <template v-if="!isEditing">
       <div class="drawer-view">
-        <div class="drawer-view__actions">
-          <UiButton size="sm" variant="outline" @click="startEdit">수정</UiButton>
-          <UiButton size="sm" variant="danger" @click="handleDelete">삭제</UiButton>
-        </div>
         <div class="drawer-view__tags">
           <UiBadge
             v-for="tag in form.tags"
             :key="tag"
-            :label="tag"
-            variant="secondary"
+            variant="info"
             size="sm"
-          />
+          >{{ tag }}</UiBadge>
         </div>
         <div class="drawer-view__content markdown-body" v-html="renderedContent"></div>
       </div>
@@ -48,10 +43,20 @@
           <label>내용 (마크다운)</label>
           <UiTextarea v-model="form.content" placeholder="마크다운으로 상세 가이드 작성..." :rows="15" />
         </div>
-        <div class="drawer-edit__actions">
+      </div>
+    </template>
+
+    <!-- Footer -->
+    <template #footer>
+      <div class="drawer-footer">
+        <template v-if="!isEditing">
+          <UiButton variant="outline" @click="startEdit">수정</UiButton>
+          <UiButton variant="danger" @click="handleDelete">삭제</UiButton>
+        </template>
+        <template v-else>
           <UiButton variant="outline" @click="cancelEdit">취소</UiButton>
           <UiButton @click="handleSave" :disabled="!form.title.trim()">저장</UiButton>
-        </div>
+        </template>
       </div>
     </template>
   </UiDrawer>
@@ -156,12 +161,6 @@ function handleDelete() {
 
 <style scoped lang="scss">
 .drawer-view {
-  &__actions {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-
   &__tags {
     display: flex;
     flex-wrap: wrap;
@@ -207,6 +206,19 @@ function handleDelete() {
     :deep(ul), :deep(ol) {
       padding-left: 20px;
       margin: 8px 0;
+      list-style: disc;
+    }
+
+    :deep(ol) {
+      list-style: decimal;
+    }
+
+    :deep(li) {
+      margin: 4px 0;
+    }
+
+    :deep(strong) {
+      font-weight: 700;
     }
 
     :deep(blockquote) {
@@ -214,6 +226,29 @@ function handleDelete() {
       padding-left: 12px;
       color: #6b7280;
       margin: 12px 0;
+    }
+
+    :deep(table) {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+
+    :deep(th), :deep(td) {
+      border: 1px solid #e5e7eb;
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    :deep(th) {
+      background: #f9fafb;
+      font-weight: 600;
+      color: #1a1f2b;
+    }
+
+    :deep(tr:hover) {
+      background: #f9fafb;
     }
   }
 }
@@ -231,11 +266,11 @@ function handleDelete() {
     }
   }
 
-  &__actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-    margin-top: 24px;
-  }
+}
+
+.drawer-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 }
 </style>

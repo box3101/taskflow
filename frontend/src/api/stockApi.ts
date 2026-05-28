@@ -68,13 +68,14 @@ export async function fetchTopValue(
     const url = buildUrl({ action: 'topValue', market, count: String(count) })
     const res = await fetch(url)
     const data = await res.json()
-    return (data.stocks || []).map((s: any, i: number) => ({
+    const stocks = data.stocks || data.data || []
+    return stocks.map((s: any, i: number) => ({
       rank: s.rank || i + 1,
       code: s.code,
       name: s.name,
       currentPrice: Number(s.currentPrice) || 0,
-      changePctToday: Number(s.changePctToday) || 0,
-      accumulatedValue: Number(s.accumulatedValue) || 0,
+      changePctToday: Number(s.changePctToday ?? s.changePct) || 0,
+      accumulatedValue: Number(s.accumulatedValue) / (s.accumulatedValue > 1_000_000_000 ? 100_000_000 : 1) || 0,
     }))
   } catch (e) {
     console.warn('[stockApi] fetchTopValue 실패:', e)

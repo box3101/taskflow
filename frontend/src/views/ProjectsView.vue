@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import {
   UiTable, UiBadge, UiLoading, UiEmpty, UiDropdownMenu, UiDrawer,
   UiTab, UiInput, UiButton, UiCheckbox, UiSelect, UiTextarea,
@@ -13,10 +13,11 @@ import StockDashboard from '../components/stock/StockDashboard.vue'
 import AiToolsTab from '../components/ai-tools/AiToolsTab.vue'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 
-// 탭
-const activeTab = ref('ai-tools')
+// 탭 (쿼리 파라미터로 초기 탭 지정 가능)
+const activeTab = ref((route.query.tab as string) || 'ai-tools')
 const mainTabs: TabItem[] = [
   { label: 'AI Tools', value: 'ai-tools' },
   { label: '프로젝트', value: 'projects' },
@@ -393,6 +394,7 @@ function handleKeydown(e: KeyboardEvent) {
     <header class="header">
       <h1 class="header-title">TaskFlow</h1>
       <div class="header-right">
+        <UiButton as="a" href="https://box3101.github.io/ispark-ui/" target="_blank" size="sm" variant="outline">📖 Storybook</UiButton>
         <UiButton v-if="activeTab === 'projects'" variant="primary" size="sm" @click="openCreateProject">+ 프로젝트 추가</UiButton>
         <UiDropdownMenu
           :items="userMenuItems"

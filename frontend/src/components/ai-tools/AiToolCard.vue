@@ -9,10 +9,9 @@
       <UiBadge
         v-for="tag in tool.tags"
         :key="tag"
-        :label="tag"
-        variant="secondary"
+        variant="info"
         size="sm"
-      />
+      >{{ tag }}</UiBadge>
     </div>
   </div>
 </template>

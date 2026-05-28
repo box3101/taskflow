@@ -378,7 +378,7 @@ onMounted(async () => {
   <div class="layout">
     <header class="header">
       <div class="header-left">
-        <UiButton variant="ghost" size="sm" @click="router.push('/')">← 목록</UiButton>
+        <UiButton variant="ghost" size="sm" @click="router.push('/?tab=projects')">← 목록</UiButton>
         <h1 class="header-title">{{ project?.name || '...' }}</h1>
       </div>
       <UiButton v-if="!loading" variant="primary" size="sm" @click="startCreate">+ 이슈 추가</UiButton>

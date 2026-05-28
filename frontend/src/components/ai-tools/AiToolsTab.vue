@@ -2,21 +2,42 @@
   <div class="ai-tools-tab">
     <UiLoading v-if="loading" overlay />
     <template v-else>
-      <!-- 상단 바: 필터 + 검색 + 추가 -->
+      <!-- 상단 바: 카테고리 세그먼트 + 기능 칩 + 검색 + 추가 -->
       <div class="ai-tools-tab__header">
         <div class="ai-tools-tab__filters">
-          <button
-            class="filter-chip"
-            :class="{ active: !selectedTag }"
-            @click="selectedTag = ''"
-          >전체</button>
-          <button
-            v-for="tag in allTags"
-            :key="tag"
-            class="filter-chip"
-            :class="{ active: selectedTag === tag }"
-            @click="selectedTag = selectedTag === tag ? '' : tag"
-          >{{ tag }}</button>
+          <!-- 카테고리 세그먼트 -->
+          <div class="segment">
+            <button
+              class="segment__btn"
+              :class="{ active: !selectedCategory }"
+              @click="selectedCategory = ''"
+            >전체</button>
+            <button
+              class="segment__btn"
+              :class="{ active: selectedCategory === 'superpowers' }"
+              @click="selectedCategory = selectedCategory === 'superpowers' ? '' : 'superpowers'"
+            >⚡ Superpowers</button>
+            <button
+              class="segment__btn"
+              :class="{ active: selectedCategory === 'gstack' }"
+              @click="selectedCategory = selectedCategory === 'gstack' ? '' : 'gstack'"
+            >🛠️ gstack</button>
+          </div>
+          <!-- 기능 태그 칩 -->
+          <div class="filter-chips">
+            <button
+              class="filter-chip"
+              :class="{ active: !selectedTag }"
+              @click="selectedTag = ''"
+            >전체</button>
+            <button
+              v-for="tag in functionTags"
+              :key="tag"
+              class="filter-chip"
+              :class="{ active: selectedTag === tag }"
+              @click="selectedTag = selectedTag === tag ? '' : tag"
+            >{{ tag }}</button>
+          </div>
         </div>
         <div class="ai-tools-tab__actions">
           <UiInput
@@ -63,20 +84,39 @@ import type { AiTool } from './AiToolCard.vue'
 const tools = ref<AiTool[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
+const selectedCategory = ref('')
 const selectedTag = ref('')
 const drawerOpen = ref(false)
 const selectedTool = ref<AiTool | null>(null)
 
-// 전체 태그 목록 (중복 제거)
-const allTags = computed(() => {
+// 카테고리 태그 (세그먼트로 분리)
+const categoryTags = ['superpowers', 'gstack']
+const hiddenTags = ['개요']
+const tagOrder = ['계획', '실행', '테스트', '브라우저', '배포', '디버깅', '워크플로우']
+
+// 기능 태그 목록 (카테고리/숨김 제외, 우선순위 정렬)
+const functionTags = computed(() => {
   const tagSet = new Set<string>()
-  tools.value.forEach(t => t.tags.forEach(tag => tagSet.add(tag)))
-  return Array.from(tagSet).sort()
+  // 카테고리 필터가 적용된 도구에서 태그 추출
+  const source = selectedCategory.value
+    ? tools.value.filter(t => t.tags.includes(selectedCategory.value))
+    : tools.value
+  source.forEach(t => t.tags.forEach(tag => tagSet.add(tag)))
+  return Array.from(tagSet)
+    .filter(tag => !categoryTags.includes(tag) && !hiddenTags.includes(tag))
+    .sort((a, b) => {
+      const ai = tagOrder.indexOf(a)
+      const bi = tagOrder.indexOf(b)
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+    })
 })
 
-// 필터링된 목록
+// 필터링된 목록 (카테고리 + 기능 태그 조합)
 const filteredTools = computed(() => {
   let result = tools.value
+  if (selectedCategory.value) {
+    result = result.filter(t => t.tags.includes(selectedCategory.value))
+  }
   if (selectedTag.value) {
     result = result.filter(t => t.tags.includes(selectedTag.value))
   }
@@ -170,8 +210,11 @@ defineExpose({ loadTools })
 
   &__filters {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 8px;
   }
 
   &__actions {
@@ -193,6 +236,38 @@ defineExpose({ loadTools })
       grid-template-columns: 1fr;
     }
   }
+}
+
+.segment {
+  display: inline-flex;
+  background: #f3f4f6;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+
+  &__btn {
+    padding: 6px 16px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    color: #6b7280;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.15s;
+
+    &.active {
+      background: #fff;
+      color: #1a1f2b;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+  }
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .filter-chip {
