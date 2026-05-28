@@ -22,6 +22,11 @@
               :class="{ active: selectedCategory === 'gstack' }"
               @click="selectedCategory = selectedCategory === 'gstack' ? '' : 'gstack'"
             >🛠️ gstack</button>
+            <button
+              class="segment__btn"
+              :class="{ active: selectedCategory === 'codex' }"
+              @click="selectedCategory = selectedCategory === 'codex' ? '' : 'codex'"
+            >🤖 Codex</button>
           </div>
           <!-- 기능 태그 칩 -->
           <div class="filter-chips">
@@ -90,7 +95,7 @@ const drawerOpen = ref(false)
 const selectedTool = ref<AiTool | null>(null)
 
 // 카테고리 태그 (세그먼트로 분리)
-const categoryTags = ['superpowers', 'gstack']
+const categoryTags = ['superpowers', 'gstack', 'codex']
 const hiddenTags = ['개요']
 const tagOrder = ['계획', '실행', '테스트', '브라우저', '배포', '디버깅', '워크플로우']
 

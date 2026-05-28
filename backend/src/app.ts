@@ -8,6 +8,7 @@ import issueRouter from './routes/issues'
 import todoRouter from './routes/todos'
 import stockRouter from './routes/stock'
 import aiToolRouter from './routes/aiTools'
+import skillUpRouter from './routes/skillUp'
 
 const app = express()
 
@@ -21,6 +22,7 @@ app.use('/issues', issueRouter)
 app.use('/todos', todoRouter)
 app.use('/stock', stockRouter)
 app.use('/ai-tools', aiToolRouter)
+app.use('/skill-up', skillUpRouter)
 
 // 헬스체크
 app.get('/health', (_req, res) => {

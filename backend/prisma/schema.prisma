@@ -16,10 +16,11 @@ model User {
   role      String   @default("member") // admin | member
   createdAt DateTime @default(now()) @map("created_at")
 
-  members  Member[]
-  assigned Issue[]  @relation("assignee")
-  todos    Todo[]
-  aiTools  AiTool[]
+  members        Member[]
+  assigned       Issue[]         @relation("assignee")
+  todos          Todo[]
+  aiTools        AiTool[]
+  skillProgresses SkillProgress[]
 
   @@map("users")
 }
@@ -105,4 +106,40 @@ model AiTool {
   author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@map("ai_tools")
+}
+
+// 역량확장 레벨
+model SkillLevel {
+  id          Int      @id @default(autoincrement())
+  order       Int      @unique
+  title       String
+  description String
+  icon        String   @default("📚")
+  content     String   @db.Text
+  challenge   String?  @db.Text  // 퀴즈/챌린지 JSON
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  progresses SkillProgress[]
+
+  @@map("skill_levels")
+}
+
+// 역량확장 진행률
+model SkillProgress {
+  id          Int       @id @default(autoincrement())
+  userId      Int       @map("user_id")
+  levelId     Int       @map("level_id")
+  status      String    @default("locked") // locked | in_progress | completed
+  score       Int?
+  note        String?   @db.Text
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level SkillLevel @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, levelId])
+  @@map("skill_progresses")
 }
