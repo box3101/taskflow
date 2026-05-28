@@ -11,6 +11,7 @@
   "dependencies": {
     "@internationalized/date": "^3.12.1",
     "@leechanyong/ispark-ui": "^0.5.5",
+    "@lucide/vue": "^1.17.0",
     "axios": "^1.16.1",
     "marked": "^18.0.4",
     "pinia": "^3.0.4",

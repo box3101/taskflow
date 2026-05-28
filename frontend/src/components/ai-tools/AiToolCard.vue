@@ -1,7 +1,7 @@
 <template>
   <div class="ai-tool-card" @click="$emit('click')">
     <div class="ai-tool-card__icon">
-      {{ tool.icon || '🔧' }}
+      <UiIcon :name="tool.icon || 'wrench'" :size="24" color="primary" />
     </div>
     <h3 class="ai-tool-card__title">{{ tool.title }}</h3>
     <p class="ai-tool-card__desc">{{ tool.description }}</p>
@@ -17,7 +17,7 @@
 </template>
 
 <script setup lang="ts">
-import { UiBadge } from '@leechanyong/ispark-ui'
+import { UiBadge, UiIcon } from '@leechanyong/ispark-ui'
 
 export interface AiTool {
   id: number
@@ -50,7 +50,13 @@ defineEmits<{ click: [] }>()
   }
 
   &__icon {
-    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(79, 106, 246, 0.08);
     margin-bottom: 12px;
   }
 
