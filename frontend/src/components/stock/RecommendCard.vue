@@ -27,7 +27,7 @@ const activeTab = ref('momentum')
 const tabs = [
   { label: '🚀 모멘텀 초기', value: 'momentum' },
   { label: '🔍 테마 낙오주', value: 'laggard' },
-  { label: '🔥 과열 경보', value: 'overheat' },
+  { label: '🔥 급등주', value: 'overheat' },
 ]
 
 // 추천 종목별 외인/기관 데이터
@@ -57,13 +57,26 @@ function consecutiveDays(code: string, type: 'foreign' | 'institution'): number 
   return count
 }
 
-function investorLabel(code: string): string {
+type InvestorBadge = { label: string; variant: 'default' | 'warning' | 'danger' }
+
+function tierVariant(days: number): 'default' | 'warning' | 'danger' {
+  if (days >= 10) return 'danger'
+  if (days >= 7) return 'warning'
+  return 'default'
+}
+
+function investorBadges(code: string): InvestorBadge[] {
   const f = consecutiveDays(code, 'foreign')
   const i = consecutiveDays(code, 'institution')
-  const parts: string[] = []
-  if (f >= 2) parts.push(`외인${f}일`)
-  if (i >= 2) parts.push(`기관${i}일`)
-  return parts.length ? parts.join(' ') : ''
+  const badges: InvestorBadge[] = []
+  if (f >= 2) badges.push({ label: `외인${f}일`, variant: tierVariant(f) })
+  if (i >= 2) badges.push({ label: `기관${i}일`, variant: tierVariant(i) })
+  return badges
+}
+
+// 하위호환 (모멘텀/낙오주 탭에서 사용)
+function investorLabel(code: string): string {
+  return investorBadges(code).map(b => b.label).join(' ')
 }
 
 const loaded = ref(false)
@@ -90,7 +103,7 @@ watch(activeTab, (tab) => {
 const tabDescriptions: Record<string, string> = {
   momentum: '20일 +10~50% 구간에서 가속이 시작되는 종목. 과열 전 진입 기회.',
   laggard: '같은 테마 평균보다 덜 오른 종목. 후발주자 기회.',
-  overheat: '20일 +80% 이상 과열 종목. 매수 금지, 보유자는 익절 검토.',
+  overheat: '20일 +80% 이상 급등주. 강한 추세를 타는 종목, 추세 추종 매매 기회.',
 }
 </script>
 
@@ -172,20 +185,20 @@ const tabDescriptions: Record<string, string> = {
         </div>
       </div>
 
-      <!-- 과열 경보 -->
+      <!-- 급등주 추천 -->
       <div v-if="activeTab === 'overheat'" class="rec-list">
         <div v-if="overheat.length === 0" class="empty">
-          {{ loading ? '분석 중...' : '과열 종목이 없습니다 (좋은 신호!).' }}
+          {{ loading ? '분석 중...' : '조건에 맞는 급등주가 없습니다.' }}
         </div>
         <div v-else>
-          <p class="overheat-warning">아래 종목은 매수하지 마세요. 보유 중이면 익절을 검토하세요.</p>
-          <div class="rec-row rec-row--header">
+          <div class="rec-row rec-row--header rec-row--overheat">
             <span class="col-rank">#</span>
             <span class="col-name">종목명</span>
             <span class="col-theme">테마</span>
             <span class="col-chg">5일</span>
             <span class="col-chg">20일</span>
-            <span class="col-reason">위험도</span>
+            <span class="col-investor">수급</span>
+            <span class="col-reason">강도</span>
           </div>
           <div v-for="(r, i) in overheat" :key="r.code" class="rec-row rec-row--overheat">
             <span class="col-rank">{{ i + 1 }}</span>
@@ -193,8 +206,15 @@ const tabDescriptions: Record<string, string> = {
             <span class="col-theme"><UiBadge variant="default" size="sm">{{ r.theme }}</UiBadge></span>
             <span class="col-chg"><UiBadge variant="danger" size="sm">+{{ r.chg5.toFixed(1) }}%</UiBadge></span>
             <span class="col-chg"><UiBadge variant="danger" size="sm">+{{ r.chg20.toFixed(1) }}%</UiBadge></span>
-            <span class="col-reason reason-overheat">
-              <UiBadge :variant="r.reason === '극단 과열' ? 'danger' : 'warning'" size="sm">
+            <span class="col-investor">
+              <template v-if="investorBadges(r.code).length">
+                <UiBadge v-for="b in investorBadges(r.code)" :key="b.label" :variant="b.variant" size="sm">{{ b.label }}</UiBadge>
+              </template>
+              <span v-else-if="investorLoading" class="loading-dot">···</span>
+              <span v-else class="no-signal">-</span>
+            </span>
+            <span class="col-reason">
+              <UiBadge :variant="r.reason === '초강세' ? 'danger' : 'warning'" size="sm">
                 {{ r.reason }}
               </UiBadge>
             </span>
@@ -242,16 +262,6 @@ const tabDescriptions: Record<string, string> = {
   line-height: 1.5;
 }
 
-.overheat-warning {
-  font-size: 13px;
-  color: #dc2626;
-  background: #fef2f2;
-  padding: 8px 12px;
-  border-radius: 6px;
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-
 .empty { text-align: center; padding: 24px; color: #9ca3af; font-size: 14px; }
 
 .rec-row {
@@ -270,7 +280,10 @@ const tabDescriptions: Record<string, string> = {
   }
   &--momentum:nth-child(-n+4) { background: #f0fdf4; border-radius: 4px; }
   &--laggard:nth-child(-n+4) { background: #eff6ff; border-radius: 4px; }
-  &--overheat { background: #fef2f2; border-radius: 4px; }
+  &--overheat {
+    grid-template-columns: 36px 1fr 80px 68px 68px 120px 80px;
+    &:nth-child(-n+4) { background: #fff7ed; border-radius: 4px; }
+  }
 }
 
 .col-rank { text-align: center; color: #9ca3af; font-weight: 600; }
@@ -279,7 +292,7 @@ const tabDescriptions: Record<string, string> = {
 .col-chg { text-align: center; }
 .col-reason { text-align: center; font-size: 12px; }
 
-.col-investor { text-align: center; }
+.col-investor { text-align: center; display: flex; gap: 2px; justify-content: center; flex-wrap: wrap; }
 .loading-dot { color: #9ca3af; }
 .no-signal { color: #d1d5db; }
 

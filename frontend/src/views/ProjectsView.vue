@@ -16,12 +16,12 @@ const router = useRouter()
 const auth = useAuthStore()
 
 // 탭
-const activeTab = ref('projects')
+const activeTab = ref('ai-tools')
 const mainTabs: TabItem[] = [
+  { label: 'AI Tools', value: 'ai-tools' },
   { label: '프로젝트', value: 'projects' },
   { label: '개인할일', value: 'todos' },
-  { label: 'AI Tools', value: 'ai-tools' },
-  { label: '주식', value: 'stock', disabled: true },
+  { label: '주식', value: 'stock' },
 ]
 
 

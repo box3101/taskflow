@@ -213,21 +213,21 @@ export function useStockData() {
       .slice(0, 10)
   })
 
-  // ── 탭 3: 과열 경보 (매도/회피 참고) ──
-  // 20일 +80%↑ → 차익실현 위험 구간, 사지 말라는 경고
+  // ── 탭 3: 급등주 추천 (강한 모멘텀) ──
+  // 20일 +80%↑ → 강한 상승 추세, 추세 추종 매매 기회
   const recOverheat = computed<RecItem[]>(() => {
     if (Object.keys(themeQuotes.value).length === 0) return []
     return allStocksWithQuotes()
       .filter(s => s.chg20 >= 80)
       .map(s => {
-        // 과열도: 높을수록 위험
+        // 상승 강도: 높을수록 강한 추세
         const heatScore = s.chg20
-        // 5일 가속이 극단적이면 추가 위험
+        // 5일 가속이 강하면 추세 지속 가능성 높음
         const accelRatio = s.chg5 / Math.max(s.chg20, 1)
-        const accelPenalty = accelRatio > 0.5 ? 20 : 0
-        const score = heatScore + accelPenalty
-        const warning = s.chg20 >= 100 ? '극단 과열' : s.chg20 >= 90 ? '과열' : '주의'
-        return { ...s, score, reason: warning }
+        const accelBonus = accelRatio > 0.5 ? 20 : 0
+        const score = heatScore + accelBonus
+        const strength = s.chg20 >= 100 ? '초강세' : s.chg20 >= 90 ? '강세' : '상승세'
+        return { ...s, score, reason: strength }
       })
       .sort((a, b) => b.score - a.score)
       .slice(0, 10)

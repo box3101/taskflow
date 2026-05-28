@@ -1,6 +1,7 @@
 <template>
   <div class="ai-tools-tab">
-    <UiLoading :loading="loading" overlay>
+    <UiLoading v-if="loading" overlay />
+    <template v-else>
       <!-- 상단 바: 필터 + 검색 + 추가 -->
       <div class="ai-tools-tab__header">
         <div class="ai-tools-tab__filters">
@@ -38,16 +39,16 @@
         />
       </div>
       <UiEmpty v-else message="등록된 AI 도구가 없습니다." />
+    </template>
 
-      <!-- Drawer -->
-      <AiToolDrawer
-        :open="drawerOpen"
-        :tool="selectedTool"
-        @close="closeDrawer"
-        @save="handleSave"
-        @delete="handleDelete"
-      />
-    </UiLoading>
+    <!-- Drawer -->
+    <AiToolDrawer
+      :open="drawerOpen"
+      :tool="selectedTool"
+      @close="closeDrawer"
+      @save="handleSave"
+      @delete="handleDelete"
+    />
   </div>
 </template>
 
