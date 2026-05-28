@@ -7,6 +7,7 @@ import projectRouter from './routes/projects'
 import issueRouter from './routes/issues'
 import todoRouter from './routes/todos'
 import stockRouter from './routes/stock'
+import aiToolRouter from './routes/aiTools'
 
 const app = express()
 
@@ -19,6 +20,7 @@ app.use('/projects', projectRouter)
 app.use('/issues', issueRouter)
 app.use('/todos', todoRouter)
 app.use('/stock', stockRouter)
+app.use('/ai-tools', aiToolRouter)
 
 // 헬스체크
 app.get('/health', (_req, res) => {
