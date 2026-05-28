@@ -394,7 +394,7 @@ function handleKeydown(e: KeyboardEvent) {
 <template>
   <div class="layout">
     <header class="header">
-      <h1 class="header-title">TaskFlow</h1>
+      <img src="/logo.svg" alt="CYLEE" class="header-logo" />
       <div class="header-right">
         <UiButton as="a" href="https://box3101.github.io/ispark-ui/" target="_blank" size="sm" variant="outline">📖 Storybook</UiButton>
         <UiButton v-if="activeTab === 'projects'" variant="primary" size="sm" @click="openCreateProject">+ 프로젝트 추가</UiButton>
@@ -643,7 +643,7 @@ function handleKeydown(e: KeyboardEvent) {
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 24px; height: 56px; background: #fff; border-bottom: 1px solid #e6e8ec;
 }
-.header-title { font-size: 18px; font-weight: 700; }
+.header-logo { height: 24px; }
 .header-right { display: flex; align-items: center; gap: 12px; }
 .user-avatar-btn {
   display: flex; align-items: center; background: none; border: none;

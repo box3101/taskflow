@@ -29,7 +29,7 @@ async function onSubmit() {
 <template>
   <div class="login-page">
     <div class="login-card">
-      <h1 class="login-title">TaskFlow</h1>
+      <img src="/logo.svg" alt="CYLEE" class="login-logo" />
       <p class="login-desc">프로젝트 관리 시작하기</p>
 
       <form @submit.prevent="onSubmit" class="login-form">
@@ -78,11 +78,10 @@ async function onSubmit() {
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
-.login-title {
-  font-size: 28px;
-  font-weight: 700;
-  text-align: center;
-  margin-bottom: 4px;
+.login-logo {
+  display: block;
+  height: 32px;
+  margin: 0 auto 4px;
 }
 .login-desc {
   font-size: 14px;
