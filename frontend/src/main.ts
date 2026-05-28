@@ -5,6 +5,7 @@ import App from './App.vue'
 
 // ispark-ui 스타일
 import '@leechanyong/ispark-ui/style.css'
+import './style.css'
 
 createApp(App)
   .use(createPinia())

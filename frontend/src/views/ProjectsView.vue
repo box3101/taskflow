@@ -215,7 +215,6 @@ async function toggleTodo(todo: Todo) {
     const { data } = await api.patch(`/todos/${todo.id}`, { done: !todo.done })
     const idx = todos.value.findIndex(t => t.id === todo.id)
     if (idx !== -1) todos.value[idx] = data.data
-    openToast({ message: data.data.done ? '완료 처리되었습니다.' : '미완료로 변경되었습니다.', type: 'success' })
   } catch {
     openToast({ message: '상태 변경에 실패했습니다.', type: 'error' })
   }
@@ -256,7 +255,6 @@ async function saveEdit(todo: Todo) {
     const idx = todos.value.findIndex(t => t.id === todo.id)
     if (idx !== -1) todos.value[idx] = data.data
     cancelEdit()
-    openToast({ message: '할일이 수정되었습니다.', type: 'success' })
   } catch {
     openToast({ message: '할일 수정에 실패했습니다.', type: 'error' })
   }
@@ -419,7 +417,7 @@ function handleKeydown(e: KeyboardEvent) {
 
       <!-- 프로젝트 탭 -->
       <div v-if="activeTab === 'projects'" class="tab-content">
-        <UiLoading v-if="projectLoading" />
+        <UiLoading v-if="projectLoading" overlay />
         <UiEmpty v-else-if="projects.length === 0" title="프로젝트가 없습니다." />
         <UiTable
           v-else
@@ -475,7 +473,7 @@ function handleKeydown(e: KeyboardEvent) {
           <UiButton @click="addTodo" :disabled="!newTodoTitle.trim()">추가</UiButton>
         </div>
 
-        <UiLoading v-if="todoLoading" />
+        <UiLoading v-if="todoLoading" overlay />
         <UiEmpty v-else-if="todos.length === 0" title="할일이 없습니다." description="위에서 추가해보세요." />
         <div v-else class="todo-list">
           <!-- 중요도별 그룹 -->

@@ -160,7 +160,6 @@ async function saveTitleEdit(issue: any) {
     const { data } = await api.put(`/issues/${issue.id}`, { title })
     const idx = issues.value.findIndex(i => i.id === data.id)
     if (idx > -1) issues.value[idx] = data
-    openToast({ message: '제목이 수정되었습니다.', type: 'success' })
   } catch {
     issue.title = prev
     openToast({ message: '제목 수정에 실패했습니다.', type: 'error' })
@@ -192,7 +191,6 @@ async function onInlineChange(issue: any, field: string, val: string | number) {
     const { data } = await api.put(`/issues/${issue.id}`, updateData)
     const idx = issues.value.findIndex(i => i.id === data.id)
     if (idx > -1) issues.value[idx] = data
-    openToast({ message: '수정되었습니다.', type: 'success' })
   } catch {
     // 롤백
     issue[field] = prev
@@ -388,7 +386,7 @@ onMounted(async () => {
 
     <div>
       <main class="main">
-        <UiLoading v-if="loading" />
+        <UiLoading v-if="loading" overlay />
         <template v-else>
           <UiTab v-model="activeTab" :tabs="tabs" />
 
@@ -459,11 +457,12 @@ onMounted(async () => {
                   <input
                     v-model="editingTitleText"
                     class="issue-title-input"
+                    @blur="editingTitleId = null"
                     @keydown="(e: KeyboardEvent) => onTitleKeydown(e, row)"
                     @vue:mounted="($event: any) => $event.el.focus()"
                   />
-                  <button class="issue-title-save" @click.stop="saveTitleEdit(row)" title="저장">✓</button>
-                  <button class="issue-title-cancel" @click.stop="editingTitleId = null" title="취소">✕</button>
+                  <button class="issue-title-save" @mousedown.prevent="saveTitleEdit(row)" title="저장">✓</button>
+                  <button class="issue-title-cancel" @mousedown.prevent="editingTitleId = null" title="취소">✕</button>
                 </div>
                 <div v-else class="issue-title-cell">
                     <span class="issue-title" @click="openPanel(row)" @dblclick.stop="startTitleEdit(row)">{{ row.title }}</span>

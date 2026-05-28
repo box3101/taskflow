@@ -1,1 +1,6 @@
 /* App.vue에서 글로벌 스타일 처리 */
+
+/* Radix Select 드롭다운이 Drawer(z-index:1000) 위에 보이도록 */
+[data-radix-popper-content-wrapper] {
+  z-index: 1100 !important;
+}
