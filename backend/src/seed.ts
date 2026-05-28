@@ -4,6 +4,9 @@ import prisma from './prisma'
 
 async function main() {
   // 기존 데이터 정리
+  await prisma.aiTool.deleteMany()
+  await prisma.skillProgress.deleteMany()
+  await prisma.skillLevel.deleteMany()
   await prisma.todo.deleteMany()
   await prisma.issue.deleteMany()
   await prisma.member.deleteMany()
@@ -221,13 +224,13 @@ api.interceptors.request.use(config => {
 - 에러 시 \`res.status\`부터 확인 (400: 내 잘못, 500: 서버 잘못)
 - CORS 에러 → 백엔드에서 허용 설정 필요`,
       challenge: JSON.stringify({
-        type: 'quiz',
-        title: 'API 통신 퀴즈',
-        questions: [
-          { q: '새 데이터를 서버에 생성할 때 사용하는 HTTP 메서드는?', options: ['GET', 'POST', 'DELETE', 'PATCH'], answer: 1 },
-          { q: 'fetch로 POST 요청 시 body에 데이터를 넣을 때 사용하는 함수는?', options: ['JSON.parse()', 'JSON.stringify()', 'toString()', 'encodeURI()'], answer: 1 },
-          { q: 'HTTP 상태코드 404는 무엇을 의미하나?', options: ['성공', '서버 에러', '찾을 수 없음', '권한 없음'], answer: 2 },
-          { q: 'axios의 장점이 아닌 것은?', options: ['자동 JSON 변환', '인터셉터 지원', '브라우저 내장', '에러 처리 편리'], answer: 2 },
+        type: 'code',
+        title: 'API 통신 실습',
+        runnable: true,
+        exercises: [
+          { difficulty: 'easy', description: 'TaskFlow 헬스체크 API를 호출해보세요', code: "const res = await {{BLANK:HTTP 요청 함수}}('/health')\nconst data = await res.{{BLANK:JSON 변환 메서드}}()\nconsole.log(data)", answers: ['fetch', 'json'], alternateAnswers: [['window.fetch'], []], explanation: 'fetch()는 브라우저 내장 HTTP 클라이언트입니다. .json()으로 응답을 JSON 객체로 변환합니다.' },
+          { difficulty: 'medium', description: 'POST 요청으로 데이터를 보내보세요', code: "const res = await fetch('/health', {\n  {{BLANK:HTTP 메서드 지정}}: 'POST',\n  headers: { '{{BLANK:컨텐츠 타입 헤더}}': 'application/json' },\n  body: JSON.stringify({ test: true })\n})\nconsole.log(res.status)", answers: ['method', 'Content-Type'], explanation: "method 속성으로 HTTP 메서드를 지정하고, Content-Type 헤더로 본문 형식을 알려줍니다." },
+          { difficulty: 'hard', description: '에러 핸들링을 추가해보세요', code: "{{BLANK:에러 처리 시작}} {\n  const res = await fetch('/health')\n  if (!res.{{BLANK:응답 성공 여부}}) throw new Error('실패')\n  console.log('성공:', await res.json())\n} {{BLANK:에러 처리 끝}} (e) {\n  console.log('에러:', e.message)\n}", answers: ['try', 'ok', 'catch'], explanation: "try/catch로 네트워크 에러를 잡고, res.ok로 HTTP 상태를 확인합니다." },
         ],
       }),
     },
@@ -293,12 +296,13 @@ const auth = useAuthStore()
 ## 실전: TaskFlow의 auth 스토어
 우리 프로젝트의 \`stores/auth.ts\`를 열어보세요!`,
       challenge: JSON.stringify({
-        type: 'quiz',
-        title: 'Pinia 상태관리 퀴즈',
-        questions: [
-          { q: 'Pinia에서 스토어를 정의할 때 사용하는 함수는?', options: ['createStore()', 'defineStore()', 'useStore()', 'newStore()'], answer: 1 },
-          { q: 'Pinia의 getter에 해당하는 Vue Composition API는?', options: ['ref', 'reactive', 'computed', 'watch'], answer: 2 },
-          { q: 'Prop Drilling이란?', options: ['props를 깊이 전달하는 문제', 'prop 타입 검증', 'prop 기본값 설정', 'prop 이벤트 발생'], answer: 0 },
+        type: 'code',
+        title: '상태관리 실습',
+        runnable: true,
+        exercises: [
+          { difficulty: 'easy', description: '간단한 상태 객체를 만들고 값을 변경해보세요', code: "const state = { count: 0, name: '홍길동' }\nstate.{{BLANK:카운트 속성}} = 10\nconsole.log(state.count)\nconsole.log(state.{{BLANK:이름 속성}})", answers: ['count', 'name'], explanation: "객체의 속성에 직접 접근하여 값을 읽고 쓸 수 있습니다. 이것이 상태관리의 기본입니다." },
+          { difficulty: 'medium', description: '옵저버 패턴으로 상태 변경을 감지해보세요', code: "const listeners = []\nfunction subscribe(fn) { listeners.{{BLANK:배열에 추가하는 메서드}}(fn) }\nfunction notify(val) { listeners.forEach(fn => fn(val)) }\n\nsubscribe(v => console.log('변경됨:', v))\n{{BLANK:구독자에게 알리는 함수}}('새로운 값')", answers: ['push', 'notify'], explanation: "subscribe로 리스너를 등록하고, notify로 모든 리스너에게 변경을 알립니다. Pinia도 내부적으로 이 패턴을 씁니다." },
+          { difficulty: 'hard', description: '스토어 패턴을 직접 구현해보세요', code: "function createStore(initial) {\n  let state = { ...initial }\n  const getState = () => ({ ...state })\n  const {{BLANK:상태 변경 함수}}= (key, val) => { state[key] = val }\n  return { getState, {{BLANK:위에서 정의한 함수}} }\n}\nconst store = createStore({ user: null, token: '' })\nstore.setState('user', '이찬용')\nconsole.log(store.getState())", answers: ['setState', 'setState'], explanation: "getState로 현재 상태를 읽고, setState로 변경합니다. 이것이 Pinia defineStore의 핵심 구조입니다." },
         ],
       }),
     },
@@ -374,12 +378,13 @@ async function addTodo() {
 2. 완료 토글 추가 (PATCH 요청)
 3. 에러 처리 추가 (try/catch)`,
       challenge: JSON.stringify({
-        type: 'quiz',
-        title: 'CRUD 흐름 퀴즈',
-        questions: [
-          { q: 'CRUD에서 U는 무엇을 의미하나?', options: ['Upload', 'Update', 'User', 'Undo'], answer: 1 },
-          { q: 'REST API에서 데이터 삭제에 사용하는 메서드는?', options: ['POST', 'PUT', 'PATCH', 'DELETE'], answer: 3 },
-          { q: 'Prisma에서 하나의 레코드를 생성하는 메서드는?', options: ['create()', 'insert()', 'add()', 'save()'], answer: 0 },
+        type: 'code',
+        title: 'CRUD 실습',
+        runnable: true,
+        exercises: [
+          { difficulty: 'easy', description: 'GET 요청으로 헬스체크를 조회해보세요', code: "const res = await {{BLANK:요청 함수}}('/health')\nconst data = await res.json()\nconsole.log('상태:', data.{{BLANK:상태 속성}})", answers: ['fetch', 'status'], explanation: "fetch()로 GET 요청을 보내고, 응답 JSON의 status 필드를 읽습니다." },
+          { difficulty: 'medium', description: 'POST 요청으로 새 데이터를 만들어보세요', code: "const body = { title: '새 할일' }\nconst res = await fetch('/health', {\n  method: '{{BLANK:생성 메서드}}',\n  headers: { 'Content-Type': '{{BLANK:JSON 미디어타입}}' },\n  body: JSON.stringify(body)\n})\nconsole.log('응답 코드:', res.status)", answers: ['POST', 'application/json'], explanation: "POST 메서드로 새 리소스를 생성합니다. Content-Type을 application/json으로 지정해야 서버가 JSON을 파싱합니다." },
+          { difficulty: 'hard', description: '완전한 CRUD 흐름을 작성해보세요', code: "// 조회\nconst list = await (await fetch('/health')).json()\nconsole.log('조회:', list)\n\n// 생성\nconst created = await fetch('/health', {\n  method: '{{BLANK:생성}}',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ title: 'test' })\n})\nconsole.log('생성:', created.{{BLANK:상태코드 속성}})\n\n// 삭제\nconst deleted = await fetch('/health', { method: '{{BLANK:삭제}}' })\nconsole.log('삭제:', deleted.status)", answers: ['POST', 'status', 'DELETE'], explanation: "CRUD: Create(POST), Read(GET), Update(PUT/PATCH), Delete(DELETE). status 속성으로 응답 코드를 확인합니다." },
         ],
       }),
     },
@@ -447,12 +452,13 @@ const emit = defineEmits<{
 ## 실전: ispark-ui의 UiDrawer 분석
 우리 디자인 시스템의 UiDrawer가 slot을 어떻게 쓰는지 확인해보세요!`,
       challenge: JSON.stringify({
-        type: 'quiz',
-        title: '컴포넌트 패턴 퀴즈',
-        questions: [
-          { q: '자식 컴포넌트에서 부모에게 이벤트를 보내려면?', options: ['props', 'emit', 'provide', 'ref'], answer: 1 },
-          { q: '컴포넌트 내부에 자유로운 콘텐츠를 넣으려면?', options: ['props', 'emit', 'slot', 'ref'], answer: 2 },
-          { q: 'defineProps에서 타입을 지정하는 방식은?', options: ['defineProps([])', 'defineProps<{}>()', 'defineProps(function)', 'defineProps(class)'], answer: 1 },
+        type: 'code',
+        title: '컴포넌트 설계 실습',
+        runnable: false,
+        exercises: [
+          { difficulty: 'easy', description: 'Props 타입을 정의해보세요', code: "defineProps<{\n  name: {{BLANK:문자열 타입}}\n  age: {{BLANK:숫자 타입}}\n  active?: boolean\n}>()", answers: ['string', 'number'], explanation: "defineProps의 제네릭으로 타입을 정의합니다. ?는 선택적 속성입니다." },
+          { difficulty: 'medium', description: 'Emit 타입을 정의하고 이벤트를 발생시켜보세요', code: "const emit = {{BLANK:이벤트 정의 매크로}}<{\n  save: [data: { name: string }]\n  {{BLANK:삭제 이벤트}}: [id: number]\n}>()\n\n// 사용\nemit('save', { name: '이찬용' })\nemit('delete', 123)", answers: ['defineEmits', 'delete'], explanation: "defineEmits로 이벤트 타입을 정의하고, emit()으로 부모에게 이벤트를 보냅니다." },
+          { difficulty: 'hard', description: 'Slot을 사용한 Card 컴포넌트를 완성해보세요', code: "<template>\n  <div class=\"card\">\n    <div class=\"card__header\">\n      <{{BLANK:이름있는 슬롯}} name=\"header\" />\n    </div>\n    <div class=\"card__body\">\n      <{{BLANK:기본 슬롯}} />\n    </div>\n  </div>\n</template>", answers: ['slot', 'slot'], explanation: "<slot>으로 부모가 자유롭게 콘텐츠를 주입할 수 있습니다. name 속성으로 이름있는 슬롯을 만듭니다." },
         ],
       }),
     },
@@ -514,13 +520,13 @@ defineEmits<{
 ## 실전: TaskFlow의 타입 정의
 \`types/stock.ts\`를 열어서 타입 구조를 확인해보세요!`,
       challenge: JSON.stringify({
-        type: 'quiz',
-        title: 'TypeScript 퀴즈',
-        questions: [
-          { q: '여러 값 중 하나만 허용하는 타입은?', options: ['generic', 'union', 'intersection', 'enum'], answer: 1 },
-          { q: 'interface와 type의 공통점은?', options: ['객체 구조 정의', '함수 실행', '변수 선언', 'DOM 조작'], answer: 0 },
-          { q: 'ref<Todo[]>()에서 <>안의 역할은?', options: ['기본값 지정', '제네릭 타입 지정', '이벤트 바인딩', '스타일 지정'], answer: 1 },
-          { q: '선택적 속성을 표현하는 기호는?', options: ['!', '&', '?', '*'], answer: 2 },
+        type: 'code',
+        title: 'TypeScript 실습',
+        runnable: false,
+        exercises: [
+          { difficulty: 'easy', description: '변수의 타입을 지정해보세요', code: "const name: {{BLANK:문자열 타입}} = '이찬용'\nconst age: {{BLANK:숫자 타입}} = 30\nconst active: {{BLANK:참/거짓 타입}} = true", answers: ['string', 'number', 'boolean'], explanation: "TypeScript의 3가지 기본 타입: string, number, boolean. 타입을 지정하면 잘못된 값을 할당할 때 컴파일 에러가 납니다." },
+          { difficulty: 'medium', description: 'Interface를 정의해보세요', code: "{{BLANK:인터페이스 키워드}} User {\n  id: number\n  name: string\n  email: string\n  role: 'admin' | '{{BLANK:일반 멤버}}'\n}", answers: ['interface', 'member'], explanation: "interface로 객체의 구조를 정의합니다. | (파이프)로 union 타입을 만들어 허용값을 제한합니다." },
+          { difficulty: 'hard', description: 'Vue에서 TypeScript를 사용해보세요', code: "const todos = ref<{{BLANK:Todo 배열 타입}}>([])\n\ndefineProps<{\n  items: Todo[]\n  loading: {{BLANK:참/거짓 타입}}\n}>()\n\ndefineEmits<{\n  save: [data: {{BLANK:Todo 타입}}]\n  delete: [id: number]\n}>()", answers: ['Todo[]', 'boolean', 'Todo'], explanation: "ref<T>()로 반응형 데이터에 타입을 지정하고, defineProps/defineEmits에서 제네릭으로 타입을 정의합니다." },
         ],
       }),
     },
@@ -581,12 +587,13 @@ JWT_SECRET=my-secret-key
 1. GitHub Actions에서 lint 자동 실행 추가해보기
 2. PR 올릴 때만 테스트 돌리는 워크플로우 만들기`,
       challenge: JSON.stringify({
-        type: 'quiz',
-        title: '배포/CI 퀴즈',
-        questions: [
-          { q: 'CI/CD에서 CI는 무엇의 약자?', options: ['Continuous Integration', 'Code Inspection', 'Cloud Infrastructure', 'Commit Injection'], answer: 0 },
-          { q: '.env 파일을 git에 올리면 안 되는 이유는?', options: ['파일이 너무 커서', '비밀 정보 노출', '빌드 속도 저하', '문법 에러 발생'], answer: 1 },
-          { q: 'GitHub Actions가 트리거되는 시점은?', options: ['파일 저장 시', 'git push 시', '브라우저 새로고침 시', '서버 재시작 시'], answer: 1 },
+        type: 'code',
+        title: '배포/CI 실습',
+        runnable: false,
+        exercises: [
+          { difficulty: 'easy', description: 'GitHub Actions 워크플로우의 기본 구조를 완성해보세요', code: "name: Deploy\n\non:\n  {{BLANK:트리거 이벤트}}:\n    branches: [main]\n\njobs:\n  build:\n    {{BLANK:실행 환경}}: ubuntu-latest", answers: ['push', 'runs-on'], explanation: "on.push로 git push 이벤트에 반응하고, runs-on으로 실행 환경(ubuntu, windows 등)을 지정합니다." },
+          { difficulty: 'medium', description: '빌드 스텝을 추가해보세요', code: "steps:\n  - uses: actions/{{BLANK:코드 가져오기}}@v4\n  - uses: actions/setup-node@v4\n    with:\n      node-version: 20\n  - run: npm {{BLANK:의존성 설치 (clean)}}\n  - run: npm run build", answers: ['checkout', 'ci'], explanation: "checkout으로 코드를 가져오고, npm ci로 lock 파일 기반 깨끗한 설치를 합니다 (npm install보다 빠르고 안정적)." },
+          { difficulty: 'hard', description: '환경변수와 시크릿을 사용해보세요', code: "steps:\n  - run: npm run build\n    {{BLANK:환경변수 키워드}}:\n      DATABASE_URL: ${{ {{BLANK:시크릿 접근 객체}}.DATABASE_URL }}\n      NODE_ENV: production", answers: ['env', 'secrets'], explanation: "env 키워드로 환경변수를 주입하고, secrets 객체로 GitHub Secrets에 저장된 민감한 값에 접근합니다." },
         ],
       }),
     },
@@ -594,6 +601,28 @@ JWT_SECRET=my-secret-key
 
   for (const level of skillLevels) {
     await prisma.skillLevel.create({ data: level })
+  }
+
+  // ── AI Tools 시드 데이터 ──
+  const aiTools = [
+    { title: 'Superpowers 개요', description: 'Claude Code 플러그인 — 체계적 개발 워크플로우 스킬 모음', icon: '⚡', tags: ['superpowers', '개요'], content: '## Superpowers란?\n\nClaude Code용 **스킬 플러그인**으로, 체계적인 개발 워크플로우를 강제한다.\n브레인스토밍 → 계획 → 실행 → 검증까지 일관된 프로세스.\n\n## 설치\n\n```bash\n# Superpowers 본체\n/plugin install superpowers@claude-plugins-official\n\n# 또는 제작자 마켓플레이스\n/plugin marketplace add obra/superpowers-marketplace\n/plugin install superpowers@superpowers-marketplace\n\n# 브라우저 제어 (별도 플러그인)\n/plugin install superpowers-chrome@superpowers-marketplace\n```\n\n## 핵심 워크플로우\n\n```\nbrainstorm → write-plan → execute-plan → GrillMe/Improve → 머지\n```\n\n1. **brainstorm**으로 설계\n2. **execute-plan**으로 분할 구현\n3. **GrillMe + Improve Architecture**로 점검\n4. (선택) Codex 교차 리뷰 후 머지\n\n## 주의사항\n\n- brainstorm은 **모든 작업 전에** 실행해야 함 (단순한 것도)\n- 디자인 승인 전 코드 작성 금지\n- superpowers-chrome과 gstack의 browse는 **완전 별개**' },
+    { title: 'brainstorming', description: '연한 아이디어 → 명확한 스펙으로 발전시키는 협업 설계 스킬', icon: '💡', tags: ['superpowers', '계획'], content: '## 개요\n\n아이디어를 구체적인 설계 스펙으로 발전시킨다.\n한 번에 하나씩 질문하며 요구사항을 구체화한 후, 2-3가지 접근법을 제안하고 승인된 디자인을 스펙 문서로 저장.\n\n## 사용법\n\n```\n/superpowers:brainstorming [아이디어 설명]\n```\n\n## 프로세스\n\n1. **프로젝트 컨텍스트 파악** — 파일, 문서, 커밋 확인\n2. **명확화 질문** — 한 번에 하나씩, 가급적 객관식\n3. **2-3가지 접근법 제안** — 트레이드오프 + 추천안\n4. **디자인 섹션별 제시** — 승인 후 다음 섹션\n5. **스펙 문서 저장** — `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`\n6. **writing-plans로 전환** — 구현 계획 작성\n\n## 핵심 원칙\n\n- **한 번에 하나의 질문** — 여러 질문 금지\n- **객관식 선호** — 선택지 제공\n- **YAGNI** — 불필요한 기능 제거\n- **디자인 승인 전 코드 작성 절대 금지**' },
+    { title: 'writing-plans', description: '스펙 → 바이트 사이즈 태스크로 구성된 구현 계획서 작성', icon: '📋', tags: ['superpowers', '계획'], content: '## 개요\n\nbrainstorming에서 승인된 스펙을 바탕으로 구현 계획서를 작성한다.\n각 태스크는 2-5분 단위의 바이트 사이즈 스텝으로 구성.\n\n## 사용법\n\n```\n/superpowers:writing-plans [스펙 파일 경로]\n```\n\n## 핵심 원칙\n\n- **정확한 파일 경로** — 항상 명시\n- **완전한 코드** — 모든 스텝에 코드 블록 포함\n- **No Placeholders** — TBD, TODO 금지\n- **DRY, YAGNI, TDD** — 반복하지 않고, 불필요한 건 빼고, 테스트 먼저\n- **잦은 커밋** — 태스크마다 커밋\n\n## 저장 위치\n\n`docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`' },
+    { title: 'executing-plans', description: '계획서를 태스크별로 분할 실행 + 리뷰 체크포인트', icon: '🚀', tags: ['superpowers', '실행'], content: '## 개요\n\nwriting-plans에서 작성된 구현 계획을 태스크별로 순차 실행한다.\n각 태스크 완료 시 검증하고, 블로커 발생 시 즉시 멈추고 질문.\n\n## 사용법\n\n```\n/superpowers:executing-plans [계획 파일 경로]\n```\n\n## 실행 옵션\n\n| 방식 | 설명 |\n|------|------|\n| **Subagent-Driven (추천)** | 태스크별 독립 에이전트, 중간 리뷰 |\n| **Inline Execution** | 현재 세션에서 순차 실행 |\n\n## 블로커 대응\n\n- 의존성 누락 → **즉시 멈추고 질문**\n- 테스트 실패 → **즉시 멈추고 질문**\n- 명령 불명확 → **추측하지 말고 질문**' },
+    { title: 'superpowers-chrome', description: '별도 플러그인 — 실제 크롬 브라우저를 띄워서 화면 보기/클릭/입력/테스트', icon: '🌐', tags: ['superpowers', '브라우저', '테스트'], content: '## 개요\n\nsuperpowers-chrome은 **별도 플러그인**으로, 실제 Chrome 브라우저를 띄워서 화면을 보고 클릭·입력·테스트한다.\n\n> **gstack의 browse와 완전 별개!** gstack은 헤드리스, superpowers-chrome은 실제 브라우저 창.\n\n## 설치\n\n```bash\n/plugin marketplace add obra/superpowers-marketplace\n/plugin install superpowers-chrome@superpowers-marketplace\n```\n\n## vs gstack browse\n\n| 항목 | superpowers-chrome | gstack browse |\n|------|-------------------|---------------|\n| 브라우저 | 실제 Chrome 창 | 헤드리스 |\n| 시각 확인 | 직접 눈으로 확인 | 스크린샷 기반 |\n| 용도 | 인터랙티브 QA | 자동화 테스트 |\n| 설치 | 별도 플러그인 | gstack 내장 |' },
+    { title: '핵심 워크플로우', description: 'brainstorm → plan → execute → 검증 → 머지 전체 흐름 정리', icon: '🔄', tags: ['superpowers', '워크플로우'], content: '## 전체 흐름\n\n```\n아이디어\n  ↓\n/brainstorming        ← 연한 아이디어 → 명확한 스펙\n  ↓\n/writing-plans        ← 스펙 → 바이트사이즈 구현 계획서\n  ↓\n/executing-plans      ← 계획을 분할 실행 + 리뷰\n  ↓\nGrillMe / Improve     ← 품질 점검\n  ↓\n(선택) Codex 교차 리뷰\n  ↓\n머지\n```\n\n## 한 줄 요약\n\n> brainstorm으로 설계 → execute-plan으로 분할 구현 → GrillMe + Improve로 점검 → (선택) Codex 교차 리뷰 후 머지' },
+    { title: 'gstack browse', description: '헤드리스 브라우저 — 스크린샷 기반 QA 테스트 & 사이트 점검', icon: '🔍', tags: ['gstack', '브라우저', '테스트'], content: '## 개요\n\ngstack의 내장 헤드리스 브라우저. 페이지 이동, 클릭, 입력, 스크린샷, 반응형 테스트 등을 CLI로 수행.\n\n## 사용법\n\n```\n/browse [URL] [지시사항]\n```\n\n## 주요 명령어\n\n| 명령어 | 설명 |\n|--------|------|\n| `goto <url>` | 페이지 이동 |\n| `snapshot -i` | 인터랙티브 요소 목록 |\n| `snapshot -D` | 이전 스냅샷과 diff |\n| `click @e3` | 요소 클릭 |\n| `fill @e4 "값"` | 입력 필드 채우기 |\n| `screenshot <path>` | 스크린샷 저장 |\n| `responsive <prefix>` | 반응형 스크린샷 |' },
+    { title: '/qa', description: 'QA 테스트 + 발견된 버그 자동 수정까지', icon: '🐛', tags: ['gstack', '테스트'], content: '## 개요\n\n웹 앱을 체계적으로 QA 테스트하고, 발견된 버그를 소스 코드에서 **자동으로 수정**한다.\n\n## 사용법\n\n```\n/qa [URL]\n```\n\n## /qa vs /qa-only\n\n| 항목 | /qa | /qa-only |\n|------|-----|----------|\n| 버그 발견 | O | O |\n| 자동 수정 | O | X |\n| 커밋 생성 | O | X |\n| 용도 | 빠른 수정 | 리포트만 |' },
+    { title: '/ship', description: 'PR 생성 → CI 확인 → 배포까지 한 번에', icon: '🚢', tags: ['gstack', '배포'], content: '## 개요\n\n코드 변경사항을 PR로 만들고, CI를 확인하고, 배포까지 처리하는 원스톱 스킬.\n\n## 사용법\n\n```\n/ship\n```\n\n## 프로세스\n\n1. 베이스 브랜치 감지 + 머지\n2. 테스트 실행\n3. diff 리뷰\n4. VERSION bump + CHANGELOG\n5. 커밋 + 푸시\n6. PR 생성' },
+    { title: '/investigate', description: '체계적 디버깅 — 근본 원인 분석 4단계', icon: '🔬', tags: ['gstack', '디버깅'], content: '## 개요\n\n버그나 에러 발생 시 체계적으로 근본 원인을 찾는 4단계 디버깅 프로세스.\n**Iron Law: 근본 원인 없이 수정 금지.**\n\n## 사용법\n\n```\n/investigate [에러 설명]\n```\n\n## 4단계\n\n1. **Investigate** — 에러 수집, 재현 조건\n2. **Analyze** — 코드 탐색, 데이터 흐름 추적\n3. **Hypothesize** — 원인 2-3개 도출\n4. **Implement** — 확인된 원인만 수정' },
+    { title: 'gstack 개요', description: 'Claude Code용 스킬 프레임워크 — QA, 배포, 디버깅, 코드리뷰 등', icon: '🛠️', tags: ['gstack', '개요'], content: '## gstack이란?\n\nClaude Code용 **스킬 프레임워크**. browse(헤드리스 브라우저)를 핵심으로 QA 테스트, 배포, 디버깅, 코드 리뷰 등 개발 워크플로우를 자동화.\n\n## 주요 스킬\n\n| 카테고리 | 스킬 | 설명 |\n|----------|------|------|\n| 테스트 | /qa | QA + 자동 수정 |\n| 테스트 | /browse | 헤드리스 브라우저 |\n| 배포 | /ship | PR → 배포 |\n| 디버깅 | /investigate | 근본 원인 분석 |\n| 리뷰 | /review | PR 코드 리뷰 |\n| 디자인 | /design-review | 시각 QA |\n| 품질 | /health | 코드 품질 대시보드 |' },
+    { title: 'Codex 교차 리뷰', description: 'OpenAI Codex CLI — 독립 코드 리뷰, 챌린지 모드, 컨설팅', icon: '🤖', tags: ['codex', '리뷰'], content: '## 개요\n\nOpenAI Codex CLI를 활용한 **교차 리뷰** 도구.\n\n## 설치\n\n```bash\nnpm install -g @openai/codex\nexport OPENAI_API_KEY=sk-...\n```\n\n## 3가지 모드\n\n### 1. Code Review\n```\n/codex review\n```\nClaude와 독립적인 시각으로 diff 분석, pass/fail 판정.\n\n### 2. Challenge\n```\n/codex challenge\n```\n코드를 깨뜨릴 수 있는 시나리오를 찾는 적대적 모드.\n\n### 3. Consult\n```\n/codex consult "질문"\n```\n자유 질문, 세션 유지로 후속 질문 가능.\n\n## 왜 교차 리뷰?\n\n| 항목 | Claude 셀프 리뷰 | Codex 교차 리뷰 |\n|------|-----------------|----------------|\n| 관점 | 작성자 = 리뷰어 | 독립된 모델 |\n| 강점 | 컨텍스트 풍부 | 다른 패턴 인식 |\n| 용도 | 기본 리뷰 | 크리티컬 코드 |' },
+  ]
+
+  for (const tool of aiTools) {
+    await prisma.aiTool.create({
+      data: { ...tool, authorId: chanyong.id },
+    })
   }
 
   console.log('시드 완료!')

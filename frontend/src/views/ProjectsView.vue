@@ -23,8 +23,8 @@ const mainTabs: TabItem[] = [
   { label: 'AI Tools', value: 'ai-tools' },
   { label: '프로젝트', value: 'projects' },
   { label: '개인할일', value: 'todos' },
-  { label: '주식', value: 'stock' },
   { label: '역량확장', value: 'skill-up' },
+  { label: '주식', value: 'stock' },
 ]
 
 
