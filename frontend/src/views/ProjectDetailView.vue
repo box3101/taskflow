@@ -94,9 +94,9 @@ const issueColumns: TableColumn[] = [
   { key: 'title', label: '제목', align: 'left', sortable: true, sortType: 'string' },
   { key: 'status', label: '상태', width: '90px', align: 'center', sortable: true },
   { key: 'priority', label: '우선순위', width: '100px', align: 'center', sortable: true },
-  { key: 'requestedAt', label: '요청일', width: '150px', align: 'center', sortable: true, sortType: 'date' },
-  { key: 'dueAt', label: '마감일', width: '150px', align: 'center', sortable: true, sortType: 'date' },
-  { key: 'assignee', label: '담당자', width: '100px', align: 'center' },
+  { key: 'requestedAt', label: '요청일', width: '150px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
+  { key: 'dueAt', label: '마감일', width: '150px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
+  { key: 'assignee', label: '담당자', width: '100px', align: 'center', hideBelow: 768 },
 ]
 
 // 상태/우선순위 드롭다운 메뉴 아이템
@@ -594,7 +594,7 @@ onMounted(async () => {
     </div>
 
     <!-- 이슈 생성 Drawer -->
-    <UiDrawer v-model:open="createDrawerOpen" title="이슈 추가" width="420px" min-width="360px" max-width="600px">
+    <UiDrawer v-model:open="createDrawerOpen" title="이슈 추가" width="420px" max-width="600px">
       <form class="drawer-form" @submit.prevent="onCreateIssue">
         <UiInput v-model="createForm.title" label="제목" placeholder="이슈 제목" />
         <UiSelect v-model="createForm.priority" label="우선순위" :options="priorityOptions" />
@@ -609,7 +609,7 @@ onMounted(async () => {
     </UiDrawer>
 
     <!-- 이슈 상세 Drawer -->
-    <UiDrawer v-model:open="panelOpen" :title="panelIssue?.title || '이슈 상세'" width="480px" min-width="380px" max-width="700px">
+    <UiDrawer v-model:open="panelOpen" :title="panelIssue?.title || '이슈 상세'" width="480px" max-width="700px">
       <div v-if="panelIssue" class="panel-detail">
         <!-- 속성 테이블 -->
         <div class="panel-props">
@@ -1033,10 +1033,8 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .main { padding: 16px 12px; }
-  :deep(.ui-table-wrap) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  :deep(.ui-table) { min-width: 700px; }
   .filter-bar { flex-wrap: wrap; }
 }
 </style>

@@ -248,6 +248,7 @@ defineExpose({ loadTools })
   border-radius: 8px;
   padding: 3px;
   gap: 2px;
+  overflow-x: auto;
 
   &__btn {
     padding: 6px 16px;
@@ -258,6 +259,7 @@ defineExpose({ loadTools })
     color: #6b7280;
     cursor: pointer;
     font-weight: 500;
+    white-space: nowrap;
     transition: all 0.15s;
 
     &.active {
@@ -282,6 +284,7 @@ defineExpose({ loadTools })
   font-size: 13px;
   color: #6b7280;
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.15s;
 
   &:hover {
