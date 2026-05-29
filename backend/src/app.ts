@@ -14,6 +14,7 @@ const app = express()
 
 app.use(cors({ origin: (origin, cb) => cb(null, true) }))
 app.use(express.json())
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
 
 // API 라우터
 app.use('/auth', authRouter)

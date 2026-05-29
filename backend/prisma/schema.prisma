@@ -81,15 +81,31 @@ model Todo {
   userId    Int      @map("user_id")
   title     String   @db.VarChar(500)
   done      Boolean  @default(false)
-  priority  String   @default("none") // high | mid | low | none
+  dueDate   DateTime? @map("due_date")
   memo      String?  @db.Text
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files TodoFile[]
 
   @@map("todos")
+}
+
+// 할일 첨부파일
+model TodoFile {
+  id        Int      @id @default(autoincrement())
+  todoId    Int      @map("todo_id")
+  filename  String   @db.VarChar(255)
+  path      String   @db.VarChar(500)
+  mimetype  String   @db.VarChar(100)
+  size      Int
+  createdAt DateTime @default(now()) @map("created_at")
+
+  todo Todo @relation(fields: [todoId], references: [id], onDelete: Cascade)
+
+  @@map("todo_files")
 }
 
 // AI 도구 가이드
