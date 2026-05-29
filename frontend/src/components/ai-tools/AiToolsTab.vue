@@ -49,7 +49,7 @@
             v-model="searchQuery"
             placeholder="검색..."
             size="sm"
-            style="width: 200px"
+            class="ai-tools-tab__search"
           />
           <UiButton size="sm" @click="openCreate">+ 새 도구</UiButton>
         </div>
@@ -219,12 +219,22 @@ defineExpose({ loadTools })
     display: flex;
     flex-direction: column;
     gap: 12px;
+    min-width: 0;
+    flex: 1;
   }
 
   &__actions {
     display: flex;
     gap: 8px;
     align-items: center;
+
+    @media (max-width: 640px) {
+      width: 100%;
+
+      .ui-input {
+        flex: 1;
+      }
+    }
   }
 
   &__grid {
@@ -249,6 +259,11 @@ defineExpose({ loadTools })
   padding: 3px;
   gap: 2px;
   overflow-x: auto;
+  max-width: 100%;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
 
   &__btn {
     padding: 6px 16px;
@@ -274,6 +289,14 @@ defineExpose({ loadTools })
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.ai-tools-tab__search {
+  width: 200px;
+
+  @media (max-width: 640px) {
+    width: 100%;
+  }
 }
 
 .filter-chip {
