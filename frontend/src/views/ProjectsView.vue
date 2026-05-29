@@ -11,7 +11,6 @@ import { useAuthStore } from '../stores/auth'
 import api from '../api/client'
 import StockDashboard from '../components/stock/StockDashboard.vue'
 import AiToolsTab from '../components/ai-tools/AiToolsTab.vue'
-import SkillUpTab from '../components/skill-up/SkillUpTab.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -23,7 +22,6 @@ const mainTabs: TabItem[] = [
   { label: 'AI Tools', value: 'ai-tools' },
   { label: '프로젝트', value: 'projects' },
   { label: '개인할일', value: 'todos' },
-  { label: '역량확장', value: 'skill-up', disabled: true },
   { label: '주식', value: 'stock' },
 ]
 
@@ -469,10 +467,6 @@ function handleKeydown(e: KeyboardEvent) {
         <StockDashboard />
       </div>
 
-      <!-- 역량확장 탭 -->
-      <div v-if="activeTab === 'skill-up'" class="tab-content">
-        <SkillUpTab />
-      </div>
 
       <!-- 개인할일 탭 -->
       <div v-if="activeTab === 'todos'" class="tab-content">

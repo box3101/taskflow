@@ -4,6 +4,7 @@ import { UiDrawer, UiButton, UiBadge, openToast } from '@leechanyong/ispark-ui'
 import { marked } from 'marked'
 import api from '../../api/client'
 import type { SkillLevel } from './SkillCard.vue'
+import CodePlayground from './CodePlayground.vue'
 
 const props = defineProps<{
   open: boolean
@@ -16,14 +17,31 @@ const emit = defineEmits<{
   updated: []
 }>()
 
+// 챌린지 타입
+type QuizChallenge = {
+  type: 'quiz'
+  title: string
+  questions: { q: string; options: string[]; answer: number }[]
+}
+type CodeChallenge = {
+  type: 'code'
+  title: string
+  runnable: boolean
+  exercises: {
+    difficulty: 'easy' | 'medium' | 'hard'
+    description: string
+    code: string
+    answers: string[]
+    alternateAnswers?: string[][]
+    explanation: string
+  }[]
+}
+type Challenge = QuizChallenge | CodeChallenge
+
 // 상세 데이터
 const detail = ref<{
   content: string
-  challenge: {
-    type: string
-    title: string
-    questions: { q: string; options: string[]; answer: number }[]
-  } | null
+  challenge: Challenge | null
   myProgress: { status: string; score: number | null; note: string | null } | null
 } | null>(null)
 
@@ -93,6 +111,17 @@ async function submitQuiz() {
   }
 }
 
+// 코드 챌린지 점수 처리
+async function onCodeComplete(score: number) {
+  if (!props.level) return
+  const status = score >= 60 ? 'completed' : 'in_progress'
+  await api.patch(`/skill-up/progress/${props.level.id}`, { status, score })
+  emit('updated')
+  if (score >= 60) {
+    openToast({ message: `🎉 ${score}점! 레벨 클리어!`, type: 'success' })
+  }
+}
+
 async function markComplete() {
   if (!props.level) return
   await api.patch(`/skill-up/progress/${props.level.id}`, { status: 'completed' })
@@ -123,12 +152,22 @@ function renderMarkdown(md: string) {
       <!-- 학습 내용 -->
       <div class="skill-detail__content" v-html="renderMarkdown(detail.content)" />
 
+      <!-- 코드 챌린지 -->
+      <div v-if="detail.challenge?.type === 'code'" class="skill-quiz">
+        <h3 class="skill-quiz__title">🎮 {{ detail.challenge.title }}</h3>
+        <CodePlayground
+          :exercises="(detail.challenge as CodeChallenge).exercises"
+          :runnable="(detail.challenge as CodeChallenge).runnable"
+          @complete="onCodeComplete"
+        />
+      </div>
+
       <!-- 퀴즈 챌린지 -->
-      <div v-if="detail.challenge" class="skill-quiz">
+      <div v-else-if="detail.challenge?.type === 'quiz'" class="skill-quiz">
         <h3 class="skill-quiz__title">🎮 {{ detail.challenge.title }}</h3>
 
         <div
-          v-for="(q, qi) in detail.challenge.questions"
+          v-for="(q, qi) in (detail.challenge as QuizChallenge).questions"
           :key="qi"
           class="quiz-question"
         >
@@ -153,7 +192,7 @@ function renderMarkdown(md: string) {
             v-if="!quizSubmitted"
             variant="primary"
             size="sm"
-            :disabled="Object.keys(quizAnswers).length < detail.challenge.questions.length"
+            :disabled="Object.keys(quizAnswers).length < (detail.challenge as QuizChallenge).questions.length"
             @click="submitQuiz"
           >제출하기</UiButton>
 
@@ -171,7 +210,7 @@ function renderMarkdown(md: string) {
         </div>
       </div>
 
-      <!-- 퀴즈 없는 레벨: 수동 완료 -->
+      <!-- 챌린지 없는 레벨: 수동 완료 -->
       <div v-if="!detail.challenge && level?.status !== 'completed'" class="manual-complete">
         <UiButton variant="primary" @click="markComplete">✅ 학습 완료</UiButton>
       </div>
