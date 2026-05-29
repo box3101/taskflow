@@ -163,8 +163,8 @@ function getDday(dueDate: string | null): { label: string; variant: 'danger' | '
   const diff = Math.round((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
   if (diff < 0) return { label: `D+${Math.abs(diff)}`, variant: 'danger' }
   if (diff === 0) return { label: 'D-day', variant: 'warning' }
-  if (diff <= 3) return { label: `D-${diff}`, variant: diff <= 1 ? 'warning' : 'default' }
-  return null
+  if (diff === 1) return { label: 'D-1', variant: 'warning' }
+  return { label: `D-${diff}`, variant: 'default' }
 }
 
 // 마감일 표시 포맷 (6/15(일))
@@ -688,10 +688,6 @@ function onUserMenuSelect(value: string) {
                   <UiBadge v-if="todo.memo" variant="info" size="xs">메모</UiBadge>
                   <UiBadge v-if="todo.files && todo.files.length > 0" variant="default" size="xs">파일 {{ todo.files.length }}</UiBadge>
                 </div>
-                <span v-if="formatDueDate(todo.dueDate)" class="todo-card__date" :class="{
-                  'todo-card__date--danger': getDday(todo.dueDate)?.variant === 'danger',
-                  'todo-card__date--warning': getDday(todo.dueDate)?.variant === 'warning',
-                }">{{ formatDueDate(todo.dueDate) }}</span>
               </div>
             </div>
           </div>
