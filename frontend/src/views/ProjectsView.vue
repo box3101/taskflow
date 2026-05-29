@@ -32,8 +32,8 @@ const projects = ref<any[]>([])
 const projectColumns: TableColumn[] = [
   { key: 'name', label: '프로젝트명', align: 'left' },
   { key: 'status', label: '상태', width: '100px' },
-  { key: '_count.members', label: '멤버', width: '80px', align: 'center' },
-  { key: '_count.issues', label: '이슈', width: '80px', align: 'center' },
+  { key: '_count.members', label: '멤버', width: '80px', align: 'center', hideBelow: 640 },
+  { key: '_count.issues', label: '이슈', width: '80px', align: 'center', hideBelow: 640 },
   { key: 'actions', label: '', width: '48px', align: 'center' },
 ]
 
@@ -394,7 +394,7 @@ function handleKeydown(e: KeyboardEvent) {
     <header class="header">
       <img src="/logo.svg" alt="CYLEE" class="header-logo" />
       <div class="header-right">
-        <UiButton as="a" href="https://box3101.github.io/ispark-ui/" target="_blank" size="sm" variant="outline">📖 Storybook</UiButton>
+        <UiButton class="storybook-link" as="a" href="https://box3101.github.io/ispark-ui/" target="_blank" size="sm" variant="outline">📖 Storybook</UiButton>
         <UiButton v-if="activeTab === 'projects'" variant="primary" size="sm" @click="openCreateProject">+ 프로젝트 추가</UiButton>
         <UiDropdownMenu
           :items="userMenuItems"
@@ -652,11 +652,12 @@ function handleKeydown(e: KeyboardEvent) {
 .main { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
 .tab-content { margin-top: 24px; }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .header { padding: 0 12px; }
+  .header-right { gap: 8px; }
+  .storybook-link { display: none !important; }
   .main { padding: 16px 12px; }
   .tab-content { margin-top: 16px; }
-  :deep(.ui-table-wrap) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  :deep(.ui-table) { min-width: 600px; }
 }
 
 // 프로젝트
