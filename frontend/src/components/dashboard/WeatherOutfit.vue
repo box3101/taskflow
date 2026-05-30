@@ -31,14 +31,15 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
 <style scoped lang="scss">
 .weather-outfit {
   flex-shrink: 0;
-  width: 140px;
-  background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%);
+  width: 180px;
+  background: #fff;
+  border: 1px solid #e6e8ec;
   border-radius: 14px;
-  padding: 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
 .weather-outfit__row1 {
@@ -67,10 +68,10 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
 
 .weather-outfit__row3 {
   font-size: 11px;
-  color: #3b6df0;
-  background: rgba(59, 109, 240, 0.1);
+  color: #475569;
+  background: #f3f4f6;
   border-radius: 20px;
-  padding: 3px 10px;
+  padding: 4px 12px;
   margin-top: 2px;
 }
 
