@@ -20,6 +20,7 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
     <template v-else-if="weather && outfit">
       <div class="weather-outfit__icon">{{ weatherEmoji(weather.icon) }}</div>
       <div class="weather-outfit__temp">{{ weather.temp }}°C</div>
+      <div class="weather-outfit__feeling">{{ weather.feeling }}</div>
       <div class="weather-outfit__desc">{{ weather.description }}</div>
       <div class="weather-outfit__recommend">
         {{ outfit.emoji }} {{ outfit.clothes }}
@@ -52,6 +53,12 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
   font-size: 24px;
   font-weight: 700;
   color: #1a1a1a;
+}
+
+.weather-outfit__feeling {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
 }
 
 .weather-outfit__desc {

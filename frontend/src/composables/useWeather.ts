@@ -5,6 +5,7 @@ interface WeatherData {
   description: string
   icon: string
   city: string
+  feeling: string  // 체감 코멘트
 }
 
 interface OutfitRecommendation {
@@ -20,14 +21,26 @@ function weatherEmoji(icon: string): string {
   return icon
 }
 
-// 기온 구간별 옷차림 매핑
+// 기온 구간별 옷차림 + 체감 코멘트 매핑
 function getOutfit(temp: number): OutfitRecommendation {
-  if (temp >= 28) return { clothes: '민소매, 반팔, 반바지, 원피스', emoji: '👕' }
+  if (temp >= 33) return { clothes: '민소매, 반바지 · 폭염 주의!', emoji: '🥵' }
+  if (temp >= 28) return { clothes: '민소매, 반팔, 반바지, 원피스', emoji: '😎' }
   if (temp >= 23) return { clothes: '반팔, 얇은 셔츠, 면바지', emoji: '👕' }
   if (temp >= 17) return { clothes: '가디건, 얇은 니트, 긴바지', emoji: '🧥' }
   if (temp >= 12) return { clothes: '자켓, 가디건, 스웨터', emoji: '🧥' }
   if (temp >= 5) return { clothes: '코트, 히트텍, 니트', emoji: '🧣' }
-  return { clothes: '패딩, 두꺼운 코트, 목도리, 장갑', emoji: '🧣' }
+  return { clothes: '패딩, 두꺼운 코트, 목도리, 장갑', emoji: '🥶' }
+}
+
+// 기온 체감 한줄 코멘트
+function getTempFeeling(temp: number): string {
+  if (temp >= 33) return '무더워요 🔥'
+  if (temp >= 28) return '더워요'
+  if (temp >= 23) return '따뜻해요'
+  if (temp >= 17) return '선선해요'
+  if (temp >= 12) return '쌀쌀해요'
+  if (temp >= 5) return '추워요'
+  return '매우 추워요 🥶'
 }
 
 // localStorage 캐시
@@ -111,6 +124,7 @@ export function useWeather() {
         description,
         icon: emoji,
         city: 'Seoul',
+        feeling: getTempFeeling(temp),
       }
 
       weather.value = result
