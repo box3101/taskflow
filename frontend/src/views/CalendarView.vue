@@ -300,7 +300,11 @@ onMounted(fetchEvents)
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 16px; flex-wrap: wrap; gap: 12px;
 }
-.calendar-page__nav { display: flex; align-items: center; gap: 8px; }
+.calendar-page__nav {
+  display: flex; align-items: center; gap: 8px;
+  // 터치 타겟 44px 보장
+  :deep(.ui-button) { min-width: 36px; min-height: 36px; }
+}
 .calendar-page__month { font-size: 18px; font-weight: 700; color: #1f2937; min-width: 120px; text-align: center; }
 .calendar-page__actions { display: flex; align-items: center; gap: 12px; }
 .calendar-page__toggles { display: flex; gap: 12px; }
