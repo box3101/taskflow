@@ -173,6 +173,16 @@ onMounted(fetchEvents)
   <div class="calendar-page">
     <UiLoading v-if="loading" overlay />
     <div class="calendar-page__header">
+      <div class="calendar-page__nav">
+        <UiButton variant="outline" size="sm" iconOnly ariaLabel="이전 달" @click="prevMonth">
+          <template #icon-left><UiIcon name="chevron-left" :size="16" /></template>
+        </UiButton>
+        <span class="calendar-page__month">{{ monthLabel }}</span>
+        <UiButton variant="outline" size="sm" iconOnly ariaLabel="다음 달" @click="nextMonth">
+          <template #icon-left><UiIcon name="chevron-right" :size="16" /></template>
+        </UiButton>
+        <UiButton variant="ghost" size="sm" @click="goToday">오늘</UiButton>
+      </div>
       <div class="calendar-page__toggles">
         <label class="calendar-page__toggle-label">
           <span class="calendar-page__toggle-dot" style="background: #ef4444;" />
@@ -184,16 +194,6 @@ onMounted(fetchEvents)
           <UiToggle v-model="showIssue" />
           <span>Issue</span>
         </label>
-      </div>
-      <div class="calendar-page__nav">
-        <UiButton variant="outline" size="sm" iconOnly ariaLabel="이전 달" @click="prevMonth">
-          <template #icon-left><UiIcon name="chevron-left" :size="16" /></template>
-        </UiButton>
-        <span class="calendar-page__month">{{ monthLabel }}</span>
-        <UiButton variant="outline" size="sm" iconOnly ariaLabel="다음 달" @click="nextMonth">
-          <template #icon-left><UiIcon name="chevron-right" :size="16" /></template>
-        </UiButton>
-        <UiButton variant="ghost" size="sm" @click="goToday">오늘</UiButton>
       </div>
     </div>
     <!-- FAB: 일정 추가 -->
@@ -295,10 +295,13 @@ onMounted(fetchEvents)
 // 캘린더 본체
 .calendar-page { max-width: 800px; margin: 0 auto; position: relative; }
 .calendar-page__header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 16px; gap: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 16px; gap: 12px; position: relative;
 }
-.calendar-page__toggles { display: flex; gap: 12px; flex-shrink: 0; }
+.calendar-page__toggles {
+  display: flex; gap: 12px; flex-shrink: 0;
+  position: absolute; right: 0;
+}
 .calendar-page__toggle-label {
   display: flex; align-items: center; gap: 4px; font-size: 12px; color: #6b7280; cursor: pointer;
 }
@@ -324,9 +327,9 @@ onMounted(fetchEvents)
   .bottom-nav { gap: 0; justify-content: space-around; padding: 0; }
   .bottom-nav__item { flex-direction: column; gap: 2px; padding: 6px 12px; font-size: 10px; }
   .main { padding: 16px 12px; }
-  .calendar-page__header { flex-wrap: wrap; gap: 8px; }
-  .calendar-page__toggles { gap: 8px; }
-  .calendar-page__nav { justify-content: center; flex: 1 1 100%; order: -1; }
+  .calendar-page__header { flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .calendar-page__toggles { position: static; gap: 8px; }
+  .calendar-page__nav { justify-content: center; flex: 1 1 100%; }
   .calendar-page__month { font-size: 16px; min-width: 100px; }
   .calendar-page__fab { bottom: 68px; right: 16px; width: 48px; height: 48px; }
 }
