@@ -118,8 +118,6 @@ function statusBadge(status: string) {
 
   &:hover {
     background: #fafbfc;
-    margin: 0 -16px;
-    padding: 10px 16px;
   }
 }
 
