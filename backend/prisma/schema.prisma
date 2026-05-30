@@ -194,3 +194,28 @@ model CalendarEvent {
 
   @@map("calendar_events")
 }
+
+// 주식 뉴스 AI 분류 캐시
+model StockNews {
+  id          Int      @id @default(autoincrement())
+  stockCode   String   @map("stock_code") @db.VarChar(10)
+  stockName   String   @map("stock_name") @db.VarChar(50)
+  title       String   @db.VarChar(300)
+  summary     String   @db.VarChar(50)
+  importance  String   @db.VarChar(10)
+  reason      String   @db.VarChar(200)
+  url         String   @db.VarChar(500)
+  publishedAt DateTime @map("published_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([stockCode, publishedAt])
+  @@map("stock_news")
+}
+
+model StockNewsCacheLog {
+  id        Int      @id @default(autoincrement())
+  stockCode String   @unique @map("stock_code") @db.VarChar(10)
+  fetchedAt DateTime @default(now()) @map("fetched_at")
+
+  @@map("stock_news_cache_log")
+}
