@@ -33,28 +33,28 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
   flex-shrink: 0;
   background: #fff;
   border-radius: 12px;
-  padding: 10px 16px;
+  padding: 8px 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .weather-outfit__icon {
-  font-size: 24px;
+  font-size: 20px;
   line-height: 1;
 }
 
 .weather-outfit__temp {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
   color: #1a1a1a;
 }
 
 .weather-outfit__feeling {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: #374151;
 }
@@ -63,7 +63,7 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
   width: 100%;
   background: #f0f4ff;
   border-radius: 6px;
-  padding: 4px 10px;
+  padding: 3px 8px;
   font-size: 11px;
   color: #3c69db;
   text-align: center;
