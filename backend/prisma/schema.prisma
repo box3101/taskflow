@@ -22,6 +22,7 @@ model User {
   aiTools        AiTool[]
   skillProgresses SkillProgress[]
   dailyMottos    DailyMotto[]
+  calendarEvents CalendarEvent[]
 
   @@map("users")
 }
@@ -173,4 +174,23 @@ model DailyMotto {
 
   @@unique([userId, date])
   @@map("daily_mottos")
+}
+
+// 개인 캘린더 일정
+model CalendarEvent {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  title     String   @db.VarChar(200)
+  date      DateTime @db.Date
+  startTime String?  @map("start_time") @db.VarChar(5)
+  endTime   String?  @map("end_time") @db.VarChar(5)
+  memo      String?  @db.Text
+  location  String?  @db.VarChar(200)
+  color     String   @default("#3b82f6") @db.VarChar(7)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("calendar_events")
 }
