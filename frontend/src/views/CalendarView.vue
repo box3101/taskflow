@@ -340,7 +340,6 @@ onMounted(fetchEvents)
   width: 280px;
   position: sticky;
   top: 80px;
-  z-index: 0;
   max-height: calc(100vh - 140px);
   overflow-y: auto;
   background: #fff;
@@ -356,7 +355,6 @@ onMounted(fetchEvents)
     position: sticky;
     top: 0;
     background: #fff;
-    z-index: 1;
     padding: 16px 0 4px;
     margin-bottom: 6px;
   }

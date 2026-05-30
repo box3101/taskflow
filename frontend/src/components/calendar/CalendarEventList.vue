@@ -77,7 +77,7 @@ function formatTime(ev: CalendarEvent): string {
 .event-list__header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 12px;
-  position: sticky; top: 0; background: #fff; z-index: 1; padding-bottom: 4px;
+  position: sticky; top: 0; background: #fff; padding-bottom: 4px;
 }
 .event-list__header-left {
   display: flex; align-items: center; gap: 8px;
