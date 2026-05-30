@@ -126,12 +126,26 @@ watch(() => props.holdings.length, (len, oldLen) => {
   if (len > 0 && oldLen === 0) loadData()
 })
 
+function getStockName(code: string): string {
+  if (!code) return ''
+  const h = props.holdings.find(h => h.code === code)
+  return h?.name || code
+}
+
 function showImpact(item: any) {
   if (item.impact) {
-    impactData.value = { title: item.title, ...item.impact }
+    impactData.value = { title: item.title, url: item.url, ...item.impact }
     impactModal.value = true
   } else if (item.url) {
-    window.open(item.url, '_blank')
+    // 뉴스도 모달로 열기 (AI 분석 + 원문 링크)
+    impactData.value = {
+      title: item.summary || item.title,
+      url: item.url,
+      grade: item.importance === 'high' ? '상' : item.importance === 'medium' ? '중' : '하',
+      direction: getStockName(item.stockCode) || '관련 뉴스',
+      detail: item.reason,
+    }
+    impactModal.value = true
   }
 }
 
@@ -190,7 +204,7 @@ watch([currentYear, currentMonth], () => {
         <span class="stock-cal__imp" :style="{ background: importanceColor(item.importance) }" />
         <div class="stock-cal__news-body">
           <span class="stock-cal__news-title">{{ item.summary }}</span>
-          <span v-if="item.stockName" class="stock-cal__news-stock">{{ item.stockName }}</span>
+          <span v-if="getStockName(item.stockCode)" class="stock-cal__news-stock">{{ getStockName(item.stockCode) }}</span>
           <span class="stock-cal__news-reason">{{ item.reason }}</span>
         </div>
         <UiIcon v-if="item.impact" name="chevron-right" :size="14" class="stock-cal__arrow" />
@@ -211,6 +225,10 @@ watch([currentYear, currentMonth], () => {
             {{ para }}
           </p>
         </div>
+        <a v-if="impactData.url" :href="impactData.url" target="_blank" class="impact-modal__link">
+          <UiIcon name="external-link" :size="14" />
+          원문 보기
+        </a>
       </div>
     </UiModal>
   </div>
@@ -303,5 +321,11 @@ watch([currentYear, currentMonth], () => {
 .impact-modal__para {
   margin: 0;
   & + & { margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb; }
+}
+.impact-modal__link {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 12px; font-size: 13px; color: #3b82f6;
+  text-decoration: none; font-weight: 500;
+  &:hover { text-decoration: underline; }
 }
 </style>
