@@ -140,7 +140,7 @@ async function onDelete() {
     </div>
     <template #footer>
       <div class="event-form__footer">
-        <UiButton v-if="event" variant="outline" size="sm" @click="onDelete">삭제</UiButton>
+        <UiButton v-if="event" variant="danger" size="sm" @click="onDelete">삭제</UiButton>
         <div class="event-form__footer-right">
           <UiButton variant="outline" size="sm" @click="emit('update:open', false)">취소</UiButton>
           <UiButton size="sm" :loading="saving" :disabled="!canSave" @click="onSave">저장</UiButton>

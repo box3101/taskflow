@@ -340,6 +340,7 @@ onMounted(fetchEvents)
   width: 280px;
   position: sticky;
   top: 80px;
+  z-index: 0;
   max-height: calc(100vh - 140px);
   overflow-y: auto;
   background: #fff;
