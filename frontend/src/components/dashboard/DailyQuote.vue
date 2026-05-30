@@ -49,9 +49,11 @@ interface Motto {
 }
 
 const quote = ref<Quote>({ text: '', author: '' })
+const quoteVisible = ref(true)
 const motto = ref<Motto | null>(null)
 const isEditing = ref(false)
 const mottoInput = ref('')
+let rollingTimer: ReturnType<typeof setInterval> | null = null
 
 // 날짜 기반 fallback 명언 선택
 function getFallbackQuote(): Quote {
@@ -61,18 +63,28 @@ function getFallbackQuote(): Quote {
 }
 
 // 외부 API로 명언 가져오기
-async function fetchQuote() {
+async function fetchQuote(): Promise<Quote> {
   try {
     const res = await fetch('https://korean-advice-open-api.vercel.app/api/advice')
     const data = await res.json()
     if (data.message && data.author) {
-      quote.value = { text: data.message, author: data.author }
-      return
+      return { text: data.message, author: data.author }
     }
   } catch {
     // API 실패 시 fallback
   }
-  quote.value = getFallbackQuote()
+  return getFallbackQuote()
+}
+
+// 명언 롤링 (10초마다 fade 전환)
+function startRolling() {
+  rollingTimer = setInterval(async () => {
+    quoteVisible.value = false
+    setTimeout(async () => {
+      quote.value = await fetchQuote()
+      quoteVisible.value = true
+    }, 400)
+  }, 10000)
 }
 
 // 오늘의 각오 조회
@@ -134,20 +146,22 @@ function onOutsideClick(e: MouseEvent) {
   }
 }
 
-onMounted(() => {
-  fetchQuote()
+onMounted(async () => {
+  quote.value = await fetchQuote()
   fetchMotto()
+  startRolling()
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', onOutsideClick)
+  if (rollingTimer) clearInterval(rollingTimer)
 })
 </script>
 
 <template>
   <div class="daily-quote">
-    <!-- 명언 -->
-    <div class="daily-quote__text">
+    <!-- 명언 (롤링) -->
+    <div class="daily-quote__text" :class="{ 'daily-quote__text--fade': !quoteVisible }">
       <span class="daily-quote__mark">❝</span>
       <p class="daily-quote__content">{{ quote.text }}</p>
       <span class="daily-quote__author">— {{ quote.author }}</span>
@@ -199,6 +213,11 @@ onBeforeUnmount(() => {
 
 .daily-quote__text {
   position: relative;
+  transition: opacity 0.4s ease;
+
+  &--fade {
+    opacity: 0;
+  }
 }
 
 .daily-quote__mark {
