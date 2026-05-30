@@ -239,7 +239,8 @@ export function useStockData() {
     loadHoldings()
     loadMindsets()
     await Promise.all([refreshPrices(), loadThemes(), loadFearGreed()])
-    // 외인/기관은 별도 (약간 느림)
+    // 테마 종목 quotes + 외인/기관은 별도 (약간 느림)
+    loadThemeQuotes()
     loadInvestor()
     loading.value = false
   }

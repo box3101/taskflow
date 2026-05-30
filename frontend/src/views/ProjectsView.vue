@@ -24,12 +24,14 @@ const activeTab = ref((route.query.tab as string) || 'ai-tools')
 const menuOpen = ref(false)
 const mainTabs: TabItem[] = [
   { label: 'AI Tools', value: 'ai-tools' },
+  { label: '캘린더', value: 'calendar' },
   { label: '프로젝트', value: 'projects' },
   { label: '개인할일', value: 'todos' },
   { label: '주식', value: 'stock' },
 ]
 const menuItems = [
   { label: 'AI Tools', value: 'ai-tools', icon: 'bot' },
+  { label: '캘린더', value: 'calendar', icon: 'calendar' },
   { label: '프로젝트', value: 'projects', icon: 'folder' },
   { label: '개인할일', value: 'todos', icon: 'check-square' },
   { label: '주식', value: 'stock', icon: 'trending-up' },
@@ -284,6 +286,10 @@ async function loadTodos() {
 }
 
 function onTabChange(val: string) {
+  if (val === 'calendar') {
+    router.push('/calendar')
+    return
+  }
   if (val === 'todos' && !todosLoaded.value) {
     todosLoaded.value = true
     loadTodos()

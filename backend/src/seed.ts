@@ -133,24 +133,18 @@ async function main() {
     })
   }
 
-  // ── 개인 할일 (이찬용) ──
+  // ── 개인 할일 (이찬용) — 대화 로그에서 복구한 실데이터 ──
   const todos = [
-    // 업무
-    { title: 'KPI 피드백 삭제 오류 핫픽스 배포', done: true, priority: 'high' as const },
-    { title: '홍다래 QA 확인 요청 전달', done: true, priority: 'mid' as const },
-    { title: 'Railway 환경변수 정리', done: false, priority: 'high' as const },
-    { title: 'ispark-ui 0.6.0 체인지로그 작성', done: false, priority: 'mid' as const },
-    { title: 'OKR 매니저/공유자 탭 분리 건 김정의 리뷰 요청', done: false, priority: 'mid' as const },
-    { title: '칸반보드 성능 최적화 리서치', done: false, priority: 'low' as const },
-    { title: '주간 회의 안건 정리', done: false, priority: 'none' as const },
-    // 개인
-    { title: '베개, 꽈배기 세탁', done: false, priority: 'mid' as const },
-    { title: '쇼파뒤 청소', done: false, priority: 'mid' as const },
-    { title: '젖병세척기 세척', done: false, priority: 'mid' as const },
-    { title: '지영이 집 가서 물건 받아 오기', done: false, priority: 'high' as const },
-    { title: '아기침대 바퀴 닦기', done: false, priority: 'low' as const },
-    { title: '아기욕조 수세미+바디워시 닦고 말려두기', done: false, priority: 'low' as const },
-    { title: '지영이가 준 트레이 물티슈로 닦아두기', done: false, priority: 'low' as const },
+    { title: '베개, 꽈배기 세탁', done: false, dueDate: new Date('2026-06-20') },
+    { title: '쇼파뒤 청소', done: false, dueDate: new Date('2026-06-20') },
+    { title: '젖병세척기 세척', done: false, dueDate: new Date('2026-06-20') },
+    { title: '아기침대 바퀴 닦기', done: false, dueDate: new Date('2026-06-20') },
+    { title: '아기욕조 수세미+바디워시 닦고 말려두기', done: false, dueDate: new Date('2026-06-20') },
+    { title: '지영이가 준 트레이 받고 물티슈로 닦아두기', done: false, dueDate: new Date('2026-06-20') },
+    { title: '출생신고', done: false, dueDate: new Date('2026-06-01'), memo: '① 병원 → 출생증명서 수령\n② 부평구 OO동 행정복지센터 (도보 or 차)\n   - 출생신고 (이도윤)\n   - 가족관계증명서 새로 발급\n   - 행복출산 원스톱 서비스 일괄 신청\n     ↳ 첫만남이용권 300만원\n     ↳ 부모급여\n     ↳ 아동수당\n     ↳ 부평구 출산지원금 50만원\n     ↳ 전기요금 감면\n     ↳ 다자녀 우대 자동 등록\n③ NH농협 부평지점 → 아이모아카드 신청\n④ 정부24 (온라인) → 천사지원금 신청 (생일 후 120일 내, 급할 거 없음)\n⑤ 한전 123 전화 or 사이버지점 → 출산가구 전기요금 감면 확인' },
+    { title: '하윤이견학준비물', done: false, dueDate: new Date('2026-06-04'), memo: '몸빼바지, 상의자유복, 크롭스 / 자연간식, 여름 티셔츠 (물총 놀이 후)' },
+    { title: '하윤이등원', done: false, dueDate: null, memo: '출근 8시 25분 / 퇴근 5시 20분' },
+    { title: '사랑니', done: false, dueDate: new Date('2026-06-03') },
   ]
 
   for (const todo of todos) {
@@ -617,6 +611,8 @@ JWT_SECRET=my-secret-key
     { title: '/investigate', description: '체계적 디버깅 — 근본 원인 분석 4단계', icon: 'microscope', tags: ['gstack', '디버깅'], content: '## 개요\n\n버그나 에러 발생 시 체계적으로 근본 원인을 찾는 4단계 디버깅 프로세스.\n**Iron Law: 근본 원인 없이 수정 금지.**\n\n## 사용법\n\n```\n/investigate [에러 설명]\n```\n\n## 4단계\n\n1. **Investigate** — 에러 수집, 재현 조건\n2. **Analyze** — 코드 탐색, 데이터 흐름 추적\n3. **Hypothesize** — 원인 2-3개 도출\n4. **Implement** — 확인된 원인만 수정' },
     { title: 'gstack 개요', description: 'Claude Code용 스킬 프레임워크 — QA, 배포, 디버깅, 코드리뷰 등', icon: 'wrench', tags: ['gstack', '개요'], content: '## gstack이란?\n\nClaude Code용 **스킬 프레임워크**. browse(헤드리스 브라우저)를 핵심으로 QA 테스트, 배포, 디버깅, 코드 리뷰 등 개발 워크플로우를 자동화.\n\n## 주요 스킬\n\n| 카테고리 | 스킬 | 설명 |\n|----------|------|------|\n| 테스트 | /qa | QA + 자동 수정 |\n| 테스트 | /browse | 헤드리스 브라우저 |\n| 배포 | /ship | PR → 배포 |\n| 디버깅 | /investigate | 근본 원인 분석 |\n| 리뷰 | /review | PR 코드 리뷰 |\n| 디자인 | /design-review | 시각 QA |\n| 품질 | /health | 코드 품질 대시보드 |' },
     { title: 'sub-agent', description: '독립 태스크를 병렬 서브에이전트로 분배·동시 실행하는 스킬', icon: 'git-branch', tags: ['superpowers', '실행'], content: '## 개요\n\nSub-Agent는 2개 이상의 **독립적인 태스크**를 병렬 서브에이전트로 동시에 실행하는 스킬이다.\n공유 상태나 순차 의존성이 없는 작업을 분할하여 속도를 극대화.\n\n## 관련 스킬 2가지\n\n### 1. dispatching-parallel-agents\n\n임의의 독립 태스크 2개 이상을 **병렬 에이전트로 동시 실행**한다.\n\n```\n/superpowers:dispatching-parallel-agents\n```\n\n**언제 사용?**\n- 2개 이상의 독립적인 태스크가 있을 때\n- 태스크 간 공유 상태·순차 의존성이 없을 때\n\n**예시:**\n```\nAgent 1: 프론트엔드 컴포넌트 구현\nAgent 2: 백엔드 API 엔드포인트 구현\nAgent 3: 테스트 코드 작성\n→ 3개 서브에이전트가 동시에 작업\n```\n\n### 2. subagent-driven-development\n\n구현 계획서(plan)의 태스크를 분석하여 **의존성 그래프 기반으로 서브에이전트에 분배**한다.\n\n```\n/superpowers:subagent-driven-development\n```\n\n**프로세스:**\n1. 계획 분석 → 의존성 그래프 파악\n2. 독립 태스크 식별 → 동시 실행 가능한 태스크 그룹핑\n3. 서브에이전트 배정 → 각 태스크에 에이전트 할당\n4. 병렬 실행 → 동시 구현\n5. 결과 통합 → 머지 + 충돌 해결\n6. 리뷰 체크포인트\n\n## 두 스킬 비교\n\n| 항목 | dispatching-parallel-agents | subagent-driven-development |\n|------|---------------------------|---------------------------|\n| 입력 | 개별 태스크 목록 | 구현 계획서 (plan) |\n| 의존성 분석 | 수동 (사용자 판단) | 자동 (계획서 기반) |\n| 용도 | 임의 병렬 작업 | 계획 기반 체계적 개발 |\n\n## 핵심 원칙\n\n- **독립성 확인** — 태스크 간 파일/상태 충돌 없어야 함\n- **명확한 브리핑** — 각 에이전트에게 충분한 컨텍스트 제공\n- **같은 파일 = 같은 에이전트** — 충돌 방지\n- **중간 리뷰 필수** — 에이전트 완료 후 반드시 결과 확인\n- **의존성 있으면 순차** — 무조건 병렬 금지' },
+    { title: '/design-review', description: '디자이너 눈으로 시각 QA — 간격, 계층, AI 슬롭 패턴, 느린 인터랙션 찾아서 수정', icon: 'palette', tags: ['gstack', '디자인'], content: '## 개요\n\n디자이너 관점에서 시각적 품질을 점검한다.\n간격 불일치, 시각적 계층 문제, AI가 만든 슬롭 패턴, 느린 인터랙션을 찾아내고 **자동으로 수정**한다.\n\n## 사용법\n\n```\n/design-review [URL]\n```\n\n## 점검 항목\n\n| 항목 | 설명 |\n|------|------|\n| **간격 일관성** | padding, margin, gap 불일치 |\n| **시각적 계층** | 폰트 크기·굵기·색상 계층 |\n| **AI 슬롭 패턴** | AI가 만든 어색한 UI 패턴 |\n| **인터랙션 속도** | 느린 애니메이션·트랜지션 |\n| **반응형** | 브레이크포인트별 레이아웃 |\n\n## /qa와의 차이\n\n| 항목 | /qa | /design-review |\n|------|-----|----------------|\n| 관점 | 기능 동작 | 시각 품질 |\n| 대상 | 버그·에러 | 간격·계층·UX |\n| 수정 | 코드 버그 | CSS·레이아웃 |' },
+    { title: '/plan-design-review', description: '구현 계획을 디자이너 관점에서 인터랙티브 리뷰', icon: 'pen-tool', tags: ['gstack', '디자인'], content: '## 개요\n\n구현 계획서를 **디자이너 관점**에서 리뷰한다.\nCEO 리뷰, Eng 리뷰와 동일한 인터랙티브 방식으로 진행.\n\n## 사용법\n\n```\n/plan-design-review [계획 파일 경로]\n```\n\n## 점검 항목\n\n| 항목 | 설명 |\n|------|------|\n| **UI 일관성** | 기존 디자인 시스템과 일치 여부 |\n| **사용자 경험** | 플로우·인터랙션 자연스러움 |\n| **접근성** | a11y 고려 여부 |\n| **반응형** | 모바일·태블릿 대응 계획 |\n| **시각적 계층** | 정보 우선순위 |\n\n## 관련 리뷰 스킬\n\n| 스킬 | 관점 |\n|------|------|\n| /plan-ceo-review | CEO/파운더 |\n| /plan-eng-review | 엔지니어링 매니저 |\n| /plan-design-review | 디자이너 |\n| /plan-devex-review | DX (개발자 경험) |' },
     { title: 'Codex 교차 리뷰', description: 'OpenAI Codex CLI — 독립 코드 리뷰, 챌린지 모드, 컨설팅', icon: 'bot', tags: ['codex', '리뷰'], content: '## 개요\n\nOpenAI Codex CLI를 활용한 **교차 리뷰** 도구.\n\n## 설치\n\n```bash\nnpm install -g @openai/codex\nexport OPENAI_API_KEY=sk-...\n```\n\n## 3가지 모드\n\n### 1. Code Review\n```\n/codex review\n```\nClaude와 독립적인 시각으로 diff 분석, pass/fail 판정.\n\n### 2. Challenge\n```\n/codex challenge\n```\n코드를 깨뜨릴 수 있는 시나리오를 찾는 적대적 모드.\n\n### 3. Consult\n```\n/codex consult "질문"\n```\n자유 질문, 세션 유지로 후속 질문 가능.\n\n## 왜 교차 리뷰?\n\n| 항목 | Claude 셀프 리뷰 | Codex 교차 리뷰 |\n|------|-----------------|----------------|\n| 관점 | 작성자 = 리뷰어 | 독립된 모델 |\n| 강점 | 컨텍스트 풍부 | 다른 패턴 인식 |\n| 용도 | 기본 리뷰 | 크리티컬 코드 |' },
   ]
 

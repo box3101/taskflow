@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { UiBadge, UiTab, UiIcon } from '@leechanyong/ispark-ui'
 import { fetchInvestor } from '../../api/stockApi'
 import type { InvestorData } from '../../api/stockApi'
@@ -80,13 +80,18 @@ function investorLabel(code: string): string {
 }
 
 const loaded = ref(false)
-function onToggle(e: Event) {
-  const el = e.target as HTMLDetailsElement
-  if (el.open && !loaded.value) {
+function triggerLoad() {
+  if (!loaded.value) {
     loaded.value = true
     emit('loadData')
   }
 }
+function onToggle(e: Event) {
+  const el = e.target as HTMLDetailsElement
+  if (el.open) triggerLoad()
+}
+
+onMounted(() => triggerLoad())
 
 // 추천 데이터 로드되면 외인/기관도 로드
 watch(() => props.momentum, (items) => {
@@ -108,7 +113,7 @@ const tabDescriptions: Record<string, string> = {
 </script>
 
 <template>
-  <details class="recommend-card" @toggle="onToggle">
+  <details class="recommend-card" open @toggle="onToggle">
     <summary class="card-header">
       <h3><UiIcon name="bot" :size="18" /> AI 종목 분석</h3>
       <span class="card-desc">3가지 전략 분석</span>

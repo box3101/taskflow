@@ -97,7 +97,7 @@ const selectedTool = ref<AiTool | null>(null)
 // 카테고리 태그 (세그먼트로 분리)
 const categoryTags = ['superpowers', 'gstack', 'codex']
 const hiddenTags = ['개요']
-const tagOrder = ['계획', '실행', '테스트', '브라우저', '배포', '디버깅', '워크플로우']
+const tagOrder = ['계획', '실행', '테스트', '브라우저', '배포', '디버깅', '디자인', '워크플로우']
 
 // 기능 태그 목록 (카테고리/숨김 제외, 우선순위 정렬)
 const functionTags = computed(() => {

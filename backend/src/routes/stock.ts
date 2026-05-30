@@ -35,14 +35,18 @@ router.get('/investor/:code', async (req, res) => {
         tds.push(tdMatch[1].replace(/<[^>]+>/g, '').trim())
       }
       // 날짜 형식 확인 (2026.05.29)
+      // 컬럼: 날짜(0), 종가(1), 전일비(2), 등락률(3), 거래량(4), 기관(5), 외국인(6), 보유주수(7), 보유율(8)
       if (tds.length >= 9 && /^\d{4}\.\d{2}\.\d{2}$/.test(tds[0])) {
+        const price = parseNum(tds[1])
+        const foreignVol = parseNum(tds[6])
+        const instVol = parseNum(tds[5])
         trends.push({
           date: tds[0].replace(/\./g, ''),
-          foreign: parseNum(tds[6]),
-          institution: parseNum(tds[5]),
+          foreign: foreignVol,
+          institution: instVol,
           individual: 0,
-          foreignAmt: 0,
-          institutionAmt: 0,
+          foreignAmt: Math.round(foreignVol * price / 1_000_000), // 백만원 단위
+          institutionAmt: Math.round(instVol * price / 1_000_000),
         })
       }
       if (trends.length >= 20) break
