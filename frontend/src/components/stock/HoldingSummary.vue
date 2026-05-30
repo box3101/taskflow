@@ -137,9 +137,6 @@ function calcReturn(h: StockHolding) {
       {{ expanded ? '접기' : `${holdings.length - VISIBLE_COUNT}개 종목 더보기` }}
     </button>
 
-    <div class="holding-actions">
-      <UiButton variant="primary" size="sm" @click="emit('save')">저장</UiButton>
-    </div>
   </div>
 </template>
 
@@ -331,11 +328,6 @@ function calcReturn(h: StockHolding) {
   }
 }
 
-.holding-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
 
 @media (max-width: 640px) {
   .holding-summary { padding: 14px; }

@@ -808,8 +808,9 @@ function onUserMenuSelect(value: string) {
       </template>
     </UiDrawer>
 
-    <!-- FAB: 추가 버튼 -->
+    <!-- FAB: 추가 버튼 (주식/AI Tools 탭에서는 숨김) -->
     <button
+      v-if="activeTab === 'projects' || activeTab === 'todos'"
       class="fab"
       :aria-label="activeTab === 'projects' ? '프로젝트 추가' : '할일 추가'"
       @click="activeTab === 'projects' ? openCreateProject() : openCreateTodoDrawer()"
