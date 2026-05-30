@@ -1,0 +1,8 @@
+[
+  { "date": "2026-06-18", "title": "FOMC 금리 결정", "type": "macro", "importance": "high", "relatedCodes": [] },
+  { "date": "2026-06-25", "title": "옵션 만기일", "type": "macro", "importance": "medium", "relatedCodes": [] },
+  { "date": "2026-07-23", "title": "SK하이닉스 2Q 실적발표", "type": "earnings", "importance": "high", "relatedCodes": ["000660"] },
+  { "date": "2026-07-29", "title": "삼성전자 2Q 실적발표", "type": "earnings", "importance": "high", "relatedCodes": ["005930"] },
+  { "date": "2026-07-30", "title": "FOMC 금리 결정", "type": "macro", "importance": "high", "relatedCodes": [] },
+  { "date": "2026-09-17", "title": "FOMC 금리 결정", "type": "macro", "importance": "high", "relatedCodes": [] }
+]
