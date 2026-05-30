@@ -1,5 +1,37 @@
 [
   {
+    "date": "2026-06-01", "title": "한국 수출입 동향 발표", "type": "macro", "importance": "high", "relatedCodes": [],
+    "impact": {
+      "grade": "상",
+      "direction": "양날의 검",
+      "detail": "반도체 수출 호조는 하이닉스 실적에 직접 긍정적. 그러나 수출 호조 + 물가 상승 압력이 한국은행 추가 긴축 명분을 강화할 수 있음. 수출 좋게 나오면 펀더멘털은 좋아도 금리 인상 우려로 단기 변동성 확대 가능."
+    }
+  },
+  {
+    "date": "2026-06-02", "title": "한국 CPI(소비자물가)", "type": "macro", "importance": "high", "relatedCodes": [],
+    "impact": {
+      "grade": "상",
+      "direction": "금리 방향 결정",
+      "detail": "물가 상승률이 예상보다 높으면 한국은행 긴축 지속 → 성장주 약세. 물가 안정 시 금리 인하 기대 → 반도체주 포함 성장주 강세. SK하이닉스는 수출 비중이 높아 원/달러 환율 변동에도 민감."
+    }
+  },
+  {
+    "date": "2026-06-06", "title": "미국 ISM 제조업 PMI", "type": "macro", "importance": "medium", "relatedCodes": [],
+    "impact": {
+      "grade": "중",
+      "direction": "경기 흐름 확인",
+      "detail": "제조업 경기 확장 시 반도체 수요 전망 긍정적. 위축 시 경기 둔화 우려로 반도체 수요 감소 불안. 다만 AI/HBM 수요는 전통 제조업 경기와 디커플링 중이라 하이닉스 직접 영향은 제한적."
+    }
+  },
+  {
+    "date": "2026-06-06", "title": "미국 고용보고서(NFP)", "type": "macro", "importance": "high", "relatedCodes": [],
+    "impact": {
+      "grade": "상",
+      "direction": "연준 정책 방향",
+      "detail": "고용 둔화 확인 시 연준 긴축 경계 완화 → 시장금리 하락 → 반도체 같은 성장주에 우호적 환경. 고용 과열 시 금리 인상 장기화 우려 → 반도체주 약세 압력. 하이닉스는 나스닥 연동성이 높아 미국 금리 민감."
+    }
+  },
+  {
     "date": "2026-06-18", "title": "FOMC 금리 결정", "type": "macro", "importance": "high", "relatedCodes": [],
     "impact": {
       "grade": "상",

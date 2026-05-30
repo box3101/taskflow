@@ -6,16 +6,72 @@ import { analyzeNews } from '../services/newsAnalyzer'
 const router = Router()
 router.use(authenticate)
 
-const GOOGLE_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbwhUT0rUyUwZdjCqGP9dYCjfn2JBT7isV5m9KWxU6PPZappVe4fwz9QqQru0k8npvi0jQ/exec'
-const SCRIPT_PW = 'average2026'
 const CACHE_TTL_MS = 30 * 60 * 1000
 
-async function fetchNewsFromGAS(code: string) {
-  const url = `${GOOGLE_SCRIPT_URL}?action=news&code=${code}&pw=${SCRIPT_PW}`
-  const res = await fetch(url)
-  const data = await res.json()
-  return (data.news || []) as { title: string; url: string; time: string }[]
+// 종목별 연관 검색 키워드
+const RELATED_KEYWORDS: Record<string, string[]> = {
+  '000660': ['SK하이닉스', 'HBM', '엔비디아 반도체', '젠슨황'],
+  '005930': ['삼성전자', '삼성 반도체', '파운드리'],
+}
+
+// 네이버 뉴스 검색 (HTML 스크래핑)
+async function fetchNewsFromNaver(query: string): Promise<{ title: string; url: string; time: string }[]> {
+  try {
+    const searchUrl = `https://search.naver.com/search.naver?where=news&query=${encodeURIComponent(query)}&sort=1&sm=tab_smr`
+    const res = await fetch(searchUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+    })
+    const html = await res.text()
+    const results: { title: string; url: string; time: string }[] = []
+
+    // 뉴스 제목 + URL + 시간 추출
+    const titleRegex = /class="news_tit"[^>]*href="([^"]+)"[^>]*title="([^"]+)"/g
+    const timeRegex = /class="info">\s*(\d+[분시간일주]+\s*전|\d{4}\.\d{2}\.\d{2}\.?)/g
+
+    let match
+    const urls: string[] = []
+    const titles: string[] = []
+    while ((match = titleRegex.exec(html)) !== null) {
+      urls.push(match[1])
+      titles.push(match[2].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/<[^>]+>/g, ''))
+    }
+
+    const times: string[] = []
+    while ((match = timeRegex.exec(html)) !== null) {
+      times.push(match[1].replace(/\.$/, ''))
+    }
+
+    for (let i = 0; i < Math.min(titles.length, 10); i++) {
+      results.push({
+        title: titles[i],
+        url: urls[i] || '',
+        time: times[i] || '',
+      })
+    }
+    return results
+  } catch (e) {
+    console.warn(`[stockNews] 네이버 검색 실패 (${query}):`, e)
+    return []
+  }
+}
+
+// 종목코드 + 연관 키워드로 뉴스 통합 수집
+async function fetchAllNews(code: string, name: string): Promise<{ title: string; url: string; time: string }[]> {
+  const keywords = RELATED_KEYWORDS[code] || [name]
+  const allNews: { title: string; url: string; time: string }[] = []
+  const seenUrls = new Set<string>()
+
+  for (const keyword of keywords) {
+    const news = await fetchNewsFromNaver(keyword)
+    for (const n of news) {
+      if (!seenUrls.has(n.url)) {
+        seenUrls.add(n.url)
+        allNews.push(n)
+      }
+    }
+  }
+
+  return allNews.slice(0, 20) // 최대 20건
 }
 
 // 뉴스 시간 파싱 (절대시간 + 상대시간 지원)
@@ -49,7 +105,7 @@ router.post('/analyze', async (req, res) => {
       const cacheLog = await prisma.stockNewsCacheLog.findUnique({ where: { stockCode: code } })
       if (cacheLog && Date.now() - cacheLog.fetchedAt.getTime() < CACHE_TTL_MS) continue
 
-      const newsList = await fetchNewsFromGAS(code)
+      const newsList = await fetchAllNews(code, name)
       if (newsList.length === 0) continue
 
       const analyzed = await analyzeNews(name, code, newsList)
