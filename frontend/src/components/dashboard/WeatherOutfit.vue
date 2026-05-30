@@ -32,8 +32,8 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
 .weather-outfit {
   flex-shrink: 0;
   width: 220px;
-  background: #fff;
-  border: 1px solid #e6e8ec;
+  background: linear-gradient(145deg, #f8faff 0%, #eef3ff 100%);
+  border: 1px solid #e2e8f4;
   border-radius: 14px;
   padding: 16px;
   display: flex;
