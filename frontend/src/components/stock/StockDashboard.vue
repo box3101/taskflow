@@ -3,18 +3,15 @@ import { computed, onMounted, onUnmounted } from 'vue'
 import { useStockData } from '../../composables/useStockData'
 import HoldingSummary from './HoldingSummary.vue'
 import InvestorTrend from './InvestorTrend.vue'
-import FearGreedGauge from './FearGreedGauge.vue'
 import RecommendCard from './RecommendCard.vue'
 import ThemeOverview from './ThemeOverview.vue'
-import TopValueCard from './TopValueCard.vue'
 
 const {
   holdings, prices, quotes, themes, themeQuotes,
-  kospiTop, kosdaqTop,
   loading, lastUpdated,
   recMomentum, recLaggard, recOverheat,
-  investorData, fearGreed,
-  loadAll, refreshPrices, loadThemeQuotes, loadTopValue,
+  investorData,
+  loadAll, refreshPrices, loadThemeQuotes,
   saveHoldings, addHolding, removeHolding,
   startAutoRefresh, stopAutoRefresh,
 } = useStockData()
@@ -50,14 +47,11 @@ onUnmounted(() => {
       @refresh="refreshPrices"
     />
 
-    <!-- 외인/기관 + 공포탐욕 (2열) -->
-    <div class="two-col">
-      <InvestorTrend
-        :data="investorData"
-        :holding-codes="holdingCodes"
-      />
-      <FearGreedGauge :data="fearGreed" />
-    </div>
+    <!-- 외인/기관 동향 -->
+    <InvestorTrend
+      :data="investorData"
+      :holding-codes="holdingCodes"
+    />
 
     <!-- AI 종목 분석 (3탭) -->
     <RecommendCard
@@ -76,13 +70,6 @@ onUnmounted(() => {
       @load-quotes="loadThemeQuotes"
     />
 
-    <!-- 거래대금 TOP -->
-    <TopValueCard
-      :kospi-stocks="kospiTop"
-      :kosdaq-stocks="kosdaqTop"
-      :loading="loading"
-      @load="loadTopValue"
-    />
   </div>
 </template>
 
@@ -93,15 +80,4 @@ onUnmounted(() => {
   gap: 16px;
 }
 
-.two-col {
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 16px;
-}
-
-@media (max-width: 640px) {
-  .two-col {
-    grid-template-columns: 1fr;
-  }
-}
 </style>
