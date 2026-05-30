@@ -310,6 +310,7 @@ onMounted(fetchEvents)
 .calendar-page__toggles { display: flex; gap: 12px; }
 .calendar-page__toggle-label {
   display: flex; align-items: center; gap: 4px; font-size: 12px; color: #6b7280; cursor: pointer;
+  --color-primary: #9ca3af;
 }
 .calendar-page__toggle-dot { width: 8px; height: 8px; border-radius: 50%; }
 @media (max-width: 768px) {
