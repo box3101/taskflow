@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { UiLoading, openToast } from '@leechanyong/ispark-ui'
 import api from '../../api/client'
 import type { Todo } from '../../types/todo'
+import DailyQuote from './DailyQuote.vue'
 import StatCard from './StatCard.vue'
 import TodoQuickList from './TodoQuickList.vue'
 import ProjectSummary from './ProjectSummary.vue'
@@ -127,6 +128,9 @@ function onNavigateTodos() {
         <h1 class="dashboard__greeting-title">{{ greeting }}</h1>
         <p class="dashboard__greeting-sub">{{ summaryText }}</p>
       </div>
+
+      <!-- 오늘의 명언 + 각오 -->
+      <DailyQuote />
 
       <!-- 요약 카드 -->
       <div class="dashboard__stats">

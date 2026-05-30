@@ -21,6 +21,7 @@ model User {
   todos          Todo[]
   aiTools        AiTool[]
   skillProgresses SkillProgress[]
+  dailyMottos    DailyMotto[]
 
   @@map("users")
 }
@@ -158,4 +159,18 @@ model SkillProgress {
 
   @@unique([userId, levelId])
   @@map("skill_progresses")
+}
+
+// 오늘의 각오
+model DailyMotto {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  content   String   @db.VarChar(200)
+  date      DateTime @db.Date
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("daily_mottos")
 }
