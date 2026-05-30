@@ -1,9 +1,8 @@
 import { Router } from 'express'
-import { PrismaClient } from '@prisma/client'
+import prisma from '../prisma'
 import { analyzeNews } from '../services/newsAnalyzer'
 
 const router = Router()
-const prisma = new PrismaClient()
 
 const GOOGLE_SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycbwhUT0rUyUwZdjCqGP9dYCjfn2JBT7isV5m9KWxU6PPZappVe4fwz9QqQru0k8npvi0jQ/exec'
