@@ -19,10 +19,10 @@ const auth = useAuthStore()
 // 사이드 메뉴 + 네비게이션
 const menuOpen = ref(false)
 const menuItems = [
+  { label: '캘린더', value: 'calendar', icon: 'calendar' },
   { label: 'AI Tools', value: 'ai-tools', icon: 'bot' },
   { label: '프로젝트', value: 'projects', icon: 'folder' },
   { label: '개인할일', value: 'todos', icon: 'check-square' },
-  { label: '캘린더', value: 'calendar', icon: 'calendar' },
   { label: '주식', value: 'stock', icon: 'trending-up' },
 ]
 
