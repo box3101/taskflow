@@ -17,12 +17,17 @@ const menuItems = [
   { label: 'AI Tools', value: 'ai-tools', icon: 'bot' },
   { label: '프로젝트', value: 'projects', icon: 'folder' },
   { label: '개인할일', value: 'todos', icon: 'check-square' },
+  { label: '캘린더', value: 'calendar', icon: 'calendar' },
   { label: '주식', value: 'stock', icon: 'trending-up' },
 ]
 
 function onMenuSelect(value: string) {
   menuOpen.value = false
-  router.push(`/main?tab=${value}`)
+  if (value === 'calendar') {
+    router.push('/calendar')
+  } else {
+    router.push(`/main?tab=${value}`)
+  }
 }
 
 const userMenuItems: DropdownMenuItemDef[] = [

@@ -10,6 +10,7 @@ import StatCard from './StatCard.vue'
 import TodoQuickList from './TodoQuickList.vue'
 import ProjectSummary from './ProjectSummary.vue'
 import WeatherOutfit from './WeatherOutfit.vue'
+import CalendarWidget from '../calendar/CalendarWidget.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -171,6 +172,9 @@ function onNavigateTodos() {
           @navigate-all="onNavigateProjects"
         />
       </div>
+
+      <!-- 캘린더 위젯 -->
+      <CalendarWidget />
     </template>
   </div>
 </template>
