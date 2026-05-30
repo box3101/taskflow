@@ -171,7 +171,7 @@ onMounted(() => {
 .daily-quote {
   background: #f8f5f0;
   border-radius: 12px;
-  padding: 20px;
+  padding: 16px 20px;
 }
 
 .daily-quote__text {
@@ -179,11 +179,11 @@ onMounted(() => {
 }
 
 .daily-quote__mark {
-  font-size: 32px;
+  font-size: 24px;
   color: #d4c5a9;
   line-height: 1;
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .daily-quote__content {
@@ -206,8 +206,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 14px;
-  padding-top: 14px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
@@ -251,9 +251,12 @@ onMounted(() => {
   font-size: 13px;
   color: #9ca3af;
   cursor: pointer;
-  padding: 0;
+  padding: 6px 10px;
+  margin: -6px -10px;
+  border-radius: 6px;
 
   &:hover {
+    background: rgba(0, 0, 0, 0.04);
     color: #3c69db;
   }
 }
