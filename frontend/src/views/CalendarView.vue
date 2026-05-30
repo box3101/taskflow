@@ -94,12 +94,12 @@ onMounted(fetchEvents)
     <UiLoading v-if="loading" overlay />
     <div class="calendar-page__header">
       <div class="calendar-page__nav">
-        <UiButton variant="outline" size="sm" icon-only @click="prevMonth">
-          <UiIcon name="chevron-left" :size="16" />
+        <UiButton variant="outline" size="sm" iconOnly ariaLabel="이전 달" @click="prevMonth">
+          <template #icon-left><UiIcon name="chevron-left" :size="16" /></template>
         </UiButton>
         <span class="calendar-page__month">{{ monthLabel }}</span>
-        <UiButton variant="outline" size="sm" icon-only @click="nextMonth">
-          <UiIcon name="chevron-right" :size="16" />
+        <UiButton variant="outline" size="sm" iconOnly ariaLabel="다음 달" @click="nextMonth">
+          <template #icon-left><UiIcon name="chevron-right" :size="16" /></template>
         </UiButton>
         <UiButton variant="ghost" size="sm" @click="goToday">오늘</UiButton>
       </div>
