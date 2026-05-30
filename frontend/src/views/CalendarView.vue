@@ -203,7 +203,8 @@ onMounted(fetchEvents)
       </div>
     </div>
     <CalendarMonth :year="currentYear" :month="currentMonth" :events="filteredEvents"
-      :selected-date="selectedDate" @select-date="selectedDate = $event" />
+      :selected-date="selectedDate" @select-date="selectedDate = $event"
+      @swipe-left="nextMonth" @swipe-right="prevMonth" />
     <CalendarEventList :date="selectedDate" :events="selectedEvents"
       @add="openAddOnDate" @edit-event="openEdit" />
     <CalendarEventForm v-model:open="drawerOpen" :event="editingEvent" :default-date="selectedDate"

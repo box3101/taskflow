@@ -13,7 +13,7 @@ const emit = defineEmits<{
   select: []
 }>()
 
-const maxDots = 3
+const maxHints = 3
 </script>
 
 <template>
@@ -29,15 +29,17 @@ const maxDots = 3
     @click="emit('select')"
   >
     <span class="day-cell__number">{{ day }}</span>
-    <div v-if="events.length" class="day-cell__dots">
-      <span
-        v-for="(ev, i) in events.slice(0, maxDots)"
+    <div v-if="events.length" class="day-cell__hints">
+      <div
+        v-for="(ev, i) in events.slice(0, maxHints)"
         :key="i"
-        class="day-cell__dot"
-        :style="{ backgroundColor: ev.color }"
-      />
-      <span v-if="events.length > maxDots" class="day-cell__more">
-        +{{ events.length - maxDots }}
+        class="day-cell__hint"
+        :style="{ borderLeftColor: ev.color }"
+      >
+        <span class="day-cell__hint-title">{{ ev.title }}</span>
+      </div>
+      <span v-if="events.length > maxHints" class="day-cell__more">
+        +{{ events.length - maxHints }}
       </span>
     </div>
   </button>
@@ -45,8 +47,8 @@ const maxDots = 3
 
 <style scoped lang="scss">
 .day-cell {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 8px 4px; min-height: 56px; border: none; background: none;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 6px 2px; min-height: 72px; border: none; background: none;
   border-radius: 8px; cursor: pointer; transition: background 0.15s;
   &:hover { background: #f9fafb; }
   &--today .day-cell__number {
@@ -57,12 +59,23 @@ const maxDots = 3
   &--other { .day-cell__number { color: #d1d5db; } }
 }
 .day-cell__number { font-size: 13px; font-weight: 500; color: #374151; line-height: 1; }
-.day-cell__dots { display: flex; gap: 2px; align-items: center; }
-.day-cell__dot { width: 6px; height: 6px; border-radius: 50%; }
-.day-cell__more { font-size: 9px; color: #9ca3af; line-height: 1; }
+.day-cell__hints {
+  display: flex; flex-direction: column; gap: 1px; width: 100%; padding: 0 2px; margin-top: 2px;
+}
+.day-cell__hint {
+  display: flex; align-items: center;
+  border-left: 3px solid #3b82f6; padding: 1px 3px;
+  border-radius: 0 2px 2px 0; background: rgba(0, 0, 0, 0.03);
+}
+.day-cell__hint-title {
+  font-size: 10px; color: #4b5563; line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.day-cell__more { font-size: 9px; color: #9ca3af; line-height: 1; text-align: left; padding-left: 4px; }
 @media (max-width: 768px) {
-  .day-cell { min-height: 44px; padding: 6px 2px; }
+  .day-cell { min-height: 60px; padding: 4px 1px; }
   .day-cell__number { font-size: 11px; }
-  .day-cell__dot { width: 4px; height: 4px; }
+  .day-cell__hint-title { font-size: 9px; }
+  .day-cell__hint { padding: 0 2px; }
 }
 </style>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import type { CalendarEvent } from '../../types/calendar'
 import CalendarDayCell from './CalendarDayCell.vue'
 
@@ -12,7 +12,27 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   selectDate: [date: string]
+  swipeLeft: []
+  swipeRight: []
 }>()
+
+// 터치 스와이프
+const touchStartX = ref(0)
+const touchStartY = ref(0)
+
+function onTouchStart(e: TouchEvent) {
+  touchStartX.value = e.touches[0].clientX
+  touchStartY.value = e.touches[0].clientY
+}
+
+function onTouchEnd(e: TouchEvent) {
+  const dx = e.changedTouches[0].clientX - touchStartX.value
+  const dy = e.changedTouches[0].clientY - touchStartY.value
+  // 세로 스크롤보다 가로 이동이 클 때만 스와이프 판정
+  if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return
+  if (dx < 0) emit('swipeLeft')
+  else emit('swipeRight')
+}
 
 const dayNames = ['월', '화', '수', '목', '금', '토', '일']
 
@@ -60,7 +80,8 @@ const eventsByDate = computed(() => {
 </script>
 
 <template>
-  <div class="calendar-month" role="grid" aria-label="월간 캘린더">
+  <div class="calendar-month" role="grid" aria-label="월간 캘린더"
+    @touchstart.passive="onTouchStart" @touchend="onTouchEnd">
     <div class="calendar-month__header" role="row">
       <div v-for="name in dayNames" :key="name" class="calendar-month__day-name"
         :class="{ 'calendar-month__day-name--weekend': name === '토' || name === '일' }" role="columnheader">
