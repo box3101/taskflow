@@ -114,10 +114,12 @@ function getDday(dueDate: string | null): { label: string; variant: 'danger' | '
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0;
+  padding: 8px 12px;
+  margin: -8px -12px;
+  border-radius: 6px;
 
   &:hover {
-    text-decoration: underline;
+    background: #f3f4f6;
   }
 }
 
