@@ -50,6 +50,7 @@ const maxHints = 3
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   padding: 6px 2px; min-height: 72px; border: none; background: none;
   border-radius: 8px; cursor: pointer; transition: background 0.15s;
+  overflow: hidden; min-width: 0;
   &:hover { background: #f9fafb; }
   &--today .day-cell__number {
     background: #3b82f6; color: #fff; border-radius: 50%;
@@ -60,18 +61,21 @@ const maxHints = 3
 }
 .day-cell__number { font-size: 13px; font-weight: 500; color: #374151; line-height: 1; }
 .day-cell__hints {
-  display: flex; flex-direction: column; gap: 1px; width: 100%; padding: 0 2px; margin-top: 2px;
+  display: flex; flex-direction: column; gap: 1px;
+  width: 100%; padding: 0 2px; margin-top: 2px;
+  min-width: 0; overflow: hidden;
 }
 .day-cell__hint {
-  display: flex; align-items: center;
+  display: flex; align-items: center; min-width: 0;
   border-left: 3px solid #3b82f6; padding: 1px 3px;
   border-radius: 0 2px 2px 0; background: rgba(0, 0, 0, 0.03);
 }
 .day-cell__hint-title {
   font-size: 10px; color: #4b5563; line-height: 1.3;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  min-width: 0;
 }
-.day-cell__more { font-size: 9px; color: #9ca3af; line-height: 1; text-align: left; padding-left: 4px; }
+.day-cell__more { font-size: 9px; color: #9ca3af; line-height: 1; text-align: left; padding-left: 6px; margin-top: 1px; }
 @media (max-width: 768px) {
   .day-cell { min-height: 60px; padding: 4px 1px; }
   .day-cell__number { font-size: 11px; }
