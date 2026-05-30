@@ -18,11 +18,12 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
 
     <!-- 정상 -->
     <template v-else-if="weather && outfit">
-      <span class="weather-outfit__main">
-        {{ weatherEmoji(weather.icon) }} {{ weather.temp }}°C {{ weather.feeling }} · {{ weather.description }}
-      </span>
-      <span class="weather-outfit__divider">|</span>
-      <span class="weather-outfit__recommend">{{ outfit.emoji }} {{ outfit.clothes }}</span>
+      <div class="weather-outfit__row1">
+        <span class="weather-outfit__icon">{{ weatherEmoji(weather.icon) }}</span>
+        <span class="weather-outfit__temp">{{ weather.temp }}°C</span>
+      </div>
+      <div class="weather-outfit__row2">{{ weather.feeling }} · {{ weather.description }}</div>
+      <div class="weather-outfit__row3">{{ outfit.emoji }} {{ outfit.clothes }}</div>
     </template>
   </div>
 </template>
@@ -30,44 +31,65 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
 <style scoped lang="scss">
 .weather-outfit {
   flex-shrink: 0;
-  background: #fff;
-  border-radius: 12px;
-  padding: 8px 14px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  width: 140px;
+  background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.weather-outfit__row1 {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  white-space: nowrap;
+  gap: 6px;
 }
 
-.weather-outfit__main {
-  font-weight: 600;
-  color: #374151;
+.weather-outfit__icon {
+  font-size: 28px;
+  line-height: 1;
 }
 
-.weather-outfit__divider {
-  color: #d1d5db;
+.weather-outfit__temp {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: -0.5px;
 }
 
-.weather-outfit__recommend {
-  color: #3c69db;
+.weather-outfit__row2 {
   font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.weather-outfit__row3 {
+  font-size: 11px;
+  color: #3b6df0;
+  background: rgba(59, 109, 240, 0.1);
+  border-radius: 20px;
+  padding: 3px 10px;
+  margin-top: 2px;
 }
 
 .weather-outfit__placeholder {
   font-size: 12px;
   color: #9ca3af;
-  padding: 4px 0;
+  text-align: center;
+  padding: 8px 0;
 }
 
 @media (max-width: 640px) {
   .weather-outfit {
+    width: 100%;
+    flex-direction: row;
     flex-wrap: wrap;
-    white-space: normal;
-    gap: 4px;
+    justify-content: center;
+    padding: 10px 14px;
+    gap: 6px;
   }
-  .weather-outfit__divider { display: none; }
-  .weather-outfit__recommend { width: 100%; }
+  .weather-outfit__row3 { width: auto; }
 }
 </style>
