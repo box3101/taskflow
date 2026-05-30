@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { UiIcon, UiInput, openToast } from '@leechanyong/ispark-ui'
 import api from '../../api/client'
 
@@ -111,21 +111,36 @@ async function deleteMotto() {
   }
 }
 
+const mottoArea = ref<HTMLElement | null>(null)
+
 // 편집 시작
 function startEdit() {
   mottoInput.value = ''
   isEditing.value = true
+  document.addEventListener('click', onOutsideClick)
 }
 
 // 편집 취소
 function cancelEdit() {
   isEditing.value = false
   mottoInput.value = ''
+  document.removeEventListener('click', onOutsideClick)
+}
+
+// 외부 클릭 시 취소
+function onOutsideClick(e: MouseEvent) {
+  if (mottoArea.value && !mottoArea.value.contains(e.target as Node)) {
+    cancelEdit()
+  }
 }
 
 onMounted(() => {
   fetchQuote()
   fetchMotto()
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onOutsideClick)
 })
 </script>
 
@@ -139,7 +154,7 @@ onMounted(() => {
     </div>
 
     <!-- 각오 -->
-    <div class="daily-quote__motto">
+    <div ref="mottoArea" class="daily-quote__motto">
       <template v-if="motto && !isEditing">
         <UiIcon name="pencil" :size="14" class="daily-quote__motto-icon" />
         <span class="daily-quote__motto-text">오늘의 각오: {{ motto.content }}</span>
@@ -148,18 +163,25 @@ onMounted(() => {
         </button>
       </template>
       <template v-else-if="isEditing">
-        <form class="daily-quote__motto-form" @submit.prevent="saveMotto">
+        <div class="daily-quote__motto-edit">
           <UiInput
             v-model="mottoInput"
             placeholder="오늘의 각오를 입력하세요..."
             size="sm"
             autofocus
             @keyup.escape="cancelEdit"
+            @keyup.enter="saveMotto"
           />
-        </form>
+          <button class="daily-quote__motto-btn daily-quote__motto-btn--confirm" @click="saveMotto">
+            <UiIcon name="check" :size="16" />
+          </button>
+          <button class="daily-quote__motto-btn daily-quote__motto-btn--cancel" @click="cancelEdit">
+            <UiIcon name="x" :size="16" />
+          </button>
+        </div>
       </template>
       <template v-else>
-        <button class="daily-quote__motto-add" @click="startEdit">
+        <button class="daily-quote__motto-add" @click.stop="startEdit">
           + 오늘의 각오 작성...
         </button>
       </template>
@@ -242,8 +264,41 @@ onMounted(() => {
   }
 }
 
-.daily-quote__motto-form {
+.daily-quote__motto-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex: 1;
+}
+
+.daily-quote__motto-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+
+  &--confirm {
+    background: #3c69db;
+    color: #fff;
+
+    &:hover {
+      background: #2f54b0;
+    }
+  }
+
+  &--cancel {
+    background: #f3f4f6;
+    color: #6b7280;
+
+    &:hover {
+      background: #e5e7eb;
+    }
+  }
 }
 
 .daily-quote__motto-add {
