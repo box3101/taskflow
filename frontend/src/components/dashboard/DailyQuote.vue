@@ -169,9 +169,10 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .daily-quote {
-  background: #f8f5f0;
+  background: #fafaf8;
   border-radius: 12px;
   padding: 16px 20px;
+  border: 1px solid #f0ede8;
 }
 
 .daily-quote__text {

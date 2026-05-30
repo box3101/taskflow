@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { UiLoading, openToast } from '@leechanyong/ispark-ui'
+import { useAuthStore } from '../../stores/auth'
 import api from '../../api/client'
 import type { Todo } from '../../types/todo'
 import DailyQuote from './DailyQuote.vue'
@@ -10,6 +11,7 @@ import TodoQuickList from './TodoQuickList.vue'
 import ProjectSummary from './ProjectSummary.vue'
 
 const router = useRouter()
+const auth = useAuthStore()
 const loading = ref(true)
 const projects = ref<any[]>([])
 const todos = ref<Todo[]>([])
@@ -17,9 +19,10 @@ const todos = ref<Todo[]>([])
 // 시간대별 인사말
 const greeting = computed(() => {
   const h = new Date().getHours()
-  if (h < 12) return '좋은 아침이에요 👋'
-  if (h < 18) return '좋은 오후예요 👋'
-  return '좋은 저녁이에요 👋'
+  const name = auth.user?.name || ''
+  if (h < 12) return `${name}님, 좋은 아침이에요 👋`
+  if (h < 18) return `${name}님, 좋은 오후예요 👋`
+  return `${name}님, 좋은 저녁이에요 👋`
 })
 
 // 진행 중 프로젝트
@@ -123,10 +126,12 @@ function onNavigateTodos() {
     <UiLoading v-if="loading" overlay />
 
     <template v-else>
-      <!-- 인사말 -->
+      <!-- 인사말 (한 줄) -->
       <div class="dashboard__greeting">
-        <h1 class="dashboard__greeting-title">{{ greeting }}</h1>
-        <p class="dashboard__greeting-sub">{{ summaryText }}</p>
+        <h1 class="dashboard__greeting-title">
+          {{ greeting }}
+          <span class="dashboard__greeting-sub">{{ summaryText }}</span>
+        </h1>
       </div>
 
       <!-- 오늘의 명언 + 각오 -->
@@ -179,15 +184,19 @@ function onNavigateTodos() {
 }
 
 .dashboard__greeting-title {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   color: #1a1a1a;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .dashboard__greeting-sub {
   font-size: 13px;
-  color: #6b7280;
-  margin-top: 4px;
+  font-weight: 400;
+  color: #9ca3af;
 }
 
 .dashboard__stats {
