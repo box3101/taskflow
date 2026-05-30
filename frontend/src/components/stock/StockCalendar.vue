@@ -117,8 +117,13 @@ async function loadData() {
 }
 
 onMounted(async () => {
-  stockEvents.value = await fetchStockEvents()
+  try { stockEvents.value = await fetchStockEvents() } catch { /* 정적 일정 로드 실패 무시 */ }
   loadData()
+})
+
+// holdings가 나중에 로드되면 재조회
+watch(() => props.holdings.length, (len, oldLen) => {
+  if (len > 0 && oldLen === 0) loadData()
 })
 
 function showImpact(item: any) {
@@ -130,7 +135,10 @@ function showImpact(item: any) {
   }
 }
 
-watch([currentYear, currentMonth], () => loadData())
+watch([currentYear, currentMonth], () => {
+  selectedDate.value = null
+  loadData()
+})
 </script>
 
 <template>
