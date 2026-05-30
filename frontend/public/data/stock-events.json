@@ -1,8 +1,50 @@
 [
-  { "date": "2026-06-18", "title": "FOMC 금리 결정", "type": "macro", "importance": "high", "relatedCodes": [] },
-  { "date": "2026-06-25", "title": "옵션 만기일", "type": "macro", "importance": "medium", "relatedCodes": [] },
-  { "date": "2026-07-23", "title": "SK하이닉스 2Q 실적발표", "type": "earnings", "importance": "high", "relatedCodes": ["000660"] },
-  { "date": "2026-07-29", "title": "삼성전자 2Q 실적발표", "type": "earnings", "importance": "high", "relatedCodes": ["005930"] },
-  { "date": "2026-07-30", "title": "FOMC 금리 결정", "type": "macro", "importance": "high", "relatedCodes": [] },
-  { "date": "2026-09-17", "title": "FOMC 금리 결정", "type": "macro", "importance": "high", "relatedCodes": [] }
+  {
+    "date": "2026-06-18", "title": "FOMC 금리 결정", "type": "macro", "importance": "high", "relatedCodes": [],
+    "impact": {
+      "grade": "상",
+      "direction": "변동성 확대",
+      "detail": "금리 동결 시 반도체 수출주 긍정적 (달러 약세 → 원화 강세 → 외국인 매수 유입). 금리 인상 시 성장주 전반 약세. SK하이닉스는 HBM 수요가 금리와 무관하게 강해 하방 제한적이나, 시장 전체 심리에 단기 영향."
+    }
+  },
+  {
+    "date": "2026-06-25", "title": "옵션 만기일", "type": "macro", "importance": "medium", "relatedCodes": [],
+    "impact": {
+      "grade": "중",
+      "direction": "단기 변동성",
+      "detail": "선물·옵션 동시 만기로 프로그램 매매 증가. 외국인 포지션 청산 시 대형주 변동성 확대. SK하이닉스는 코스피 시가총액 상위 종목이라 만기일 프로그램 매매에 직접 노출."
+    }
+  },
+  {
+    "date": "2026-07-23", "title": "SK하이닉스 2Q 실적발표", "type": "earnings", "importance": "high", "relatedCodes": ["000660"],
+    "impact": {
+      "grade": "상",
+      "direction": "실적 직접 영향",
+      "detail": "HBM 매출 비중, AI 서버 수주 현황, 영업이익률이 핵심. 컨센서스 상회 시 목표가 상향 모멘텀, 하회 시 급락 가능. 가이던스(3Q 전망)이 주가 방향 결정."
+    }
+  },
+  {
+    "date": "2026-07-29", "title": "삼성전자 2Q 실적발표", "type": "earnings", "importance": "high", "relatedCodes": ["005930"],
+    "impact": {
+      "grade": "중",
+      "direction": "간접 영향",
+      "detail": "삼성전자 반도체 부문 실적이 업황 바로미터. 메모리 가격 트렌드 확인 가능. SK하이닉스와 경쟁 구도지만 업황 공유 → 삼성 호실적은 하이닉스에도 긍정적."
+    }
+  },
+  {
+    "date": "2026-07-30", "title": "FOMC 금리 결정", "type": "macro", "importance": "high", "relatedCodes": [],
+    "impact": {
+      "grade": "상",
+      "direction": "변동성 확대",
+      "detail": "2Q 실적 시즌 직후 FOMC로 더블 이벤트. 금리 인하 시그널 시 반도체 섹터 강세 전환 가능. 파월 발언의 톤이 핵심."
+    }
+  },
+  {
+    "date": "2026-09-17", "title": "FOMC 금리 결정", "type": "macro", "importance": "high", "relatedCodes": [],
+    "impact": {
+      "grade": "상",
+      "direction": "변동성 확대",
+      "detail": "하반기 금리 방향성 결정. 연내 인하 기대 반영 여부에 따라 외국인 수급 변화. 반도체 수출주 전반에 영향."
+    }
+  }
 ]

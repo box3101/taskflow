@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { UiIcon, UiLoading } from '@leechanyong/ispark-ui'
+import { UiIcon, UiLoading, UiModal } from '@leechanyong/ispark-ui'
 import {
   analyzeStockNews, fetchStockCalendar, fetchStockEvents,
   type StockNewsItem,
@@ -17,6 +17,8 @@ const loading = ref(false)
 const newsMap = ref<Record<string, StockNewsItem[]>>({})
 const selectedDate = ref<string | null>(null)
 const stockEvents = ref<any[]>([])
+const impactModal = ref(false)
+const impactData = ref<{ title: string; grade: string; direction: string; detail: string } | null>(null)
 
 const dayNames = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -95,6 +97,7 @@ async function loadData() {
         importance: ev.importance,
         reason: ev.type === 'macro' ? '거시경제 이벤트' : '기업 일정',
         url: '', source: 'event',
+        impact: ev.impact || null,
       })
     }
 
@@ -117,6 +120,15 @@ onMounted(async () => {
   stockEvents.value = await fetchStockEvents()
   loadData()
 })
+
+function showImpact(item: any) {
+  if (item.impact) {
+    impactData.value = { title: item.title, ...item.impact }
+    impactModal.value = true
+  } else if (item.url) {
+    window.open(item.url, '_blank')
+  }
+}
 
 watch([currentYear, currentMonth], () => loadData())
 </script>
@@ -164,18 +176,31 @@ watch([currentYear, currentMonth], () => loadData())
 
     <div v-if="selectedDate && selectedItems.length" class="stock-cal__detail">
       <div class="stock-cal__detail-title">{{ selectedDate }}</div>
-      <div v-for="item in selectedItems" :key="item.id || item.title" class="stock-cal__news">
+      <div v-for="item in selectedItems" :key="item.id || item.title"
+        class="stock-cal__news" :class="{ 'stock-cal__news--clickable': item.impact || item.url }"
+        @click="showImpact(item)">
         <span class="stock-cal__imp" :style="{ background: importanceColor(item.importance) }" />
         <div class="stock-cal__news-body">
-          <a v-if="item.url" :href="item.url" target="_blank" class="stock-cal__news-title">
-            {{ item.summary }}
-          </a>
-          <span v-else class="stock-cal__news-title">{{ item.summary }}</span>
+          <span class="stock-cal__news-title">{{ item.summary }}</span>
           <span v-if="item.stockName" class="stock-cal__news-stock">{{ item.stockName }}</span>
           <span class="stock-cal__news-reason">{{ item.reason }}</span>
         </div>
+        <UiIcon v-if="item.impact" name="chevron-right" :size="14" class="stock-cal__arrow" />
       </div>
     </div>
+
+    <!-- 영향 분석 모달 -->
+    <UiModal v-model:open="impactModal" :title="impactData?.title || ''" size="sm">
+      <div v-if="impactData" class="impact-modal">
+        <div class="impact-modal__badges">
+          <span class="impact-modal__grade" :class="'impact-modal__grade--' + impactData.grade">
+            영향도: {{ impactData.grade }}
+          </span>
+          <span class="impact-modal__dir">{{ impactData.direction }}</span>
+        </div>
+        <p class="impact-modal__detail">{{ impactData.detail }}</p>
+      </div>
+    </UiModal>
   </div>
 </template>
 
@@ -238,4 +263,28 @@ watch([currentYear, currentMonth], () => loadData())
   font-size: 10px; color: #3b82f6; font-weight: 500;
 }
 .stock-cal__news-reason { font-size: 11px; color: #9ca3af; }
+.stock-cal__news--clickable { cursor: pointer; &:hover { background: #f9fafb; } }
+.stock-cal__arrow { color: #d1d5db; flex-shrink: 0; align-self: center; }
+.stock-cal__detail { max-height: 300px; overflow-y: auto; }
+
+// 영향 분석 모달
+.impact-modal {
+  padding: 4px 0;
+}
+.impact-modal__badges {
+  display: flex; gap: 8px; margin-bottom: 12px;
+}
+.impact-modal__grade {
+  font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 12px;
+  &--상 { background: #fef2f2; color: #ef4444; }
+  &--중 { background: #fffbeb; color: #f59e0b; }
+  &--하 { background: #f0fdf4; color: #22c55e; }
+}
+.impact-modal__dir {
+  font-size: 12px; color: #6b7280; padding: 3px 10px;
+  background: #f3f4f6; border-radius: 12px;
+}
+.impact-modal__detail {
+  font-size: 13px; color: #374151; line-height: 1.7; margin: 0;
+}
 </style>
