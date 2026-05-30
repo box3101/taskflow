@@ -23,6 +23,23 @@ router.put('/reorder', async (req, res) => {
   }
 })
 
+// 이슈 단건 조회
+router.get('/:id', async (req, res) => {
+  try {
+    const issue = await prisma.issue.findUnique({
+      where: { id: Number(req.params.id) },
+      include: { assignee: { select: { id: true, name: true } } },
+    })
+    if (!issue) {
+      res.status(404).json({ message: '이슈를 찾을 수 없습니다.' })
+      return
+    }
+    res.json({ data: issue })
+  } catch {
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
+  }
+})
+
 // 이슈 수정 (상태, 담당자, 우선순위 변경)
 router.put('/:id', async (req, res) => {
   try {

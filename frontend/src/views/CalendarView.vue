@@ -192,40 +192,46 @@ onMounted(fetchEvents)
     <main class="main">
   <div class="calendar-page">
     <UiLoading v-if="loading" overlay />
-    <div class="calendar-page__header">
-      <div class="calendar-page__nav">
-        <UiButton variant="outline" size="sm" iconOnly ariaLabel="이전 달" @click="prevMonth">
-          <template #icon-left><UiIcon name="chevron-left" :size="16" /></template>
-        </UiButton>
-        <span class="calendar-page__month">{{ monthLabel }}</span>
-        <UiButton variant="outline" size="sm" iconOnly ariaLabel="다음 달" @click="nextMonth">
-          <template #icon-left><UiIcon name="chevron-right" :size="16" /></template>
-        </UiButton>
-        <UiButton class="calendar-page__today" variant="ghost" size="sm" @click="goToday">오늘</UiButton>
-      </div>
-      <div class="calendar-page__toggles">
-        <label class="calendar-page__toggle-label">
-          <span class="calendar-page__toggle-dot" style="background: #ef4444;" />
-          <UiToggle v-model="showTodo" />
-          <span>Todo</span>
-        </label>
-        <label class="calendar-page__toggle-label">
-          <span class="calendar-page__toggle-dot" style="background: #22c55e;" />
-          <UiToggle v-model="showIssue" />
-          <span>Issue</span>
-        </label>
-      </div>
-    </div>
     <!-- FAB: 일정 추가 -->
     <button class="calendar-page__fab" @click="openAdd" aria-label="일정 추가">
       <UiIcon name="plus" :size="22" />
     </button>
-    <CalendarMonth :year="currentYear" :month="currentMonth" :events="filteredEvents"
-      :selected-date="selectedDate" @select-date="selectedDate = $event"
-      @swipe-left="nextMonth" @swipe-right="prevMonth" />
-    <CalendarEventList :date="selectedDate" :events="selectedEvents"
-      @add="openAddOnDate" @edit-event="openEdit"
-      @open-todo="openTodoDrawer" @open-issue="openIssueDrawer" />
+    <div class="calendar-page__body">
+      <div class="calendar-page__grid">
+        <div class="calendar-page__header">
+          <div class="calendar-page__nav">
+            <UiButton variant="outline" size="sm" iconOnly ariaLabel="이전 달" @click="prevMonth">
+              <template #icon-left><UiIcon name="chevron-left" :size="16" /></template>
+            </UiButton>
+            <span class="calendar-page__month">{{ monthLabel }}</span>
+            <UiButton variant="outline" size="sm" iconOnly ariaLabel="다음 달" @click="nextMonth">
+              <template #icon-left><UiIcon name="chevron-right" :size="16" /></template>
+            </UiButton>
+            <UiButton class="calendar-page__today" variant="ghost" size="sm" @click="goToday">오늘</UiButton>
+          </div>
+          <div class="calendar-page__toggles">
+            <label class="calendar-page__toggle-label">
+              <span class="calendar-page__toggle-dot" style="background: #ef4444;" />
+              <UiToggle v-model="showTodo" />
+              <span>Todo</span>
+            </label>
+            <label class="calendar-page__toggle-label">
+              <span class="calendar-page__toggle-dot" style="background: #22c55e;" />
+              <UiToggle v-model="showIssue" />
+              <span>Issue</span>
+            </label>
+          </div>
+        </div>
+        <CalendarMonth :year="currentYear" :month="currentMonth" :events="filteredEvents"
+          :selected-date="selectedDate" @select-date="selectedDate = $event"
+          @swipe-left="nextMonth" @swipe-right="prevMonth" />
+      </div>
+      <div class="calendar-page__side">
+        <CalendarEventList :date="selectedDate" :events="selectedEvents"
+          @add="openAddOnDate" @edit-event="openEdit"
+          @open-todo="openTodoDrawer" @open-issue="openIssueDrawer" />
+      </div>
+    </div>
     <CalendarEventForm v-model:open="drawerOpen" :event="editingEvent" :default-date="selectedDate"
       @saved="onSaved" @deleted="onDeleted" />
     <CalendarTodoDrawer v-model:open="todoDrawerOpen" :todo-id="todoDrawerId"
@@ -319,14 +325,48 @@ onMounted(fetchEvents)
 .main { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
 
 // 캘린더 본체
-.calendar-page { max-width: 800px; margin: 0 auto; position: relative; }
+.calendar-page { max-width: 1100px; margin: 0 auto; position: relative; }
+.calendar-page__body {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+.calendar-page__grid {
+  flex: 1;
+  min-width: 0;
+}
+.calendar-page__side {
+  flex-shrink: 0;
+  width: 280px;
+  position: sticky;
+  top: 80px;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #f3f4f6;
+  padding: 0 16px 16px;
+  :deep(.event-list) {
+    border-top: none;
+    padding-top: 0;
+    margin-top: 0;
+  }
+  :deep(.event-list__header) {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 1;
+    padding: 16px 0 4px;
+    margin-bottom: 6px;
+  }
+}
 .calendar-page__header {
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 16px; gap: 12px; position: relative;
 }
 .calendar-page__toggles {
   display: flex; gap: 12px; flex-shrink: 0;
-  position: absolute; right: 0;
+  position: absolute; left: 0;
 }
 .calendar-page__toggle-label {
   display: flex; align-items: center; gap: 4px; font-size: 12px; color: #6b7280; cursor: pointer;
@@ -346,6 +386,21 @@ onMounted(fetchEvents)
   cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
   &:hover { transform: scale(1.05); box-shadow: 0 6px 16px rgba(79, 106, 246, 0.5); }
   &:active { transform: scale(0.95); }
+}
+@media (max-width: 1024px) {
+  .calendar-page__body {
+    flex-direction: column;
+    gap: 0;
+  }
+  .calendar-page__side {
+    width: 100%;
+    position: static;
+    max-height: none;
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+  }
 }
 @media (max-width: 768px) {
   .header { padding: 0 12px; }

@@ -3,6 +3,7 @@ import type { CalendarEvent } from '../../types/calendar'
 
 const props = defineProps<{
   day: number
+  dow: number // 0=일, 6=토
   events: CalendarEvent[]
   isToday: boolean
   isSelected: boolean
@@ -23,6 +24,8 @@ const maxHints = 3
       'day-cell--today': isToday,
       'day-cell--selected': isSelected,
       'day-cell--other': isOtherMonth,
+      'day-cell--sunday': dow === 0,
+      'day-cell--saturday': dow === 6,
     }"
     role="gridcell"
     :aria-label="`${day}일${events.length ? `, 일정 ${events.length}건` : ''}`"
@@ -57,7 +60,13 @@ const maxHints = 3
     width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
   }
   &--selected { background: #eff6ff; }
-  &--other { .day-cell__number { color: #d1d5db; } }
+  &--other {
+    opacity: 0.4;
+  }
+  &--sunday .day-cell__number { color: #ef4444; }
+  &--saturday .day-cell__number { color: #3b82f6; }
+  &--other.day-cell--sunday .day-cell__number,
+  &--other.day-cell--saturday .day-cell__number { color: inherit; }
 }
 .day-cell__number { font-size: 13px; font-weight: 500; color: #374151; line-height: 1; }
 .day-cell__hints {

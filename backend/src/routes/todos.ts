@@ -123,6 +123,25 @@ router.get('/trash', async (req, res) => {
   }
 })
 
+// 할일 단건 조회
+router.get('/:id', async (req, res) => {
+  try {
+    const userId = req.user!.id
+    const id = Number(req.params.id)
+    const todo = await prisma.todo.findFirst({
+      where: { id, userId, deletedAt: null },
+      include: { files: true },
+    })
+    if (!todo) {
+      res.status(404).json({ message: '할일을 찾을 수 없습니다.' })
+      return
+    }
+    res.json({ data: todo })
+  } catch {
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
+  }
+})
+
 // 휴지통 전체 비우기 (/:id 보다 먼저 등록)
 router.delete('/trash/empty', async (req, res) => {
   try {
