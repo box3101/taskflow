@@ -6,6 +6,7 @@ import InvestorTrend from './InvestorTrend.vue'
 import RecommendCard from './RecommendCard.vue'
 import ThemeOverview from './ThemeOverview.vue'
 import SmartScore from './SmartScore.vue'
+import StockCalendar from './StockCalendar.vue'
 
 const {
   holdings, prices, quotes, themes, themeQuotes,
@@ -18,6 +19,7 @@ const {
 } = useStockData()
 
 const holdingCodes = computed(() => holdings.value.map(h => h.code).filter(Boolean))
+const holdingsForCalendar = computed(() => holdings.value.map(h => ({ code: h.code, name: h.name })))
 
 function onSaveHoldings() {
   saveHoldings()
@@ -78,6 +80,9 @@ onUnmounted(() => {
       :themes="themes"
       :theme-quotes="themeQuotes"
     />
+
+    <!-- 주식 캘린더 -->
+    <StockCalendar :holdings="holdingsForCalendar" />
 
   </div>
 </template>
