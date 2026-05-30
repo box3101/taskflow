@@ -45,14 +45,13 @@ const todayTodos = computed(() => {
   })
 })
 
-// 미완료 할일 수
-const todayTodoCount = computed(() =>
-  todos.value.filter(t => !t.done).length
-)
+// 미완료 할일 수 (대시보드에 표시되는 todayTodos 기준)
+const todayTodoCount = computed(() => todayTodos.value.length)
 
-// 완료 수 / 전체
+// 완료 수 / 전체 (전체 기준)
 const completedCount = computed(() => todos.value.filter(t => t.done).length)
-const completionSub = computed(() => `/${todos.value.length}`)
+const totalCount = computed(() => todos.value.length)
+const completionSub = computed(() => `/${totalCount.value}`)
 
 // 마감 임박 (D-3 이내)
 const urgentCount = computed(() => {
