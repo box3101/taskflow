@@ -11,9 +11,11 @@ interface NewsInput {
 interface AnalyzedNews {
   index: number
   importance: 'high' | 'medium' | 'low'
+  sentiment: 'positive' | 'negative' | 'neutral'
   summary: string
   reason: string
-  eventDate?: string // YYYY-MM-DD (뉴스가 언급하는 이벤트 날짜)
+  explain: string
+  eventDate?: string
 }
 
 export async function analyzeNews(
@@ -40,17 +42,21 @@ ${newsText}
 오늘 날짜: ${new Date().toISOString().split('T')[0]}
 
 각 뉴스에 대해 JSON 배열로만 응답 (다른 텍스트 없이):
-[{"index":0,"importance":"high","summary":"15자이내요약","reason":"이유한줄","eventDate":"2026-06-01"}]
+[{"index":0,"importance":"high","sentiment":"positive","summary":"15자이내요약","reason":"이유한줄","explain":"초보 투자자도 이해할 수 있게 2~3문장으로 쉽게 설명","eventDate":"2026-06-01"}]
 
-기준:
+importance 기준:
 - high: 실적 직접 영향 (수주, 계약, 실적, 규제, 소송, 대규모 투자, 주요인사 면담)
 - medium: 업종/간접 영향 (경쟁사 동향, 산업 트렌드, 정책)
 - low: 약한 관련 (인사, 단순 보도, 행사)
 
-eventDate 규칙:
-- 뉴스가 특정 미래 날짜의 이벤트를 언급하면 해당 날짜 (예: "6월 1일 면담" → "2026-06-01")
-- 미래 날짜가 없으면 null
+sentiment 기준:
+- positive: 주가에 좋은 뉴스 (호재)
+- negative: 주가에 나쁜 뉴스 (악재)
+- neutral: 판단 어려움 또는 양방향
 
+eventDate: 뉴스가 특정 미래 날짜를 언급하면 해당 날짜, 없으면 null
+
+explain: 주식 초보도 이해할 수 있게 "이게 왜 좋은(나쁜) 건지" 쉽게 설명. "쉽게 말해..." 스타일.
 summary는 15자 이내. reason은 한 문장.`,
       },
     ],

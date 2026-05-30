@@ -137,13 +137,13 @@ function showImpact(item: any) {
     impactData.value = { title: item.title, url: item.url, ...item.impact }
     impactModal.value = true
   } else if (item.url) {
-    // 뉴스도 모달로 열기 (AI 분석 + 원문 링크)
+    const sentimentLabel = item.sentiment === 'positive' ? '호재 (긍정적)' : item.sentiment === 'negative' ? '악재 (부정적)' : '중립 (판단 어려움)'
     impactData.value = {
       title: item.summary || item.title,
       url: item.url,
       grade: item.importance === 'high' ? '상' : item.importance === 'medium' ? '중' : '하',
-      direction: getStockName(item.stockCode) || '관련 뉴스',
-      detail: item.reason,
+      direction: sentimentLabel,
+      detail: item.explain || item.reason,
     }
     impactModal.value = true
   }
@@ -218,7 +218,10 @@ watch([currentYear, currentMonth], () => {
           <span class="impact-modal__grade" :class="'impact-modal__grade--' + impactData.grade">
             영향도: {{ impactData.grade }}
           </span>
-          <span class="impact-modal__dir">{{ impactData.direction }}</span>
+          <span class="impact-modal__dir" :style="{
+            background: impactData.direction.includes('긍정') ? '#f0fdf4' : impactData.direction.includes('부정') ? '#fef2f2' : '#f3f4f6',
+            color: impactData.direction.includes('긍정') ? '#22c55e' : impactData.direction.includes('부정') ? '#ef4444' : '#6b7280',
+          }">{{ impactData.direction }}</span>
         </div>
         <div class="impact-modal__detail">
           <p v-for="(para, pi) in impactData.detail.split('\n\n')" :key="pi" class="impact-modal__para">
@@ -311,9 +314,11 @@ watch([currentYear, currentMonth], () => {
   &--하 { background: #f0fdf4; color: #22c55e; }
 }
 .impact-modal__dir {
-  font-size: 12px; color: #6b7280; padding: 3px 10px;
-  background: #f3f4f6; border-radius: 12px;
+  font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 12px;
+  // 방향성 색상 자동 매칭
+  &:has(+ *) { background: #f3f4f6; color: #6b7280; }
 }
+// sentiment 기반 방향성 색상 (JS에서 클래스 대신 인라인 스타일로 처리)
 .impact-modal__detail {
   font-size: 13px; color: #374151; line-height: 1.8;
   background: #f9fafb; border-radius: 8px; padding: 14px 16px;

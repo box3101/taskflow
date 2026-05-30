@@ -203,7 +203,9 @@ model StockNews {
   title       String   @db.VarChar(300)
   summary     String   @db.VarChar(50)
   importance  String   @db.VarChar(10)
+  sentiment   String   @default("neutral") @db.VarChar(10)
   reason      String   @db.VarChar(200)
+  explain     String?  @db.Text
   url         String   @db.VarChar(500)
   publishedAt DateTime @map("published_at")
   createdAt   DateTime @default(now()) @map("created_at")
