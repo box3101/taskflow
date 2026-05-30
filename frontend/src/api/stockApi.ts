@@ -157,3 +157,44 @@ export async function fetchNews(code: string): Promise<NewsItem[]> {
     return []
   }
 }
+
+// ── 주식 캘린더 ──
+
+import api from './client'
+
+export interface StockNewsItem {
+  id: number
+  stockCode: string
+  stockName: string
+  title: string
+  summary: string
+  importance: 'high' | 'medium' | 'low'
+  reason: string
+  url: string
+  source: 'news' | 'event'
+}
+
+export interface StockCalendarData {
+  data: Record<string, StockNewsItem[]>
+  lastFetched: string | null
+}
+
+export async function analyzeStockNews(codes: { code: string; name: string }[]): Promise<void> {
+  await api.post('/stock-news/analyze', { codes })
+}
+
+export async function fetchStockCalendar(
+  codes: string[],
+  year: number,
+  month: number
+): Promise<StockCalendarData> {
+  const { data } = await api.get('/stock-news/calendar', {
+    params: { codes: codes.join(','), year, month },
+  })
+  return data
+}
+
+export async function fetchStockEvents(): Promise<any[]> {
+  const res = await fetch('/data/stock-events.json')
+  return res.json()
+}
