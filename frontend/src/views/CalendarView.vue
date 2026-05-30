@@ -185,12 +185,12 @@ onMounted(fetchEvents)
       </div>
       <div class="calendar-page__actions">
         <div class="calendar-page__toggles">
-          <label class="calendar-page__toggle-label">
+          <label class="calendar-page__toggle-label calendar-page__toggle-label--todo">
             <span class="calendar-page__toggle-dot" style="background: #ef4444;" />
             <UiToggle v-model="showTodo" />
             <span>Todo</span>
           </label>
-          <label class="calendar-page__toggle-label">
+          <label class="calendar-page__toggle-label calendar-page__toggle-label--issue">
             <span class="calendar-page__toggle-dot" style="background: #22c55e;" />
             <UiToggle v-model="showIssue" />
             <span>Issue</span>
@@ -312,6 +312,8 @@ onMounted(fetchEvents)
   display: flex; align-items: center; gap: 4px; font-size: 12px; color: #6b7280; cursor: pointer;
 }
 .calendar-page__toggle-dot { width: 8px; height: 8px; border-radius: 50%; }
+.calendar-page__toggle-label--todo { --color-primary: #ef4444; }
+.calendar-page__toggle-label--issue { --color-primary: #22c55e; }
 @media (max-width: 768px) {
   .header { padding: 0 12px; }
   .side-menu { width: 240px; }
