@@ -546,7 +546,6 @@ function onUserMenuSelect(value: string) {
       </div>
       <div class="header-right">
         <UiButton class="storybook-link" as="a" href="https://box3101.github.io/ispark-ui/" target="_blank" size="sm" variant="outline">📖 Storybook</UiButton>
-        <UiButton v-if="activeTab === 'projects'" variant="primary" size="sm" @click="openCreateProject">+ 프로젝트 추가</UiButton>
         <UiDropdownMenu
           :items="userMenuItems"
           :title="auth.user?.name"
@@ -650,7 +649,6 @@ function onUserMenuSelect(value: string) {
             <UiSelect v-model="todoFilter" :options="filterOptions" size="sm" />
             <UiSelect v-model="todoSort" :options="sortOptions" size="sm" />
           </div>
-          <UiButton variant="primary" @click="openCreateTodoDrawer">+ 할일</UiButton>
         </div>
 
         <UiLoading v-if="todoLoading" overlay />
@@ -810,6 +808,15 @@ function onUserMenuSelect(value: string) {
       </template>
     </UiDrawer>
 
+    <!-- FAB: 추가 버튼 -->
+    <button
+      class="fab"
+      :aria-label="activeTab === 'projects' ? '프로젝트 추가' : '할일 추가'"
+      @click="activeTab === 'projects' ? openCreateProject() : openCreateTodoDrawer()"
+    >
+      <UiIcon name="plus" :size="22" />
+    </button>
+
     <!-- 하단 네비게이션 바 -->
     <nav class="bottom-nav">
       <button
@@ -900,6 +907,16 @@ function onUserMenuSelect(value: string) {
 }
 
 // 하단 네비게이션 바
+.fab {
+  position: fixed; bottom: 76px; right: 24px; z-index: 50;
+  width: 52px; height: 52px; border-radius: 50%;
+  background: #4f6af6; color: #fff; border: none;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(79, 106, 246, 0.4);
+  cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+  &:hover { transform: scale(1.05); box-shadow: 0 6px 16px rgba(79, 106, 246, 0.5); }
+  &:active { transform: scale(0.95); }
+}
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 101;
   height: 56px; background: #fff; border-top: 1px solid #e6e8ec;
@@ -955,6 +972,7 @@ function onUserMenuSelect(value: string) {
     padding: 6px 12px; font-size: 10px;
   }
   .main { padding: 16px 12px; }
+  .fab { bottom: 68px; right: 16px; width: 48px; height: 48px; }
 }
 
 // 프로젝트

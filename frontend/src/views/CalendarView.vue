@@ -12,6 +12,8 @@ import type { CalendarEvent } from '../types/calendar'
 import CalendarMonth from '../components/calendar/CalendarMonth.vue'
 import CalendarEventList from '../components/calendar/CalendarEventList.vue'
 import CalendarEventForm from '../components/calendar/CalendarEventForm.vue'
+import CalendarTodoDrawer from '../components/calendar/CalendarTodoDrawer.vue'
+import CalendarIssueDrawer from '../components/calendar/CalendarIssueDrawer.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -54,6 +56,12 @@ const showIssue = ref(true)
 
 const drawerOpen = ref(false)
 const editingEvent = ref<CalendarEvent | null>(null)
+
+const todoDrawerOpen = ref(false)
+const todoDrawerId = ref<number | null>(null)
+const issueDrawerOpen = ref(false)
+const issueDrawerId = ref<number | null>(null)
+const issueDrawerProjectId = ref<number | null>(null)
 
 const monthLabel = computed(() => `${currentYear.value}년 ${currentMonth.value}월`)
 
@@ -115,6 +123,18 @@ function openAddOnDate() { editingEvent.value = null; drawerOpen.value = true }
 function openEdit(ev: CalendarEvent) { editingEvent.value = ev; drawerOpen.value = true }
 function onSaved() { fetchEvents() }
 function onDeleted() { fetchEvents() }
+
+function openTodoDrawer(ev: CalendarEvent) {
+  todoDrawerId.value = ev.id
+  todoDrawerOpen.value = true
+}
+function openIssueDrawer(ev: CalendarEvent) {
+  issueDrawerId.value = ev.id
+  issueDrawerProjectId.value = ev.projectId ?? null
+  issueDrawerOpen.value = true
+}
+function onTodoSavedOrDeleted() { fetchEvents() }
+function onIssueSavedOrDeleted() { fetchEvents() }
 
 onMounted(fetchEvents)
 </script>
@@ -204,9 +224,15 @@ onMounted(fetchEvents)
       :selected-date="selectedDate" @select-date="selectedDate = $event"
       @swipe-left="nextMonth" @swipe-right="prevMonth" />
     <CalendarEventList :date="selectedDate" :events="selectedEvents"
-      @add="openAddOnDate" @edit-event="openEdit" />
+      @add="openAddOnDate" @edit-event="openEdit"
+      @open-todo="openTodoDrawer" @open-issue="openIssueDrawer" />
     <CalendarEventForm v-model:open="drawerOpen" :event="editingEvent" :default-date="selectedDate"
       @saved="onSaved" @deleted="onDeleted" />
+    <CalendarTodoDrawer v-model:open="todoDrawerOpen" :todo-id="todoDrawerId"
+      @saved="onTodoSavedOrDeleted" @deleted="onTodoSavedOrDeleted" />
+    <CalendarIssueDrawer v-model:open="issueDrawerOpen" :issue-id="issueDrawerId"
+      :project-id="issueDrawerProjectId"
+      @saved="onIssueSavedOrDeleted" @deleted="onIssueSavedOrDeleted" />
     <UiConfirm />
     <UiToast />
   </div>
@@ -327,9 +353,9 @@ onMounted(fetchEvents)
   .bottom-nav { gap: 0; justify-content: space-around; padding: 0; }
   .bottom-nav__item { flex-direction: column; gap: 2px; padding: 6px 12px; font-size: 10px; }
   .main { padding: 16px 12px; }
-  .calendar-page__header { flex-wrap: wrap; gap: 8px; justify-content: center; }
-  .calendar-page__toggles { position: static; gap: 8px; }
-  .calendar-page__nav { justify-content: center; flex: 1 1 100%; }
+  .calendar-page__header { flex-wrap: wrap; gap: 8px; }
+  .calendar-page__toggles { position: static; gap: 8px; margin-left: auto; }
+  .calendar-page__nav { justify-content: center; flex: 1 1 100%; order: -1; }
   .calendar-page__month { font-size: 16px; min-width: 100px; }
   .calendar-page__fab { bottom: 68px; right: 16px; width: 48px; height: 48px; }
 }
