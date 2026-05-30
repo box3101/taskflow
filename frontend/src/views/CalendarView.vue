@@ -173,6 +173,18 @@ onMounted(fetchEvents)
   <div class="calendar-page">
     <UiLoading v-if="loading" overlay />
     <div class="calendar-page__header">
+      <div class="calendar-page__toggles">
+        <label class="calendar-page__toggle-label">
+          <span class="calendar-page__toggle-dot" style="background: #ef4444;" />
+          <UiToggle v-model="showTodo" />
+          <span>Todo</span>
+        </label>
+        <label class="calendar-page__toggle-label">
+          <span class="calendar-page__toggle-dot" style="background: #22c55e;" />
+          <UiToggle v-model="showIssue" />
+          <span>Issue</span>
+        </label>
+      </div>
       <div class="calendar-page__nav">
         <UiButton variant="outline" size="sm" iconOnly ariaLabel="이전 달" @click="prevMonth">
           <template #icon-left><UiIcon name="chevron-left" :size="16" /></template>
@@ -183,25 +195,11 @@ onMounted(fetchEvents)
         </UiButton>
         <UiButton variant="ghost" size="sm" @click="goToday">오늘</UiButton>
       </div>
-      <div class="calendar-page__actions">
-        <div class="calendar-page__toggles">
-          <label class="calendar-page__toggle-label">
-            <span class="calendar-page__toggle-dot" style="background: #ef4444;" />
-            <UiToggle v-model="showTodo" />
-            <span>Todo</span>
-          </label>
-          <label class="calendar-page__toggle-label">
-            <span class="calendar-page__toggle-dot" style="background: #22c55e;" />
-            <UiToggle v-model="showIssue" />
-            <span>Issue</span>
-          </label>
-        </div>
-        <UiButton size="sm" @click="openAdd">
-          <UiIcon name="plus" :size="14" />
-          일정 추가
-        </UiButton>
-      </div>
     </div>
+    <!-- FAB: 일정 추가 -->
+    <button class="calendar-page__fab" @click="openAdd" aria-label="일정 추가">
+      <UiIcon name="plus" :size="22" />
+    </button>
     <CalendarMonth :year="currentYear" :month="currentMonth" :events="filteredEvents"
       :selected-date="selectedDate" @select-date="selectedDate = $event"
       @swipe-left="nextMonth" @swipe-right="prevMonth" />
@@ -298,31 +296,38 @@ onMounted(fetchEvents)
 .calendar-page { max-width: 800px; margin: 0 auto; position: relative; }
 .calendar-page__header {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 16px; flex-wrap: wrap; gap: 12px;
+  margin-bottom: 16px; gap: 12px;
 }
+.calendar-page__toggles { display: flex; gap: 12px; flex-shrink: 0; }
+.calendar-page__toggle-label {
+  display: flex; align-items: center; gap: 4px; font-size: 12px; color: #6b7280; cursor: pointer;
+}
+.calendar-page__toggle-dot { width: 8px; height: 8px; border-radius: 50%; }
 .calendar-page__nav {
   display: flex; align-items: center; gap: 8px;
-  // 터치 타겟 44px 보장
   :deep(.ui-button) { min-width: 36px; min-height: 36px; }
 }
 .calendar-page__month { font-size: 18px; font-weight: 700; color: #1f2937; min-width: 120px; text-align: center; }
-.calendar-page__actions { display: flex; align-items: center; gap: 12px; }
-.calendar-page__toggles { display: flex; gap: 12px; }
-.calendar-page__toggle-label {
-  display: flex; align-items: center; gap: 4px; font-size: 12px; color: #6b7280; cursor: pointer;
-  --color-primary: #9ca3af;
+.calendar-page__fab {
+  position: fixed; bottom: 76px; right: 24px; z-index: 50;
+  width: 52px; height: 52px; border-radius: 50%;
+  background: #4f6af6; color: #fff; border: none;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(79, 106, 246, 0.4);
+  cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+  &:hover { transform: scale(1.05); box-shadow: 0 6px 16px rgba(79, 106, 246, 0.5); }
+  &:active { transform: scale(0.95); }
 }
-.calendar-page__toggle-dot { width: 8px; height: 8px; border-radius: 50%; }
 @media (max-width: 768px) {
   .header { padding: 0 12px; }
   .side-menu { width: 240px; }
   .bottom-nav { gap: 0; justify-content: space-around; padding: 0; }
   .bottom-nav__item { flex-direction: column; gap: 2px; padding: 6px 12px; font-size: 10px; }
   .main { padding: 16px 12px; }
-  .calendar-page__header { flex-direction: column; align-items: stretch; gap: 8px; }
-  .calendar-page__nav { justify-content: center; }
-  .calendar-page__actions { justify-content: space-between; }
+  .calendar-page__header { flex-wrap: wrap; gap: 8px; }
   .calendar-page__toggles { gap: 8px; }
+  .calendar-page__nav { justify-content: center; flex: 1 1 100%; order: -1; }
   .calendar-page__month { font-size: 16px; min-width: 100px; }
+  .calendar-page__fab { bottom: 68px; right: 16px; width: 48px; height: 48px; }
 }
 </style>
