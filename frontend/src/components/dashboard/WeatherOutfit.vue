@@ -20,8 +20,7 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
     <template v-else-if="weather && outfit">
       <div class="weather-outfit__icon">{{ weatherEmoji(weather.icon) }}</div>
       <div class="weather-outfit__temp">{{ weather.temp }}°C</div>
-      <div class="weather-outfit__feeling">{{ weather.feeling }}</div>
-      <div class="weather-outfit__desc">{{ weather.description }}</div>
+      <div class="weather-outfit__feeling">{{ weather.feeling }} · {{ weather.description }}</div>
       <div class="weather-outfit__recommend">
         {{ outfit.emoji }} {{ outfit.clothes }}
       </div>
@@ -31,26 +30,24 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
 
 <style scoped lang="scss">
 .weather-outfit {
-  width: 160px;
   flex-shrink: 0;
   background: #fff;
   border-radius: 12px;
-  padding: 16px;
+  padding: 10px 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
+  gap: 10px;
 }
 
 .weather-outfit__icon {
-  font-size: 32px;
+  font-size: 24px;
   line-height: 1;
 }
 
 .weather-outfit__temp {
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 700;
   color: #1a1a1a;
 }
@@ -61,19 +58,13 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
   color: #374151;
 }
 
-.weather-outfit__desc {
-  font-size: 12px;
-  color: #9ca3af;
-}
-
 .weather-outfit__recommend {
   background: #f0f4ff;
   border-radius: 6px;
-  padding: 6px 10px;
+  padding: 4px 10px;
   font-size: 11px;
   color: #3c69db;
-  text-align: center;
-  margin-top: 2px;
+  white-space: nowrap;
 }
 
 .weather-outfit__placeholder {
@@ -85,18 +76,8 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
 
 @media (max-width: 640px) {
   .weather-outfit {
-    width: 100%;
-    flex-direction: row;
     flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .weather-outfit__icon {
-    font-size: 24px;
-  }
-
-  .weather-outfit__temp {
-    font-size: 18px;
+    gap: 6px;
   }
 
   .weather-outfit__recommend {
