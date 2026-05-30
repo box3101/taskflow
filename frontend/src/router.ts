@@ -9,6 +9,11 @@ const router = createRouter({
     },
     {
       path: '/',
+      component: () => import('./views/DashboardView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/main',
       component: () => import('./views/ProjectsView.vue'),
       meta: { requiresAuth: true },
     },

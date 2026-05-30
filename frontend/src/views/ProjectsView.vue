@@ -8,6 +8,7 @@ import {
 } from '@leechanyong/ispark-ui'
 import type { DropdownMenuItemDef, TableColumn, TabItem, SelectOption } from '@leechanyong/ispark-ui'
 import type { DateValue } from '@internationalized/date'
+import type { Todo, TodoFile } from '../types/todo'
 import { CalendarDate } from '@internationalized/date'
 import { useAuthStore } from '../stores/auth'
 import api from '../api/client'
@@ -133,25 +134,6 @@ function onProjectAction(project: any, action: string) {
 }
 
 // ── 개인할일 ──
-interface TodoFile {
-  id: number
-  todoId: number
-  filename: string
-  path: string
-  mimetype: string
-  size: number
-}
-
-interface Todo {
-  id: number
-  title: string
-  memo: string | null
-  done: boolean
-  dueDate: string | null
-  createdAt: string
-  deletedAt?: string | null
-  files?: TodoFile[]
-}
 
 // D-day 계산
 function getDday(dueDate: string | null): { label: string; variant: 'danger' | 'warning' | 'default' } | null {
@@ -554,7 +536,7 @@ function onUserMenuSelect(value: string) {
         <button class="menu-toggle-btn" @click="menuOpen = !menuOpen">
           <UiIcon :name="menuOpen ? 'x' : 'menu'" :size="20" />
         </button>
-        <img src="/logo.svg" alt="CYLEE" class="header-logo" />
+        <img src="/logo.svg" alt="CYLEE" class="header-logo" @click="router.push('/')" style="cursor: pointer;" />
       </div>
       <div class="header-right">
         <UiButton class="storybook-link" as="a" href="https://box3101.github.io/ispark-ui/" target="_blank" size="sm" variant="outline">📖 Storybook</UiButton>
