@@ -105,7 +105,9 @@ const eventsByDate = computed(() => {
   font-size: 12px; font-weight: 600; color: #6b7280; padding: 8px 0;
   &--weekend { color: #ef4444; }
 }
-.calendar-month__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.calendar-month__grid {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px;
+}
 @media (max-width: 768px) {
   .calendar-month__day-name { font-size: 11px; padding: 6px 0; }
 }
