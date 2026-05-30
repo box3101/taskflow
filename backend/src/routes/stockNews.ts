@@ -14,39 +14,38 @@ const RELATED_KEYWORDS: Record<string, string[]> = {
   '005930': ['삼성전자', '삼성 반도체', '파운드리'],
 }
 
-// 네이버 뉴스 검색 (HTML 스크래핑)
+// 네이버 모바일 뉴스 검색
 async function fetchNewsFromNaver(query: string): Promise<{ title: string; url: string; time: string }[]> {
   try {
-    const searchUrl = `https://search.naver.com/search.naver?where=news&query=${encodeURIComponent(query)}&sort=1&sm=tab_smr`
+    const searchUrl = `https://m.search.naver.com/search.naver?where=m_news&query=${encodeURIComponent(query)}&sort=1`
     const res = await fetch(searchUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15' },
     })
     const html = await res.text()
     const results: { title: string; url: string; time: string }[] = []
+    const seenUrls = new Set<string>()
 
-    // 뉴스 제목 + URL + 시간 추출
-    const titleRegex = /class="news_tit"[^>]*href="([^"]+)"[^>]*title="([^"]+)"/g
-    const timeRegex = /class="info">\s*(\d+[분시간일주]+\s*전|\d{4}\.\d{2}\.\d{2}\.?)/g
-
-    let match
+    // 네이버 뉴스 URL + 주변 제목 추출
+    const urlRegex = /href="(https:\/\/n\.news\.naver\.com\/article\/[^"]+)"/g
     const urls: string[] = []
+    let match
+    while ((match = urlRegex.exec(html)) !== null) {
+      if (!seenUrls.has(match[1])) {
+        seenUrls.add(match[1])
+        urls.push(match[1])
+      }
+    }
+
+    // 뉴스 제목 추출 (HTML 내 title 패턴) — 언론사명 제외, 긴 제목만
+    const titleRegex = /"title":"([^"]{15,200})"/g
     const titles: string[] = []
     while ((match = titleRegex.exec(html)) !== null) {
-      urls.push(match[1])
-      titles.push(match[2].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/<[^>]+>/g, ''))
+      const t = match[1].replace(/<\/?mark>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      titles.push(t)
     }
 
-    const times: string[] = []
-    while ((match = timeRegex.exec(html)) !== null) {
-      times.push(match[1].replace(/\.$/, ''))
-    }
-
-    for (let i = 0; i < Math.min(titles.length, 10); i++) {
-      results.push({
-        title: titles[i],
-        url: urls[i] || '',
-        time: times[i] || '',
-      })
+    for (let i = 0; i < Math.min(titles.length, urls.length, 10); i++) {
+      results.push({ title: titles[i], url: urls[i], time: '' })
     }
     return results
   } catch (e) {

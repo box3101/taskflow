@@ -206,7 +206,11 @@ watch([currentYear, currentMonth], () => {
           </span>
           <span class="impact-modal__dir">{{ impactData.direction }}</span>
         </div>
-        <p class="impact-modal__detail">{{ impactData.detail }}</p>
+        <div class="impact-modal__detail">
+          <p v-for="(para, pi) in impactData.detail.split('\n\n')" :key="pi" class="impact-modal__para">
+            {{ para }}
+          </p>
+        </div>
       </div>
     </UiModal>
   </div>
@@ -293,6 +297,11 @@ watch([currentYear, currentMonth], () => {
   background: #f3f4f6; border-radius: 12px;
 }
 .impact-modal__detail {
-  font-size: 13px; color: #374151; line-height: 1.7; margin: 0;
+  font-size: 13px; color: #374151; line-height: 1.8;
+  background: #f9fafb; border-radius: 8px; padding: 14px 16px;
+}
+.impact-modal__para {
+  margin: 0;
+  & + & { margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb; }
 }
 </style>
