@@ -115,7 +115,7 @@ function onUserMenuSelect(value: string) {
 
 .menu-toggle-btn {
   display: flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px; border: none; background: none;
+  width: 44px; height: 44px; border: none; background: none;
   border-radius: 8px; cursor: pointer; color: #374151;
   transition: background 0.15s;
   &:hover { background: #f3f4f6; }
@@ -164,9 +164,10 @@ function onUserMenuSelect(value: string) {
 
 .bottom-nav__item {
   display: flex; align-items: center; gap: 6px;
-  border: none; background: none; padding: 8px 16px;
+  border: none; background: none; padding: 10px 16px;
   border-radius: 8px; font-size: 13px; color: #9ca3af;
   cursor: pointer; transition: background 0.15s, color 0.15s;
+  min-height: 44px;
   &:hover { background: #f3f4f6; color: #374151; }
 }
 
