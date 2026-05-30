@@ -188,7 +188,7 @@ function onNavigateTodos() {
 }
 
 .dashboard__greeting-title {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 700;
   color: #1a1a1a;
 }
