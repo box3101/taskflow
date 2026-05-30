@@ -57,7 +57,8 @@ function calcReturn(h: StockHolding) {
       </div>
     </div>
 
-    <div v-for="(h, idx) in (expanded ? holdings : holdings.slice(0, VISIBLE_COUNT))" :key="idx" class="holding-item">
+    <div v-for="(h, idx) in (expanded ? holdings : holdings.slice(0, VISIBLE_COUNT))" :key="idx" class="holding-item"
+      v-show="prices[h.code] || loading">
       <!-- 종목 헤더 -->
       <div class="holding-top">
         <div class="holding-name-row">
