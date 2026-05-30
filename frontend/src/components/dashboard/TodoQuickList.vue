@@ -101,6 +101,8 @@ function getDday(dueDate: string | null): { label: string; variant: 'danger' | '
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
 }
 
 .todo-quick__header {
@@ -137,6 +139,7 @@ function getDday(dueDate: string | null): { label: string; variant: 'danger' | '
 .todo-quick__list {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .todo-quick__item {

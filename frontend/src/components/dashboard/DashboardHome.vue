@@ -197,7 +197,7 @@ function onNavigateTodos() {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 @media (max-width: 768px) {

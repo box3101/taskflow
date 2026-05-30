@@ -65,6 +65,8 @@ function statusBadge(status: string) {
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
 }
 
 .project-summary__header {
@@ -101,6 +103,7 @@ function statusBadge(status: string) {
 .project-summary__list {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .project-summary__item {
