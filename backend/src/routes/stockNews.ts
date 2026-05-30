@@ -154,4 +154,15 @@ router.get('/calendar', async (req, res) => {
   }
 })
 
+// DELETE /stock-news/cache — 캐시 초기화 (재분석 트리거용)
+router.delete('/cache', async (_req, res) => {
+  try {
+    await prisma.stockNews.deleteMany({})
+    await prisma.stockNewsCacheLog.deleteMany({})
+    res.json({ success: true, message: '캐시 초기화 완료' })
+  } catch (err) {
+    res.status(500).json({ error: '캐시 초기화 실패' })
+  }
+})
+
 export default router
