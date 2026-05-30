@@ -63,7 +63,7 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
 .weather-outfit__row2 {
   font-size: 12px;
   font-weight: 600;
-  color: #475569;
+  color: #3b82f6;
 }
 
 .weather-outfit__row3 {
