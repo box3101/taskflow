@@ -47,33 +47,18 @@ function writeCache(data: WeatherData) {
   localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }))
 }
 
-// 날씨 상태 → 이모지
-function conditionEmoji(condition: string, isNight: boolean): string {
-  const c = condition.toLowerCase()
-  if (c.includes('snow')) return '❄️'
-  if (c.includes('thunder')) return '⛈️'
-  if (c.includes('rain') || c.includes('drizzle') || c.includes('shower')) return '🌧️'
-  if (c.includes('fog') || c.includes('mist')) return '🌫️'
-  if (c.includes('cloud') || c.includes('overcast')) return '☁️'
-  if (c.includes('partly')) return '⛅'
-  return isNight ? '🌙' : '☀️'
-}
-
-// 날씨 상태 한글 변환
-function conditionKorean(condition: string): string {
-  const c = condition.toLowerCase()
-  if (c.includes('heavy snow')) return '대설'
-  if (c.includes('snow')) return '눈'
-  if (c.includes('thunder')) return '천둥번개'
-  if (c.includes('heavy rain')) return '폭우'
-  if (c.includes('rain') || c.includes('drizzle')) return '비'
-  if (c.includes('shower')) return '소나기'
-  if (c.includes('fog') || c.includes('mist')) return '안개'
-  if (c.includes('overcast')) return '흐림'
-  if (c.includes('cloud')) return '구름많음'
-  if (c.includes('partly')) return '구름조금'
-  if (c.includes('sunny') || c.includes('clear')) return '맑음'
-  return condition
+// WMO 날씨 코드 → 이모지 + 한글
+function wmoToWeather(code: number, isNight: boolean): { emoji: string; description: string } {
+  if (code === 0) return { emoji: isNight ? '🌙' : '☀️', description: '맑음' }
+  if (code <= 3) return { emoji: '⛅', description: '구름조금' }
+  if (code <= 48) return { emoji: '🌫️', description: '안개' }
+  if (code <= 57) return { emoji: '🌧️', description: '이슬비' }
+  if (code <= 67) return { emoji: '🌧️', description: '비' }
+  if (code <= 77) return { emoji: '❄️', description: '눈' }
+  if (code <= 82) return { emoji: '🌧️', description: '소나기' }
+  if (code <= 86) return { emoji: '❄️', description: '눈' }
+  if (code <= 99) return { emoji: '⛈️', description: '천둥번개' }
+  return { emoji: '☁️', description: '흐림' }
 }
 
 export function useWeather() {
@@ -94,24 +79,38 @@ export function useWeather() {
     error.value = false
 
     try {
-      const res = await fetch('https://wttr.in/?format=j1', {
-        headers: { 'Accept': 'application/json' },
-      })
+      // Open-Meteo API (무료, 키 불필요, CORS 지원)
+      // 서울 좌표 기본값, 위치 정보 사용 가능하면 실제 좌표 사용
+      let lat = 37.5665
+      let lon = 126.9780
+
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 })
+        })
+        lat = pos.coords.latitude
+        lon = pos.coords.longitude
+      } catch {
+        // 위치 권한 거부 시 서울 좌표 사용
+      }
+
+      const res = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=Asia%2FSeoul`
+      )
       if (!res.ok) throw new Error('API error')
       const data = await res.json()
 
-      const current = data.current_condition[0]
-      const temp = parseInt(current.temp_C)
-      const condition = current.weatherDesc[0].value
-      const city = data.nearest_area[0].areaName[0].value
+      const temp = Math.round(data.current.temperature_2m)
+      const weatherCode = data.current.weather_code
       const hour = new Date().getHours()
       const isNight = hour < 6 || hour >= 19
+      const { emoji, description } = wmoToWeather(weatherCode, isNight)
 
       const result: WeatherData = {
         temp,
-        description: conditionKorean(condition),
-        icon: conditionEmoji(condition, isNight),
-        city,
+        description,
+        icon: emoji,
+        city: 'Seoul',
       }
 
       weather.value = result
