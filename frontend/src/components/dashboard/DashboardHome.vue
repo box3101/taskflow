@@ -135,11 +135,11 @@ function onNavigateTodos() {
         </h1>
       </div>
 
-      <!-- 오늘의 명언 + 각오 -->
-      <DailyQuote />
-
-      <!-- 날씨 + 옷차림 추천 -->
-      <WeatherOutfit />
+      <!-- 명언 + 날씨 -->
+      <div class="dashboard__quote-weather">
+        <DailyQuote class="dashboard__quote" />
+        <WeatherOutfit />
+      </div>
 
       <!-- 요약 카드 -->
       <div class="dashboard__stats">
@@ -203,6 +203,17 @@ function onNavigateTodos() {
   color: #9ca3af;
 }
 
+.dashboard__quote-weather {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.dashboard__quote {
+  flex: 1;
+  min-width: 0;
+}
+
 .dashboard__stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -225,6 +236,10 @@ function onNavigateTodos() {
 @media (max-width: 640px) {
   .dashboard__stats {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard__quote-weather {
+    flex-direction: column;
   }
 }
 </style>
