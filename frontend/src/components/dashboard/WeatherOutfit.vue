@@ -54,9 +54,11 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
 }
 
 .weather-outfit__feeling {
+  width: 100%;
   font-size: 12px;
   font-weight: 600;
   color: #374151;
+  text-align: center;
 }
 
 .weather-outfit__recommend {
