@@ -9,6 +9,7 @@ import DailyQuote from './DailyQuote.vue'
 import StatCard from './StatCard.vue'
 import TodoQuickList from './TodoQuickList.vue'
 import ProjectSummary from './ProjectSummary.vue'
+import WeatherOutfit from './WeatherOutfit.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -136,6 +137,9 @@ function onNavigateTodos() {
 
       <!-- 오늘의 명언 + 각오 -->
       <DailyQuote />
+
+      <!-- 날씨 + 옷차림 추천 -->
+      <WeatherOutfit />
 
       <!-- 요약 카드 -->
       <div class="dashboard__stats">
