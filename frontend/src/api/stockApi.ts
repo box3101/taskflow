@@ -160,8 +160,6 @@ export async function fetchNews(code: string): Promise<NewsItem[]> {
 
 // ── 주식 캘린더 ──
 
-import api from './client'
-
 export interface StockNewsItem {
   id: number
   stockCode: string
