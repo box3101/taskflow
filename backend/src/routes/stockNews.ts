@@ -68,9 +68,9 @@ router.post('/analyze', async (req, res) => {
       })
     }
     res.json({ success: true })
-  } catch (err) {
-    console.error('[stock-news] analyze 에러:', err)
-    res.status(500).json({ error: '뉴스 분석 실패' })
+  } catch (err: any) {
+    console.error('[stock-news] analyze 에러:', err?.message || err)
+    res.status(500).json({ error: '뉴스 분석 실패', detail: err?.message || String(err) })
   }
 })
 
