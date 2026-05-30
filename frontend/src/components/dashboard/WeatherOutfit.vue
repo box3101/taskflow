@@ -37,6 +37,7 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
 }
@@ -59,12 +60,13 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
 }
 
 .weather-outfit__recommend {
+  width: 100%;
   background: #f0f4ff;
   border-radius: 6px;
   padding: 4px 10px;
   font-size: 11px;
   color: #3c69db;
-  white-space: nowrap;
+  text-align: center;
 }
 
 .weather-outfit__placeholder {
