@@ -4,41 +4,62 @@ const router = Router()
 
 // 네이버 주식 API 프록시 (CORS 우회)
 
-// 외인/기관 5거래일 동향
+// 외인/기관 20거래일 동향
 router.get('/investor/:code', async (req, res) => {
   try {
     const { code } = req.params
-    const url = `https://m.stock.naver.com/api/stock/${code}/integration`
+
+    // 네이버 PC 외국인 매매 페이지에서 20일치 크롤링
+    const url = `https://finance.naver.com/item/frgn.naver?code=${code}&page=1`
     const response = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
     })
-    const data = await response.json()
+    const html = await response.text()
 
-    // 네이버 integration API 응답 파싱
-    // dealTrendInfos 또는 최상위 배열 형태
-    const rawTrends = data?.dealTrendInfos || (Array.isArray(data) ? data : [])
-
-    // 파싱 헬퍼: "+529,897" → 529897, "-18,203" → -18203
-    const parseNum = (v: string | number) => {
-      if (typeof v === 'number') return v
+    const parseNum = (v: string) => {
       if (!v) return 0
-      return Number(String(v).replace(/,/g, '').replace(/\+/g, '')) || 0
+      return Number(v.replace(/,/g, '').replace(/\+/g, '').trim()) || 0
     }
 
-    const trends = rawTrends.map((day: any) => ({
-      date: day.bizdate || day.date || '',
-      foreign: parseNum(day.foreignerPureBuyQuant || day.foreignNetBuyVolume),
-      institution: parseNum(day.organPureBuyQuant || day.institutionNetBuyVolume),
-      individual: parseNum(day.individualPureBuyQuant || day.individualNetBuyVolume),
-      foreignAmt: parseNum(day.foreignNetBuyAmount || 0),
-      institutionAmt: parseNum(day.institutionNetBuyAmount || 0),
-    }))
+    // 테이블 행에서 데이터 추출 (6개 이상 td를 가진 행)
+    const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/g
+    const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/g
+    const trends: any[] = []
+    let match
 
-    // 종목 기본 정보 추출
-    const totalInfos = data?.totalInfos || []
-    const per = data?.per || totalInfos.find((i: any) => i.key === 'PER')?.value || '-'
-    const pbr = data?.pbr || totalInfos.find((i: any) => i.key === 'PBR')?.value || '-'
-    const marketCap = data?.marketCap || totalInfos.find((i: any) => i.key === '시가총액')?.value || '-'
+    while ((match = rowRegex.exec(html)) !== null) {
+      const row = match[1]
+      const tds: string[] = []
+      let tdMatch
+      while ((tdMatch = tdRegex.exec(row)) !== null) {
+        tds.push(tdMatch[1].replace(/<[^>]+>/g, '').trim())
+      }
+      // 날짜 형식 확인 (2026.05.29)
+      if (tds.length >= 9 && /^\d{4}\.\d{2}\.\d{2}$/.test(tds[0])) {
+        trends.push({
+          date: tds[0].replace(/\./g, ''),
+          foreign: parseNum(tds[6]),
+          institution: parseNum(tds[5]),
+          individual: 0,
+          foreignAmt: 0,
+          institutionAmt: 0,
+        })
+      }
+      if (trends.length >= 20) break
+    }
+
+    // 기본 정보는 모바일 API에서 가져오기
+    let per = '-', pbr = '-', marketCap = '-'
+    try {
+      const mobileRes = await fetch(`https://m.stock.naver.com/api/stock/${code}/integration`, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      })
+      const mobileData = await mobileRes.json()
+      const totalInfos = mobileData?.totalInfos || []
+      per = mobileData?.per || totalInfos.find((i: any) => i.key === 'PER')?.value || '-'
+      pbr = mobileData?.pbr || totalInfos.find((i: any) => i.key === 'PBR')?.value || '-'
+      marketCap = mobileData?.marketCap || totalInfos.find((i: any) => i.key === '시가총액')?.value || '-'
+    } catch { /* 기본값 유지 */ }
 
     res.json({ trends, per, pbr, marketCap })
   } catch (e) {

@@ -1,12 +1,34 @@
 <script setup lang="ts">
-// vue
+import { ref, computed } from 'vue'
 import { UiBadge } from '@leechanyong/ispark-ui'
 import type { InvestorData } from '../../api/stockApi'
+
+const VISIBLE_COUNT = 5
 
 const props = defineProps<{
   data: Record<string, InvestorData>
   holdingCodes: string[]
 }>()
+
+const expandedCodes = ref<Set<string>>(new Set())
+
+function toggleExpand(code: string) {
+  if (expandedCodes.value.has(code)) {
+    expandedCodes.value.delete(code)
+  } else {
+    expandedCodes.value.add(code)
+  }
+}
+
+function visibleTrends(code: string) {
+  const trends = props.data[code]?.trends || []
+  return expandedCodes.value.has(code) ? trends : trends.slice(0, VISIBLE_COUNT)
+}
+
+function remainingCount(code: string) {
+  const total = props.data[code]?.trends.length || 0
+  return Math.max(0, total - VISIBLE_COUNT)
+}
 
 // 외인 연속 매수일 계산
 function consecutiveBuyDays(trends: InvestorData['trends'], type: 'foreign' | 'institution') {
@@ -42,7 +64,7 @@ function consecutiveBuyDays(trends: InvestorData['trends'], type: 'foreign' | 'i
             <span class="col-val">개인</span>
           </div>
           <div
-            v-for="day in data[code].trends"
+            v-for="day in visibleTrends(code)"
             :key="day.date"
             class="trend-row"
           >
@@ -58,6 +80,15 @@ function consecutiveBuyDays(trends: InvestorData['trends'], type: 'foreign' | 'i
             </span>
           </div>
         </div>
+
+        <!-- 더보기/접기 -->
+        <button
+          v-if="data[code].trends.length > VISIBLE_COUNT"
+          class="more-btn"
+          @click="toggleExpand(code)"
+        >
+          {{ expandedCodes.has(code) ? '접기' : `${remainingCount(code)}일 더보기` }}
+        </button>
 
         <!-- 연속 매수 요약 -->
         <div class="trend-summary">
@@ -154,6 +185,24 @@ function consecutiveBuyDays(trends: InvestorData['trends'], type: 'foreign' | 'i
   font-size: 12px;
   color: #b45309;
   font-weight: 600;
+}
+
+.more-btn {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #3c69db;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: center;
+  border-radius: 6px;
+
+  &:hover {
+    background: #f3f4f6;
+  }
 }
 
 .loading-msg {

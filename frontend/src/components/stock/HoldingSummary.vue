@@ -1,7 +1,10 @@
 <script setup lang="ts">
-// vue
-import { UiInput, UiButton, UiBadge } from '@leechanyong/ispark-ui'
+import { ref, computed } from 'vue'
+import { UiButton, UiBadge } from '@leechanyong/ispark-ui'
 import type { StockHolding, StockPrice, StockQuote } from '../../types/stock'
+
+const VISIBLE_COUNT = 5
+const expanded = ref(false)
 
 const props = defineProps<{
   holdings: StockHolding[]
@@ -54,15 +57,12 @@ function calcReturn(h: StockHolding) {
       </div>
     </div>
 
-    <div v-for="(h, idx) in holdings" :key="idx" class="holding-item">
+    <div v-for="(h, idx) in (expanded ? holdings : holdings.slice(0, VISIBLE_COUNT))" :key="idx" class="holding-item">
       <!-- 종목 헤더 -->
       <div class="holding-top">
         <div class="holding-name-row">
-          <UiInput v-model="h.name" placeholder="종목명" size="sm" class="name-input" />
-          <UiInput v-model="h.code" placeholder="종목코드" size="sm" class="code-input" />
-          <button v-if="holdings.length > 1" class="remove-btn" @click="emit('remove', idx)">
-            <i class="icon-close size-16" />
-          </button>
+          <span class="holding-name">{{ h.name || h.code }}</span>
+          <span class="holding-code">{{ h.code }}</span>
         </div>
       </div>
 
@@ -126,26 +126,16 @@ function calcReturn(h: StockHolding) {
         시세 로딩 중...
       </div>
 
-      <!-- 입력 필드 -->
-      <div class="holding-fields">
-        <div class="field">
-          <label>매수가</label>
-          <UiInput v-model.number="h.buyPrice" placeholder="0" size="sm" number-only />
-        </div>
-        <div class="field">
-          <label>목표가</label>
-          <UiInput v-model.number="h.targetPrice" placeholder="0" size="sm" number-only />
-        </div>
-        <div class="field">
-          <label>수량</label>
-          <UiInput v-model.number="h.qty" placeholder="1" size="sm" number-only />
-        </div>
-        <div class="field">
-          <label>매수일</label>
-          <input type="date" v-model="h.buyDate" class="date-input" />
-        </div>
-      </div>
     </div>
+
+    <!-- 더보기/접기 -->
+    <button
+      v-if="holdings.length > VISIBLE_COUNT"
+      class="more-btn"
+      @click="expanded = !expanded"
+    >
+      {{ expanded ? '접기' : `${holdings.length - VISIBLE_COUNT}개 종목 더보기` }}
+    </button>
 
     <div class="holding-actions">
       <UiButton variant="primary" size="sm" @click="emit('save')">저장</UiButton>
@@ -192,8 +182,15 @@ function calcReturn(h: StockHolding) {
   gap: 8px;
   margin-bottom: 12px;
 }
-.name-input { flex: 1; }
-.code-input { width: 110px; }
+.holding-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+}
+.holding-code {
+  font-size: 12px;
+  color: #9ca3af;
+}
 .remove-btn {
   display: flex; align-items: center; justify-content: center;
   width: 28px; height: 28px; border: none; background: none;
@@ -314,6 +311,24 @@ function calcReturn(h: StockHolding) {
   background: #fff;
   box-sizing: border-box;
   &:focus { outline: none; border-color: #3b82f6; }
+}
+
+.more-btn {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #3c69db;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: center;
+  border-radius: 6px;
+
+  &:hover {
+    background: #f3f4f6;
+  }
 }
 
 .holding-actions {
