@@ -201,7 +201,7 @@ onMounted(fetchEvents)
         <UiButton variant="outline" size="sm" iconOnly ariaLabel="다음 달" @click="nextMonth">
           <template #icon-left><UiIcon name="chevron-right" :size="16" /></template>
         </UiButton>
-        <UiButton variant="ghost" size="sm" @click="goToday">오늘</UiButton>
+        <UiButton class="calendar-page__today" variant="ghost" size="sm" @click="goToday">오늘</UiButton>
       </div>
       <div class="calendar-page__toggles">
         <label class="calendar-page__toggle-label">
@@ -353,9 +353,10 @@ onMounted(fetchEvents)
   .bottom-nav { gap: 0; justify-content: space-around; padding: 0; }
   .bottom-nav__item { flex-direction: column; gap: 2px; padding: 6px 12px; font-size: 10px; }
   .main { padding: 16px 12px; }
-  .calendar-page__header { flex-wrap: wrap; gap: 8px; }
+  .calendar-page__header { gap: 8px; }
   .calendar-page__toggles { position: static; gap: 8px; margin-left: auto; }
-  .calendar-page__nav { justify-content: center; flex: 1 1 100%; order: -1; }
+  .calendar-page__nav { gap: 4px; }
+  .calendar-page__today { display: none !important; }
   .calendar-page__month { font-size: 16px; min-width: 100px; }
   .calendar-page__fab { bottom: 68px; right: 16px; width: 48px; height: 48px; }
 }
