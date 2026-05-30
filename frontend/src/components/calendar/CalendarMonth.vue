@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { CalendarEvent } from '../../types/calendar'
 import CalendarDayCell from './CalendarDayCell.vue'
 
@@ -16,23 +16,106 @@ const emit = defineEmits<{
   swipeRight: []
 }>()
 
-// 터치 스와이프
-const touchStartX = ref(0)
-const touchStartY = ref(0)
+// 드래그 스와이프
+const dragX = ref(0)
+const isDragging = ref(false)
+const isAnimating = ref(false)
+const slideDirection = ref<'left' | 'right' | null>(null)
+let startX = 0
+let startY = 0
+let locked = false // 방향 잠금 (가로/세로)
 
-function onTouchStart(e: TouchEvent) {
-  touchStartX.value = e.touches[0].clientX
-  touchStartY.value = e.touches[0].clientY
+function onPointerDown(e: PointerEvent) {
+  if (isAnimating.value) return
+  isDragging.value = true
+  locked = false
+  startX = e.clientX
+  startY = e.clientY
+  dragX.value = 0
 }
 
-function onTouchEnd(e: TouchEvent) {
-  const dx = e.changedTouches[0].clientX - touchStartX.value
-  const dy = e.changedTouches[0].clientY - touchStartY.value
-  // 세로 스크롤보다 가로 이동이 클 때만 스와이프 판정
-  if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return
-  if (dx < 0) emit('swipeLeft')
-  else emit('swipeRight')
+function onPointerMove(e: PointerEvent) {
+  if (!isDragging.value) return
+  const dx = e.clientX - startX
+  const dy = e.clientY - startY
+
+  // 첫 이동에서 방향 잠금
+  if (!locked && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+    locked = true
+    if (Math.abs(dy) > Math.abs(dx)) {
+      // 세로 스크롤 → 드래그 취소
+      isDragging.value = false
+      dragX.value = 0
+      return
+    }
+  }
+  if (locked) {
+    dragX.value = dx
+  }
 }
+
+function onPointerUp() {
+  if (!isDragging.value) return
+  isDragging.value = false
+
+  const threshold = 80
+  if (Math.abs(dragX.value) > threshold) {
+    // 슬라이드 아웃 애니메이션
+    slideDirection.value = dragX.value < 0 ? 'left' : 'right'
+    isAnimating.value = true
+
+    setTimeout(() => {
+      if (slideDirection.value === 'left') emit('swipeLeft')
+      else emit('swipeRight')
+    }, 200)
+  } else {
+    // 스냅백
+    dragX.value = 0
+  }
+}
+
+// month 변경 시 슬라이드 인 애니메이션
+watch([() => props.year, () => props.month], () => {
+  if (isAnimating.value) {
+    // 슬라이드 인: 반대 방향에서 들어옴
+    const dir = slideDirection.value
+    dragX.value = dir === 'left' ? 300 : -300
+    slideDirection.value = null
+    isAnimating.value = false
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        dragX.value = 0
+      })
+    })
+  }
+})
+
+const gridStyle = computed(() => {
+  if (isAnimating.value) {
+    // 슬라이드 아웃
+    const target = slideDirection.value === 'left' ? -100 : 100
+    return {
+      transform: `translateX(${target}%)`,
+      transition: 'transform 0.2s ease-out',
+      opacity: '0.3',
+    }
+  }
+  if (dragX.value !== 0 && !isDragging.value) {
+    // 스냅백 또는 슬라이드 인
+    return {
+      transform: 'translateX(0)',
+      transition: 'transform 0.25s ease-out',
+    }
+  }
+  if (isDragging.value) {
+    return {
+      transform: `translateX(${dragX.value}px)`,
+      transition: 'none',
+    }
+  }
+  return {}
+})
 
 const dayNames = ['월', '화', '수', '목', '금', '토', '일']
 
@@ -81,14 +164,16 @@ const eventsByDate = computed(() => {
 
 <template>
   <div class="calendar-month" role="grid" aria-label="월간 캘린더"
-    @touchstart.passive="onTouchStart" @touchend="onTouchEnd">
+    @pointerdown="onPointerDown" @pointermove="onPointerMove"
+    @pointerup="onPointerUp" @pointercancel="onPointerUp"
+    style="touch-action: pan-y;">
     <div class="calendar-month__header" role="row">
       <div v-for="name in dayNames" :key="name" class="calendar-month__day-name"
         :class="{ 'calendar-month__day-name--weekend': name === '토' || name === '일' }" role="columnheader">
         {{ name }}
       </div>
     </div>
-    <div class="calendar-month__grid">
+    <div class="calendar-month__grid" :style="gridStyle">
       <CalendarDayCell v-for="(d, i) in calendarDays" :key="i"
         :day="d.day" :events="eventsByDate.get(d.dateStr) || []"
         :is-today="d.dateStr === today" :is-selected="d.dateStr === selectedDate"
@@ -98,6 +183,10 @@ const eventsByDate = computed(() => {
 </template>
 
 <style scoped lang="scss">
+.calendar-month {
+  overflow: hidden;
+  user-select: none;
+}
 .calendar-month__header {
   display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; margin-bottom: 4px;
 }
@@ -107,6 +196,7 @@ const eventsByDate = computed(() => {
 }
 .calendar-month__grid {
   display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px;
+  will-change: transform;
 }
 @media (max-width: 768px) {
   .calendar-month__day-name { font-size: 11px; padding: 6px 0; }
