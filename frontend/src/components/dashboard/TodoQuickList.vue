@@ -36,8 +36,8 @@ function getDday(dueDate: string | null): { label: string; variant: 'danger' | '
   now.setHours(0, 0, 0, 0)
   const diff = Math.round((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
   if (diff < 0) return { label: `D+${Math.abs(diff)}`, variant: 'danger' }
-  if (diff === 0) return { label: 'D-day', variant: 'warning' }
-  if (diff === 1) return { label: 'D-1', variant: 'warning' }
+  if (diff === 0) return { label: 'D-day', variant: 'danger' }
+  if (diff <= 3) return { label: `D-${diff}`, variant: 'warning' }
   return { label: `D-${diff}`, variant: 'default' }
 }
 </script>
