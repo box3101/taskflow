@@ -146,19 +146,19 @@ function onNavigateTodos() {
         />
       </div>
 
-      <!-- 오늘 할일 -->
-      <TodoQuickList
-        :todos="todayTodos"
-        @add="onAddTodo"
-        @navigate-all="onNavigateTodos"
-      />
-
-      <!-- 프로젝트 요약 -->
-      <ProjectSummary
-        :projects="activeProjects"
-        @select="onSelectProject"
-        @navigate-all="onNavigateProjects"
-      />
+      <!-- 할일 + 프로젝트 (PC: 50:50, 모바일: 세로) -->
+      <div class="dashboard__content">
+        <TodoQuickList
+          :todos="todayTodos"
+          @add="onAddTodo"
+          @navigate-all="onNavigateTodos"
+        />
+        <ProjectSummary
+          :projects="activeProjects"
+          @select="onSelectProject"
+          @navigate-all="onNavigateProjects"
+        />
+      </div>
     </template>
   </div>
 </template>
@@ -191,6 +191,19 @@ function onNavigateTodos() {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+.dashboard__content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .dashboard__content {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
