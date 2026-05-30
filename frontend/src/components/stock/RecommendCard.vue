@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { UiBadge, UiTab } from '@leechanyong/ispark-ui'
+import { UiBadge, UiTab, UiIcon } from '@leechanyong/ispark-ui'
 import { fetchInvestor } from '../../api/stockApi'
 import type { InvestorData } from '../../api/stockApi'
 
@@ -110,7 +110,7 @@ const tabDescriptions: Record<string, string> = {
 <template>
   <details class="recommend-card" @toggle="onToggle">
     <summary class="card-header">
-      <h3>🤖 AI 종목 분석</h3>
+      <h3><UiIcon name="bot" :size="18" /> AI 종목 분석</h3>
       <span class="card-desc">3가지 전략 분석</span>
     </summary>
 

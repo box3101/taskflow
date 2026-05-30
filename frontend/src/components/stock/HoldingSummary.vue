@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { UiButton, UiBadge } from '@leechanyong/ispark-ui'
+import { UiButton, UiBadge, UiIcon } from '@leechanyong/ispark-ui'
 import type { StockHolding, StockPrice, StockQuote } from '../../types/stock'
 
 const VISIBLE_COUNT = 5
@@ -49,10 +49,10 @@ function calcReturn(h: StockHolding) {
 <template>
   <div class="holding-summary">
     <div class="section-header">
-      <h3>📈 보유 종목</h3>
+      <h3><UiIcon name="trending-up" :size="18" /> 보유 종목</h3>
       <div class="header-actions">
         <span v-if="lastUpdated" class="last-updated">{{ lastUpdated }} 갱신</span>
-        <UiButton size="sm" variant="ghost" @click="emit('refresh')">🔄</UiButton>
+        <UiButton size="sm" variant="ghost" @click="emit('refresh')"><UiIcon name="refresh-cw" :size="14" /></UiButton>
         <UiButton size="sm" variant="ghost" @click="emit('add')">+ 종목</UiButton>
       </div>
     </div>

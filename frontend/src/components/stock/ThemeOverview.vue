@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { UiBadge } from '@leechanyong/ispark-ui'
+import { UiBadge, UiIcon } from '@leechanyong/ispark-ui'
 import type { ThemeDef, StockQuote } from '../../types/stock'
 
 const props = defineProps<{
@@ -33,7 +33,7 @@ function themeAvg(theme: ThemeDef, field: 'changePct5' | 'changePct20') {
 <template>
   <div class="theme-overview">
     <div class="section-header" @click="onOpen">
-      <h3>📊 테마 동향 ({{ themes.length }}개 테마)</h3>
+      <h3><UiIcon name="bar-chart-2" :size="18" /> 테마 동향 ({{ themes.length }}개 테마)</h3>
       <span v-if="loading" class="loading-text">로딩 중...</span>
     </div>
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { UiBadge, UiTab } from '@leechanyong/ispark-ui'
+import { UiBadge, UiTab, UiIcon } from '@leechanyong/ispark-ui'
 
 interface HoldResult {
   totalTrades: number
@@ -60,7 +60,7 @@ function formatDate(d: string) {
 <template>
   <details class="backtest-card">
     <summary class="card-header">
-      <h3>📈 백테스트 결과</h3>
+      <h3><UiIcon name="trending-up" :size="18" /> 백테스트 결과</h3>
       <span class="card-desc">모멘텀 초기 전략 · 118종목 · 4개월</span>
     </summary>
 

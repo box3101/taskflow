@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { UiBadge } from '@leechanyong/ispark-ui'
+import { UiBadge, UiIcon } from '@leechanyong/ispark-ui'
 import type { InvestorData } from '../../api/stockApi'
 
 const VISIBLE_COUNT = 5
@@ -44,7 +44,7 @@ function consecutiveBuyDays(trends: InvestorData['trends'], type: 'foreign' | 'i
 <template>
   <div class="investor-trend">
     <div class="section-header">
-      <h3>🏛️ 외인/기관 동향</h3>
+      <h3><UiIcon name="landmark" :size="18" /> 외인/기관 동향</h3>
     </div>
 
     <div v-for="code in holdingCodes" :key="code" class="investor-block">
@@ -110,7 +110,7 @@ function consecutiveBuyDays(trends: InvestorData['trends'], type: 'foreign' | 'i
             v-if="consecutiveBuyDays(data[code].trends, 'foreign') >= 5 || consecutiveBuyDays(data[code].trends, 'institution') >= 5"
             class="long-term-signal"
           >
-            📌 연기금/외인 연속 매수 = 장기 관점 긍정 시그널
+            <UiIcon name="pin" :size="14" /> 연기금/외인 연속 매수 = 장기 관점 긍정 시그널
           </span>
         </div>
       </div>
