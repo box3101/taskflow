@@ -1,20 +1,24 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { UiCheckbox, UiBadge, UiIcon, UiInput } from '@leechanyong/ispark-ui'
+import { ref, computed } from 'vue'
+import { UiBadge, UiIcon, UiInput } from '@leechanyong/ispark-ui'
 import type { Todo } from '../../types/todo'
 
-defineProps<{
+const MAX_VISIBLE = 5
+
+const props = defineProps<{
   todos: Todo[]
   loading?: boolean
 }>()
 
 const emit = defineEmits<{
-  toggle: [todo: Todo]
   add: [title: string]
   navigateAll: []
 }>()
 
 const quickTitle = ref('')
+
+const visibleTodos = computed(() => props.todos.slice(0, MAX_VISIBLE))
+const remainingCount = computed(() => Math.max(0, props.todos.length - MAX_VISIBLE))
 
 function onQuickAdd() {
   const title = quickTitle.value.trim()
@@ -53,26 +57,30 @@ function getDday(dueDate: string | null): { label: string; variant: 'danger' | '
         등록된 할일이 없어요. 아래에서 추가해보세요!
       </p>
       <div
-        v-for="todo in todos"
+        v-for="todo in visibleTodos"
         :key="todo.id"
         class="todo-quick__item"
-        :class="{ 'todo-quick__item--done': todo.done }"
       >
-        <UiCheckbox
-          :model-value="todo.done"
-          @update:model-value="emit('toggle', todo)"
-        />
-        <span class="todo-quick__item-title" :class="{ 'todo-quick__item-title--done': todo.done }">
+        <span class="todo-quick__item-title">
           {{ todo.title }}
         </span>
         <UiBadge
-          v-if="!todo.done && getDday(todo.dueDate)"
+          v-if="getDday(todo.dueDate)"
           :variant="getDday(todo.dueDate)!.variant"
           size="xs"
         >
           {{ getDday(todo.dueDate)!.label }}
         </UiBadge>
       </div>
+
+      <!-- 더보기 -->
+      <button
+        v-if="remainingCount > 0"
+        class="todo-quick__more"
+        @click="emit('navigateAll')"
+      >
+        {{ remainingCount }}개 더보기
+      </button>
     </div>
 
     <!-- 빠른 추가 -->
@@ -147,10 +155,21 @@ function getDday(dueDate: string | null): { label: string; variant: 'danger' | '
   flex: 1;
   font-size: 13px;
   color: #1a1a1a;
+}
 
-  &--done {
-    text-decoration: line-through;
-    color: #b0b0b0;
+.todo-quick__more {
+  display: block;
+  width: 100%;
+  padding: 10px 0;
+  font-size: 13px;
+  color: #3c69db;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: center;
+
+  &:hover {
+    text-decoration: underline;
   }
 }
 

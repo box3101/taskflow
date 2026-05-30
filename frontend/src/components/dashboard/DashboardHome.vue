@@ -93,17 +93,6 @@ onMounted(async () => {
   }
 })
 
-// 할일 토글
-async function onToggleTodo(todo: Todo) {
-  try {
-    const { data } = await api.patch(`/todos/${todo.id}`, { done: !todo.done })
-    const idx = todos.value.findIndex(t => t.id === todo.id)
-    if (idx !== -1) todos.value[idx] = data.data
-  } catch {
-    openToast({ message: '상태 변경에 실패했습니다.', type: 'error' })
-  }
-}
-
 // 빠른 추가
 async function onAddTodo(title: string) {
   try {
@@ -160,7 +149,6 @@ function onNavigateTodos() {
       <!-- 오늘 할일 -->
       <TodoQuickList
         :todos="todayTodos"
-        @toggle="onToggleTodo"
         @add="onAddTodo"
         @navigate-all="onNavigateTodos"
       />
