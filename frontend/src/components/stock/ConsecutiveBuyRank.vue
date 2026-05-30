@@ -71,8 +71,8 @@ watch(allStocks, () => loadAll(), { immediate: true })
 
 const rankColumns: TableColumn[] = [
   { key: 'rank', label: '#', width: '36px', align: 'center' },
-  { key: 'name', label: '종목명', align: 'left' },
-  { key: 'theme', label: '테마', width: '90px', align: 'center', hideBelow: 640 },
+  { key: 'name', label: '종목명', width: '120px', align: 'left' },
+  { key: 'theme', label: '테마', width: '80px', align: 'center', hideBelow: 640 },
   { key: 'foreignDays', label: '외인', width: '100px', align: 'center' },
   { key: 'instDays', label: '기관', width: '100px', align: 'center' },
 ]

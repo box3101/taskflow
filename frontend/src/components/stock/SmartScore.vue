@@ -220,7 +220,7 @@ watch(allStocks, () => loadInvestorData(), { immediate: true })
 
 const scoreColumns: TableColumn[] = [
   { key: 'rank', label: '#', width: '36px', align: 'center' },
-  { key: 'name', label: '종목명', align: 'left' },
+  { key: 'name', label: '종목명', width: '120px', align: 'left' },
   { key: 'theme', label: '테마', width: '80px', align: 'center', hideBelow: 640 },
   { key: 'total', label: '종합', width: '66px', align: 'center' },
   { key: 'supply', label: '수급', width: '48px', align: 'center', hideBelow: 480 },
