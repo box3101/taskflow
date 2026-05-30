@@ -49,6 +49,9 @@ function getDday(dueDate: string | null): { label: string; variant: 'danger' | '
     </div>
 
     <div class="todo-quick__list">
+      <p v-if="todos.length === 0" class="todo-quick__empty">
+        등록된 할일이 없어요. 아래에서 추가해보세요!
+      </p>
       <div
         v-for="todo in todos"
         :key="todo.id"
@@ -149,6 +152,13 @@ function getDday(dueDate: string | null): { label: string; variant: 'danger' | '
     text-decoration: line-through;
     color: #b0b0b0;
   }
+}
+
+.todo-quick__empty {
+  font-size: 13px;
+  color: #9ca3af;
+  text-align: center;
+  padding: 16px 0;
 }
 
 .todo-quick__add {
