@@ -79,7 +79,8 @@ const maxHints = 3
 @media (max-width: 768px) {
   .day-cell { min-height: 60px; padding: 4px 1px; }
   .day-cell__number { font-size: 11px; }
-  .day-cell__hint-title { font-size: 9px; }
-  .day-cell__hint { padding: 0 2px; }
+  .day-cell__hint { padding: 0 2px; border-left-width: 2px; }
+  .day-cell__hint-title { font-size: 9px; line-height: 1.4; }
+  .day-cell__hints { padding: 0 1px; }
 }
 </style>
