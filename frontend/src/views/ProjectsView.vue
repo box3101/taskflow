@@ -807,6 +807,13 @@ function onUserMenuSelect(value: string) {
     <!-- 하단 네비게이션 바 -->
     <nav class="bottom-nav">
       <button
+        class="bottom-nav__item"
+        @click="router.push('/')"
+      >
+        <UiIcon name="home" :size="18" />
+        <span>홈</span>
+      </button>
+      <button
         v-for="item in menuItems"
         :key="item.value"
         class="bottom-nav__item"

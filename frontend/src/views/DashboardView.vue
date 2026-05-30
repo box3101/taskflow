@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  UiIcon, UiDropdownMenu, UiConfirm, UiToast,
+  UiIcon, UiButton, UiDropdownMenu, UiConfirm, UiToast,
 } from '@leechanyong/ispark-ui'
 import type { DropdownMenuItemDef } from '@leechanyong/ispark-ui'
 import { useAuthStore } from '../stores/auth'
@@ -44,6 +44,7 @@ function onUserMenuSelect(value: string) {
         <img src="/logo.svg" alt="CYLEE" class="header-logo" @click="router.push('/')" style="cursor: pointer;" />
       </div>
       <div class="header-right">
+        <UiButton class="storybook-link" as="a" href="https://box3101.github.io/ispark-ui/" target="_blank" size="sm" variant="outline">📖 Storybook</UiButton>
         <UiDropdownMenu
           :items="userMenuItems"
           :title="auth.user?.name"
@@ -85,6 +86,12 @@ function onUserMenuSelect(value: string) {
 
     <!-- 하단 네비게이션 바 -->
     <nav class="bottom-nav">
+      <button
+        class="bottom-nav__item bottom-nav__item--active"
+      >
+        <UiIcon name="home" :size="18" />
+        <span>홈</span>
+      </button>
       <button
         v-for="item in menuItems"
         :key="item.value"
@@ -169,6 +176,7 @@ function onUserMenuSelect(value: string) {
   cursor: pointer; transition: background 0.15s, color 0.15s;
   min-height: 44px;
   &:hover { background: #f3f4f6; color: #374151; }
+  &--active { background: #eef2ff; color: #4f6af6; font-weight: 600; }
 }
 
 .slide-left-enter-active,
@@ -186,6 +194,7 @@ function onUserMenuSelect(value: string) {
 @media (max-width: 768px) {
   .header { padding: 0 12px; }
   .header-right { gap: 8px; }
+  .storybook-link { display: none !important; }
   .side-menu { width: 240px; }
   .bottom-nav { gap: 0; justify-content: space-around; padding: 0; }
   .bottom-nav__item {
