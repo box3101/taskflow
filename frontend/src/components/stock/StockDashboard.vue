@@ -37,8 +37,8 @@ onUnmounted(() => {
 
 <template>
   <div class="stock-dashboard">
-    <!-- 보유 종목 + 외인/기관 동향 (좌우 배치) -->
-    <div class="stock-row">
+    <!-- 보유 종목 + 외인/기관 동향 + 캘린더 (3열) -->
+    <div class="stock-row stock-row--three">
       <HoldingSummary
         :holdings="holdings"
         :prices="prices"
@@ -55,6 +55,8 @@ onUnmounted(() => {
         :data="investorData"
         :holding-codes="holdingCodes"
       />
+
+      <StockCalendar :holdings="holdingsForCalendar" />
     </div>
 
     <!-- AI 종목 분석 + 테마 동향 (좌우 배치) -->
@@ -81,9 +83,6 @@ onUnmounted(() => {
       :theme-quotes="themeQuotes"
     />
 
-    <!-- 주식 캘린더 -->
-    <StockCalendar :holdings="holdingsForCalendar" />
-
   </div>
 </template>
 
@@ -100,6 +99,12 @@ onUnmounted(() => {
 
   > :first-child { flex: 1 1 60%; min-width: 0; }
   > :last-child  { flex: 1 1 40%; min-width: 0; }
+
+  &--three {
+    > :first-child { flex: 1 1 40%; }
+    > :nth-child(2) { flex: 1 1 30%; }
+    > :last-child { flex: 0 0 280px; }
+  }
 }
 
 @media (max-width: 768px) {
@@ -107,6 +112,7 @@ onUnmounted(() => {
     flex-direction: column;
 
     > :first-child,
+    > :nth-child(2),
     > :last-child { flex-basis: auto; }
   }
 }
