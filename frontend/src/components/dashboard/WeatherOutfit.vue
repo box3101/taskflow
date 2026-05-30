@@ -31,7 +31,7 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
 <style scoped lang="scss">
 .weather-outfit {
   flex-shrink: 0;
-  width: 180px;
+  width: 220px;
   background: #fff;
   border: 1px solid #e6e8ec;
   border-radius: 14px;
