@@ -39,10 +39,10 @@ onUnmounted(() => {
 
 <template>
   <div class="stock-dashboard">
-    <!-- 내일 장 전망 -->
+    <!-- 내일 장 전망 (최상단) -->
     <TomorrowOutlook v-if="firstHolding.code" :code="firstHolding.code" :name="firstHolding.name" />
 
-    <!-- 보유 종목 + 외인/기관 동향 + 캘린더 (3열) -->
+    <!-- 보유 종목 + 외인/기관 + 캘린더 (3열) -->
     <div class="stock-row stock-row--three">
       <HoldingSummary
         :holdings="holdings"
@@ -106,9 +106,9 @@ onUnmounted(() => {
   > :last-child  { flex: 1 1 40%; min-width: 0; }
 
   &--three {
-    > :first-child { flex: 1 1 40%; }
+    > :nth-child(1) { flex: 1 1 40%; }
     > :nth-child(2) { flex: 1 1 30%; }
-    > :last-child { flex: 0 0 280px; }
+    > :nth-child(3) { flex: 0 0 280px; }
   }
 }
 
@@ -116,9 +116,7 @@ onUnmounted(() => {
   .stock-row {
     flex-direction: column;
 
-    > :first-child,
-    > :nth-child(2),
-    > :last-child { flex-basis: auto; }
+    > * { flex-basis: auto !important; }
   }
 }
 

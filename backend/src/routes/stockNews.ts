@@ -229,25 +229,10 @@ router.get('/outlook', async (req, res) => {
   }
 
   try {
-    // 외국인/기관 동향 가져오기 (네이버 금융)
-    const naverUrl = `https://finance.naver.com/item/frgn.naver?code=${code}&page=1`
-    const naverRes = await fetch(naverUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } })
-    const html = await naverRes.text()
-    const trends: any[] = []
-    const rowRegex = /<td\s+class="num">([\d,]+|-)<\/td>/g
-    const dateRegex = /(\d{4}\.\d{2}\.\d{2})/g
-    const dates = html.match(dateRegex) || []
-    const nums: string[] = []
-    let m
-    while ((m = rowRegex.exec(html)) !== null) nums.push(m[1])
-    for (let i = 0; i < Math.min(dates.length, 5); i++) {
-      const base = i * 6
-      trends.push({
-        date: dates[i],
-        foreign: parseInt((nums[base + 3] || '0').replace(/,/g, '')),
-        institution: parseInt((nums[base + 4] || '0').replace(/,/g, '')),
-      })
-    }
+    // 기존 /stock/investor API와 동일한 로직으로 외국인/기관 동향 가져오기
+    const investorRes = await fetch(`http://localhost:4000/stock/investor/${code}`)
+    const investorData = await investorRes.json()
+    const trends = (investorData.trends || []).slice(0, 5)
 
     const outlook = await generateOutlook(name, code, trends)
     outlookCache = { data: outlook, fetchedAt: Date.now() }
