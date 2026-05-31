@@ -232,6 +232,33 @@ router.get('/outlook', async (req, res) => {
   }
 
   try {
+    // 뉴스 분석 먼저 트리거 (캐시 내면 스킵)
+    const cacheLog = await prisma.stockNewsCacheLog.findUnique({ where: { stockCode: code } })
+    if (!cacheLog || Date.now() - cacheLog.fetchedAt.getTime() >= CACHE_TTL_MS) {
+      const newsList = await fetchAllNews(code, name)
+      if (newsList.length > 0) {
+        const analyzed = await analyzeNews(name, code, newsList)
+        for (const item of analyzed) {
+          if (item.importance === 'low') continue
+          const news = newsList[item.index]
+          if (!news) continue
+          let publishedAt: Date
+          if (item.eventDate && /^\d{4}-\d{2}-\d{2}$/.test(item.eventDate)) {
+            publishedAt = new Date(item.eventDate + 'T09:00:00+09:00')
+          } else {
+            publishedAt = parseNewsTime(news.time || '')
+          }
+          const existing = await prisma.stockNews.findFirst({ where: { stockCode: code, url: news.url } })
+          if (!existing) {
+            await prisma.stockNews.create({
+              data: { stockCode: code, stockName: name, title: news.title, summary: item.summary, importance: item.importance, sentiment: item.sentiment || 'neutral', reason: item.reason, explain: item.explain || '', url: news.url, publishedAt },
+            })
+          }
+        }
+        await prisma.stockNewsCacheLog.upsert({ where: { stockCode: code }, update: { fetchedAt: new Date() }, create: { stockCode: code, fetchedAt: new Date() } })
+      }
+    }
+
     // 네이버 금융에서 직접 외국인/기관 동향 가져오기
     const naverRes = await fetch(`https://finance.naver.com/item/frgn.naver?code=${code}&page=1`, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
