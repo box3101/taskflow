@@ -9,6 +9,7 @@ import type { DropdownMenuItemDef } from '@leechanyong/ispark-ui'
 import { useAuthStore } from '../stores/auth'
 import { useWorkout } from '../composables/useWorkout'
 import { useMeal } from '../composables/useMeal'
+import CalendarMonth from '../components/calendar/CalendarMonth.vue'
 import WorkoutTab from '../components/health/WorkoutTab.vue'
 import MealTab from '../components/health/MealTab.vue'
 
@@ -41,42 +42,56 @@ function onUserMenuSelect(value: string) {
   if (value === 'logout') { auth.logout(); router.push('/login') }
 }
 
-// 날짜 상태
+// 날짜 & 월 상태
 const now = new Date()
+const currentYear = ref(now.getFullYear())
+const currentMonth = ref(now.getMonth() + 1)
 const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 const selectedDate = ref(todayStr)
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
 
-const dateLabel = computed(() => {
-  const [y, m, d] = selectedDate.value.split('-').map(Number)
-  const dt = new Date(y, m - 1, d)
+const monthLabel = computed(() => `${currentYear.value}년 ${currentMonth.value}월`)
+
+// 사이드 패널 날짜 라벨 ("6월 1일 (월)")
+const sideDateLabel = computed(() => {
+  const [, m, d] = selectedDate.value.split('-').map(Number)
+  const dt = new Date(selectedDate.value)
   const dayName = DAY_NAMES[dt.getDay()]
-  return `${y}년 ${m}월 ${d}일 (${dayName})`
+  return `${m}월 ${d}일 (${dayName})`
 })
-
-function prevDate() {
-  const dt = new Date(selectedDate.value)
-  dt.setDate(dt.getDate() - 1)
-  selectedDate.value = formatDate(dt)
-}
-
-function nextDate() {
-  const dt = new Date(selectedDate.value)
-  dt.setDate(dt.getDate() + 1)
-  selectedDate.value = formatDate(dt)
-}
-
-function goToday() {
-  const n = new Date()
-  selectedDate.value = formatDate(n)
-}
 
 function formatDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-const isToday = computed(() => selectedDate.value === formatDate(new Date()))
+// 월 네비게이션
+function prevMonth() {
+  if (currentMonth.value === 1) { currentYear.value--; currentMonth.value = 12 }
+  else { currentMonth.value-- }
+}
+
+function nextMonth() {
+  if (currentMonth.value === 12) { currentYear.value++; currentMonth.value = 1 }
+  else { currentMonth.value++ }
+}
+
+function goToday() {
+  const n = new Date()
+  currentYear.value = n.getFullYear()
+  currentMonth.value = n.getMonth() + 1
+  selectedDate.value = formatDate(n)
+}
+
+// 월 변경 시 selectedDate 조정
+watch([currentYear, currentMonth], () => {
+  const n = new Date()
+  if (currentYear.value === n.getFullYear() && currentMonth.value === n.getMonth() + 1) {
+    selectedDate.value = formatDate(n)
+  } else {
+    selectedDate.value = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-01`
+  }
+})
 
 // 서브탭
 const activeTab = ref('workout')
@@ -183,43 +198,61 @@ async function onMealDeleted() {
       <div class="health-page">
         <UiLoading v-if="loading" overlay />
 
-        <!-- 날짜 네비게이션 -->
-        <div class="health-page__date-nav">
-          <UiButton variant="outline" size="sm" iconOnly ariaLabel="이전 날" @click="prevDate">
-            <template #icon-left><UiIcon name="chevron-left" :size="16" /></template>
-          </UiButton>
-          <span class="health-page__date-label">{{ dateLabel }}</span>
-          <UiButton variant="outline" size="sm" iconOnly ariaLabel="다음 날" @click="nextDate">
-            <template #icon-left><UiIcon name="chevron-right" :size="16" /></template>
-          </UiButton>
-          <UiButton v-if="!isToday" variant="ghost" size="sm" @click="goToday">오늘</UiButton>
-        </div>
+        <div class="health-page__body">
+          <!-- 좌측: 월간 캘린더 -->
+          <div class="health-page__grid">
+            <div class="health-page__calendar-header">
+              <div class="health-page__nav">
+                <UiButton variant="outline" size="sm" iconOnly ariaLabel="이전 달" @click="prevMonth">
+                  <template #icon-left><UiIcon name="chevron-left" :size="16" /></template>
+                </UiButton>
+                <span class="health-page__month">{{ monthLabel }}</span>
+                <UiButton variant="outline" size="sm" iconOnly ariaLabel="다음 달" @click="nextMonth">
+                  <template #icon-left><UiIcon name="chevron-right" :size="16" /></template>
+                </UiButton>
+                <UiButton class="health-page__today" variant="ghost" size="sm" @click="goToday">오늘</UiButton>
+              </div>
+            </div>
+            <CalendarMonth
+              :year="currentYear"
+              :month="currentMonth"
+              :events="[]"
+              :selected-date="selectedDate"
+              @select-date="selectedDate = $event"
+            />
+          </div>
 
-        <!-- 서브탭 -->
-        <UiTab v-model="activeTab" :items="tabItems" />
+          <!-- 우측: 사이드 패널 -->
+          <div class="health-page__side">
+            <div class="health-page__side-date">{{ sideDateLabel }}</div>
 
-        <!-- 컨텐츠 영역 -->
-        <div class="health-page__content">
-          <!-- 운동 탭 -->
-          <WorkoutTab
-            v-if="activeTab === 'workout'"
-            :workouts="workouts"
-            :recent-workouts="recentWorkouts"
-            :loading="workoutLoading"
-            :selected-date="selectedDate"
-            @saved="onWorkoutSaved"
-            @deleted="onWorkoutDeleted"
-          />
+            <!-- 서브탭 -->
+            <UiTab v-model="activeTab" :items="tabItems" />
 
-          <!-- 식단 탭 -->
-          <MealTab
-            v-if="activeTab === 'meal'"
-            :meals="meals"
-            :loading="mealLoading"
-            :selected-date="selectedDate"
-            @saved="onMealSaved"
-            @deleted="onMealDeleted"
-          />
+            <!-- 컨텐츠 영역 -->
+            <div class="health-page__content">
+              <!-- 운동 탭 -->
+              <WorkoutTab
+                v-if="activeTab === 'workout'"
+                :workouts="workouts"
+                :recent-workouts="recentWorkouts"
+                :loading="workoutLoading"
+                :selected-date="selectedDate"
+                @saved="onWorkoutSaved"
+                @deleted="onWorkoutDeleted"
+              />
+
+              <!-- 식단 탭 -->
+              <MealTab
+                v-if="activeTab === 'meal'"
+                :meals="meals"
+                :loading="mealLoading"
+                :selected-date="selectedDate"
+                @saved="onMealSaved"
+                @deleted="onMealDeleted"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </main>
@@ -308,20 +341,71 @@ async function onMealDeleted() {
 .main { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
 
 // 건강 페이지
-.health-page { max-width: 640px; margin: 0 auto; position: relative; }
+.health-page { max-width: 1100px; margin: 0 auto; position: relative; }
 
-.health-page__date-nav {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  margin-bottom: 20px;
+.health-page__body {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
 }
 
-.health-page__date-label {
+.health-page__grid {
+  flex: 1;
+  min-width: 0;
+}
+
+.health-page__calendar-header {
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 16px; gap: 12px;
+}
+
+.health-page__nav {
+  display: flex; align-items: center; gap: 8px;
+  :deep(.ui-button) { min-width: 36px; min-height: 36px; }
+}
+
+.health-page__month {
   font-size: 18px; font-weight: 700; color: #1f2937;
-  min-width: 180px; text-align: center;
+  min-width: 120px; text-align: center;
+}
+
+.health-page__side {
+  flex-shrink: 0;
+  width: 360px;
+  position: sticky;
+  top: 80px;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #f3f4f6;
+  padding: 16px;
+}
+
+.health-page__side-date {
+  font-size: 17px; font-weight: 700; color: #1f2937;
+  margin-bottom: 12px;
 }
 
 .health-page__content {
-  padding: 16px 0;
+  padding: 12px 0 0;
+}
+
+@media (max-width: 1024px) {
+  .health-page__body {
+    flex-direction: column;
+    gap: 0;
+  }
+  .health-page__side {
+    width: 100%;
+    position: static;
+    max-height: none;
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    margin-top: 16px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -330,6 +414,9 @@ async function onMealDeleted() {
   .bottom-nav { gap: 0; justify-content: space-around; padding: 0; }
   .bottom-nav__item { flex-direction: column; gap: 2px; padding: 6px 12px; font-size: 10px; }
   .main { padding: 16px 12px; }
-  .health-page__date-label { font-size: 16px; min-width: 160px; }
+  .health-page__calendar-header { gap: 8px; }
+  .health-page__nav { gap: 4px; }
+  .health-page__today { display: none !important; }
+  .health-page__month { font-size: 16px; min-width: 100px; }
 }
 </style>
