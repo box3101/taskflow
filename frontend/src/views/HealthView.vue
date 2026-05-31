@@ -66,11 +66,11 @@ const tabItems = [
 
 // Composables
 const { workouts, recentWorkouts, monthHints: workoutHints, streak, loading: workoutLoading, fetchByDate: fetchWorkouts, fetchMonthHints: fetchWorkoutHints, fetchStreak, fetchRecent: fetchRecentWorkouts } = useWorkout()
+const { meals, monthHints: mealHints, loading: mealLoading, fetchByDate: fetchMeals, fetchMonthHints: fetchMealHints } = useMeal()
 
 // 월간 통계 (힌트 데이터에서 계산)
 const monthWorkoutCount = computed(() => workoutHints.value.length)
 const monthMealCount = computed(() => mealHints.value.length)
-const { meals, monthHints: mealHints, loading: mealLoading, fetchByDate: fetchMeals, fetchMonthHints: fetchMealHints } = useMeal()
 
 // 캘린더 힌트용 이벤트 — 실제 제목 표시
 const calendarHintEvents = computed(() => {
