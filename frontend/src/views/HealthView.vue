@@ -65,7 +65,11 @@ const tabItems = [
 ]
 
 // Composables
-const { workouts, recentWorkouts, monthHints: workoutHints, loading: workoutLoading, fetchByDate: fetchWorkouts, fetchMonthHints: fetchWorkoutHints, fetchRecent: fetchRecentWorkouts } = useWorkout()
+const { workouts, recentWorkouts, monthHints: workoutHints, streak, loading: workoutLoading, fetchByDate: fetchWorkouts, fetchMonthHints: fetchWorkoutHints, fetchStreak, fetchRecent: fetchRecentWorkouts } = useWorkout()
+
+// 월간 통계 (힌트 데이터에서 계산)
+const monthWorkoutCount = computed(() => workoutHints.value.length)
+const monthMealCount = computed(() => mealHints.value.length)
 const { meals, monthHints: mealHints, loading: mealLoading, fetchByDate: fetchMeals, fetchMonthHints: fetchMealHints } = useMeal()
 
 // 캘린더 힌트용 이벤트 — 실제 제목 표시
@@ -107,17 +111,22 @@ watch([currentYear, currentMonth], () => { loadMonthHints() })
 onMounted(() => {
   loadData()
   loadMonthHints()
+  fetchStreak()
   fetchRecentWorkouts()
 })
 
 async function onWorkoutSaved() {
   await fetchWorkouts(selectedDate.value)
   await fetchRecentWorkouts()
+  await loadMonthHints()
+  await fetchStreak()
 }
 
 async function onWorkoutDeleted() {
   await fetchWorkouts(selectedDate.value)
   await fetchRecentWorkouts()
+  await loadMonthHints()
+  await fetchStreak()
 }
 
 async function onMealSaved() {
@@ -157,6 +166,13 @@ async function onMealDeleted() {
           @swipe-left="nextMonth"
           @swipe-right="prevMonth"
         />
+        <!-- 스트릭 + 월간 통계 -->
+        <div class="health-page__stats">
+          <span v-if="streak > 0" class="health-page__streak">🔥 {{ streak }}일 연속 운동!</span>
+          <span v-else class="health-page__streak health-page__streak--empty">오늘 운동을 기록해보세요</span>
+          <span class="health-page__stat">💪 {{ monthWorkoutCount }}회</span>
+          <span class="health-page__stat">🍚 {{ monthMealCount }}끼</span>
+        </div>
       </div>
 
       <!-- 우측: 사이드 패널 -->
@@ -213,6 +229,32 @@ async function onMealDeleted() {
 }
 .health-page__side-date { font-size: 17px; font-weight: 700; color: #1f2937; margin-bottom: 12px; }
 .health-page__content { padding: 12px 0 0; }
+
+.health-page__stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.health-page__streak {
+  font-weight: 600;
+  color: #ef4444;
+
+  &--empty {
+    color: #9ca3af;
+    font-weight: 400;
+  }
+}
+
+.health-page__stat {
+  white-space: nowrap;
+}
 
 @media (max-width: 1024px) {
   .health-page__body { flex-direction: column; gap: 0; }

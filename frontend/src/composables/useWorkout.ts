@@ -16,6 +16,7 @@ export function useWorkout() {
   const workouts = ref<WorkoutEntry[]>([])
   const recentWorkouts = ref<WorkoutEntry[]>([])
   const monthHints = ref<{ date: string; title: string; count: number }[]>([])
+  const streak = ref(0)
   const loading = ref(false)
 
   async function fetchByDate(date: string) {
@@ -37,6 +38,15 @@ export function useWorkout() {
       monthHints.value = data.data
     } catch {
       hintDates.value = []
+    }
+  }
+
+  async function fetchStreak() {
+    try {
+      const { data } = await api.get('/workouts/streak')
+      streak.value = data.data.streak
+    } catch {
+      streak.value = 0
     }
   }
 
@@ -67,5 +77,5 @@ export function useWorkout() {
     workouts.value = workouts.value.filter(w => w.id !== id)
   }
 
-  return { workouts, recentWorkouts, monthHints, loading, fetchByDate, fetchMonthHints, fetchRecent, addWorkout, updateWorkout, deleteWorkout }
+  return { workouts, recentWorkouts, monthHints, streak, loading, fetchByDate, fetchMonthHints, fetchStreak, fetchRecent, addWorkout, updateWorkout, deleteWorkout }
 }

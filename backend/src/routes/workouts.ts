@@ -52,6 +52,55 @@ router.get('/', async (req, res) => {
 })
 
 // GET /recent — 최근 7일 내 고유 운동명 목록
+// GET /streak — 연속 운동일 계산
+router.get('/streak', async (req, res) => {
+  try {
+    const userId = req.user!.id
+    // 최근 60일 운동 날짜 조회
+    const sixtyDaysAgo = new Date()
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
+    const dateStr = sixtyDaysAgo.toISOString().slice(0, 10)
+
+    const workouts = await prisma.workout.findMany({
+      where: { userId, date: { gte: dateStr } },
+      select: { date: true },
+      distinct: ['date'],
+      orderBy: { date: 'desc' },
+    })
+
+    const dates = new Set(workouts.map(w => w.date))
+
+    // 오늘 또는 어제부터 역순으로 연속일 계산
+    let streak = 0
+    const today = new Date()
+    const todayStr = today.toISOString().slice(0, 10)
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = yesterday.toISOString().slice(0, 10)
+
+    // 오늘 기록 있으면 오늘부터, 없으면 어제부터
+    let checkDate = dates.has(todayStr) ? new Date(today) : dates.has(yesterdayStr) ? new Date(yesterday) : null
+
+    if (checkDate) {
+      while (true) {
+        const ds = checkDate.toISOString().slice(0, 10)
+        if (dates.has(ds)) {
+          streak++
+          checkDate.setDate(checkDate.getDate() - 1)
+        } else {
+          break
+        }
+      }
+    }
+
+    res.json({ data: { streak, totalThisMonth: 0 } })
+  } catch (err) {
+    console.error('GET /workouts/streak error:', err)
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
+  }
+})
+
+// GET /recent — 최근 7일 내 고유 운동명 목록
 router.get('/recent', async (req, res) => {
   try {
     const userId = req.user!.id
