@@ -5,8 +5,8 @@ import { authenticate } from '../middleware/auth'
 const router = Router()
 router.use(authenticate)
 
-const VALID_TYPES = ['lunch', 'dinner', 'snack'] as const
-const TYPE_ORDER: Record<string, number> = { lunch: 0, dinner: 1, snack: 2 }
+const VALID_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'] as const
+const TYPE_ORDER: Record<string, number> = { breakfast: 0, lunch: 1, dinner: 2, snack: 3 }
 
 // GET / — 날짜별 식단 조회 (?date=YYYY-MM-DD)
 router.get('/', async (req, res) => {
@@ -14,7 +14,21 @@ router.get('/', async (req, res) => {
     const userId = req.user!.id
     const date = req.query.date as string
 
-    if (!date || typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const date = req.query.date as string | undefined
+    const month = req.query.month as string | undefined
+
+    // 월별 조회 (?month=YYYY-MM) — 힌트용 날짜 목록만 반환
+    if (month && /^\d{4}-\d{2}$/.test(month)) {
+      const meals = await prisma.meal.findMany({
+        where: { userId, date: { startsWith: month } },
+        select: { date: true },
+      })
+      const dates = [...new Set(meals.map(m => m.date))]
+      res.json({ data: dates })
+      return
+    }
+
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       res.status(400).json({ message: '날짜는 YYYY-MM-DD 형식이어야 합니다.' })
       return
     }
@@ -24,7 +38,7 @@ router.get('/', async (req, res) => {
       select: { id: true, date: true, type: true, content: true },
     })
 
-    // 끼니 순서 정렬 (lunch → dinner → snack)
+    // 끼니 순서 정렬 (breakfast → lunch → dinner → snack)
     meals.sort((a, b) => (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9))
 
     res.json({ data: meals })

@@ -15,6 +15,7 @@ export interface WorkoutEntry {
 export function useWorkout() {
   const workouts = ref<WorkoutEntry[]>([])
   const recentWorkouts = ref<WorkoutEntry[]>([])
+  const hintDates = ref<string[]>([])
   const loading = ref(false)
 
   async function fetchByDate(date: string) {
@@ -27,6 +28,15 @@ export function useWorkout() {
       throw new Error('운동 데이터를 불러올 수 없습니다.')
     } finally {
       loading.value = false
+    }
+  }
+
+  async function fetchMonthHints(month: string) {
+    try {
+      const { data } = await api.get('/workouts', { params: { month } })
+      hintDates.value = data.data
+    } catch {
+      hintDates.value = []
     }
   }
 
@@ -57,5 +67,5 @@ export function useWorkout() {
     workouts.value = workouts.value.filter(w => w.id !== id)
   }
 
-  return { workouts, recentWorkouts, loading, fetchByDate, fetchRecent, addWorkout, updateWorkout, deleteWorkout }
+  return { workouts, recentWorkouts, hintDates, loading, fetchByDate, fetchMonthHints, fetchRecent, addWorkout, updateWorkout, deleteWorkout }
 }

@@ -4,17 +4,19 @@ import api from '../api/client'
 export interface MealEntry {
   id: string
   date: string
-  type: 'lunch' | 'dinner' | 'snack'
+  type: 'breakfast' | 'lunch' | 'dinner' | 'snack'
   content: string
 }
 
 export const MEAL_LABELS: Record<string, string> = {
+  breakfast: '아침',
   lunch: '점심',
   dinner: '저녁',
   snack: '간식',
 }
 
 export const MEAL_ICONS: Record<string, string> = {
+  breakfast: '🌅',
   lunch: '☀️',
   dinner: '🌙',
   snack: '🍪',
@@ -22,7 +24,17 @@ export const MEAL_ICONS: Record<string, string> = {
 
 export function useMeal() {
   const meals = ref<MealEntry[]>([])
+  const hintDates = ref<string[]>([])
   const loading = ref(false)
+
+  async function fetchMonthHints(month: string) {
+    try {
+      const { data } = await api.get('/meals', { params: { month } })
+      hintDates.value = data.data
+    } catch {
+      hintDates.value = []
+    }
+  }
 
   async function fetchByDate(date: string) {
     loading.value = true
@@ -55,5 +67,5 @@ export function useMeal() {
     meals.value = meals.value.filter(m => m.id !== id)
   }
 
-  return { meals, loading, fetchByDate, addMeal, updateMeal, deleteMeal }
+  return { meals, hintDates, loading, fetchByDate, fetchMonthHints, addMeal, updateMeal, deleteMeal }
 }

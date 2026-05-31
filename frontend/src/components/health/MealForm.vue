@@ -18,6 +18,7 @@ const emit = defineEmits<{
 const { addMeal, updateMeal, deleteMeal } = useMeal()
 
 const mealTypeOptions = [
+  { value: 'breakfast', label: '아침' },
   { value: 'lunch', label: '점심' },
   { value: 'dinner', label: '저녁' },
   { value: 'snack', label: '간식' },
@@ -142,7 +143,7 @@ async function onDelete() {
         </div>
         <div class="meal-form__footer-right">
           <UiButton variant="outline" size="sm" :disabled="saving" @click="close">취소</UiButton>
-          <UiButton variant="solid" size="sm" :disabled="saving" @click="onSave">저장</UiButton>
+          <UiButton variant="primary" size="sm" :loading="saving" @click="onSave">저장</UiButton>
         </div>
       </div>
     </template>

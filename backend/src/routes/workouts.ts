@@ -11,7 +11,21 @@ router.get('/', async (req, res) => {
     const userId = req.user!.id
     const date = req.query.date as string
 
-    if (!date || typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const date = req.query.date as string | undefined
+    const month = req.query.month as string | undefined
+
+    // 월별 조회 (?month=YYYY-MM) — 힌트용 날짜 목록만 반환
+    if (month && /^\d{4}-\d{2}$/.test(month)) {
+      const workouts = await prisma.workout.findMany({
+        where: { userId, date: { startsWith: month } },
+        select: { date: true },
+      })
+      const dates = [...new Set(workouts.map(w => w.date))]
+      res.json({ data: dates })
+      return
+    }
+
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       res.status(400).json({ message: '날짜는 YYYY-MM-DD 형식이어야 합니다.' })
       return
     }

@@ -101,8 +101,20 @@ const tabItems = [
 ]
 
 // Composables
-const { workouts, recentWorkouts, loading: workoutLoading, fetchByDate: fetchWorkouts, fetchRecent: fetchRecentWorkouts } = useWorkout()
-const { meals, loading: mealLoading, fetchByDate: fetchMeals } = useMeal()
+const { workouts, recentWorkouts, hintDates: workoutHintDates, loading: workoutLoading, fetchByDate: fetchWorkouts, fetchMonthHints: fetchWorkoutHints, fetchRecent: fetchRecentWorkouts } = useWorkout()
+const { meals, hintDates: mealHintDates, loading: mealLoading, fetchByDate: fetchMeals, fetchMonthHints: fetchMealHints } = useMeal()
+
+// 캘린더 힌트용 이벤트 — CalendarEvent 형식으로 변환
+const calendarHintEvents = computed(() => {
+  const events: any[] = []
+  for (const date of workoutHintDates.value) {
+    events.push({ id: `w-${date}`, type: 'event', title: '운동', date, startTime: null, endTime: null, color: '#3b82f6', memo: null })
+  }
+  for (const date of mealHintDates.value) {
+    events.push({ id: `m-${date}`, type: 'event', title: '식단', date, startTime: null, endTime: null, color: '#22c55e', memo: null })
+  }
+  return events
+})
 
 const loading = computed(() => workoutLoading.value || mealLoading.value)
 
@@ -117,9 +129,20 @@ async function loadData() {
   }
 }
 
+function currentMonthStr() {
+  return `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}`
+}
+
+async function loadMonthHints() {
+  const month = currentMonthStr()
+  await Promise.all([fetchWorkoutHints(month), fetchMealHints(month)])
+}
+
 watch(selectedDate, () => { loadData() })
+watch([currentYear, currentMonth], () => { loadMonthHints() })
 onMounted(() => {
   loadData()
+  loadMonthHints()
   fetchRecentWorkouts()
 })
 
@@ -127,20 +150,24 @@ onMounted(() => {
 async function onWorkoutSaved() {
   await fetchWorkouts(selectedDate.value)
   await fetchRecentWorkouts()
+  await loadMonthHints()
 }
 
 async function onWorkoutDeleted() {
   await fetchWorkouts(selectedDate.value)
   await fetchRecentWorkouts()
+  await loadMonthHints()
 }
 
 // 식단 이벤트 핸들러
 async function onMealSaved() {
   await fetchMeals(selectedDate.value)
+  await loadMonthHints()
 }
 
 async function onMealDeleted() {
   await fetchMeals(selectedDate.value)
+  await loadMonthHints()
 }
 </script>
 
@@ -216,7 +243,7 @@ async function onMealDeleted() {
             <CalendarMonth
               :year="currentYear"
               :month="currentMonth"
-              :events="[]"
+              :events="calendarHintEvents"
               :selected-date="selectedDate"
               @select-date="selectedDate = $event"
             />
@@ -227,7 +254,7 @@ async function onMealDeleted() {
             <div class="health-page__side-date">{{ sideDateLabel }}</div>
 
             <!-- 서브탭 -->
-            <UiTab v-model="activeTab" :items="tabItems" />
+            <UiTab v-model="activeTab" :tabs="tabItems" />
 
             <!-- 컨텐츠 영역 -->
             <div class="health-page__content">
