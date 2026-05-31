@@ -6,7 +6,7 @@ import { analyzeNews } from '../services/newsAnalyzer'
 const router = Router()
 router.use(authenticate)
 
-const CACHE_TTL_MS = 30 * 60 * 1000
+const CACHE_TTL_MS = 3 * 60 * 60 * 1000 // 3시간
 
 // 종목별 연관 검색 키워드
 const RELATED_KEYWORDS: Record<string, string[]> = {
