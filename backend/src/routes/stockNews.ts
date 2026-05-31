@@ -214,6 +214,50 @@ router.get('/calendar', async (req, res) => {
   }
 })
 
+// GET /stock-news/outlook — 내일 장 전망
+import { generateOutlook } from '../services/marketOutlook'
+
+let outlookCache: { data: any; fetchedAt: number } | null = null
+
+router.get('/outlook', async (req, res) => {
+  const { code, name } = req.query as { code: string; name: string }
+  if (!code || !name) return res.status(400).json({ error: 'code, name 필요' })
+
+  // 3시간 캐시
+  if (outlookCache && Date.now() - outlookCache.fetchedAt < CACHE_TTL_MS) {
+    return res.json(outlookCache.data)
+  }
+
+  try {
+    // 외국인/기관 동향 가져오기 (네이버 금융)
+    const naverUrl = `https://finance.naver.com/item/frgn.naver?code=${code}&page=1`
+    const naverRes = await fetch(naverUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+    const html = await naverRes.text()
+    const trends: any[] = []
+    const rowRegex = /<td\s+class="num">([\d,]+|-)<\/td>/g
+    const dateRegex = /(\d{4}\.\d{2}\.\d{2})/g
+    const dates = html.match(dateRegex) || []
+    const nums: string[] = []
+    let m
+    while ((m = rowRegex.exec(html)) !== null) nums.push(m[1])
+    for (let i = 0; i < Math.min(dates.length, 5); i++) {
+      const base = i * 6
+      trends.push({
+        date: dates[i],
+        foreign: parseInt((nums[base + 3] || '0').replace(/,/g, '')),
+        institution: parseInt((nums[base + 4] || '0').replace(/,/g, '')),
+      })
+    }
+
+    const outlook = await generateOutlook(name, code, trends)
+    outlookCache = { data: outlook, fetchedAt: Date.now() }
+    res.json(outlook)
+  } catch (err: any) {
+    console.error('[stock-news] outlook 에러:', err?.message || err)
+    res.status(500).json({ error: '전망 생성 실패' })
+  }
+})
+
 // DELETE /stock-news/cache — 캐시 초기화 (재분석 트리거용)
 router.delete('/cache', async (_req, res) => {
   try {

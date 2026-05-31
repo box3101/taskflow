@@ -7,6 +7,7 @@ import RecommendCard from './RecommendCard.vue'
 import ThemeOverview from './ThemeOverview.vue'
 import SmartScore from './SmartScore.vue'
 import StockCalendar from './StockCalendar.vue'
+import TomorrowOutlook from './TomorrowOutlook.vue'
 
 const {
   holdings, prices, quotes, themes, themeQuotes,
@@ -20,6 +21,7 @@ const {
 
 const holdingCodes = computed(() => holdings.value.map(h => h.code).filter(Boolean))
 const holdingsForCalendar = computed(() => holdings.value.map(h => ({ code: h.code, name: h.name })))
+const firstHolding = computed(() => holdings.value[0] || { code: '', name: '' })
 
 function onSaveHoldings() {
   saveHoldings()
@@ -37,6 +39,9 @@ onUnmounted(() => {
 
 <template>
   <div class="stock-dashboard">
+    <!-- 내일 장 전망 -->
+    <TomorrowOutlook v-if="firstHolding.code" :code="firstHolding.code" :name="firstHolding.name" />
+
     <!-- 보유 종목 + 외인/기관 동향 + 캘린더 (3열) -->
     <div class="stock-row stock-row--three">
       <HoldingSummary

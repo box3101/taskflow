@@ -196,3 +196,26 @@ export async function fetchStockEvents(): Promise<any[]> {
   const res = await fetch('/data/stock-events.json')
   return res.json()
 }
+
+export interface MarketOutlook {
+  signal: 'buy' | 'hold' | 'sell'
+  confidence: number
+  summary: string
+  detail: string
+  risks: string
+  marketData: {
+    nasdaq: { price: number; changePct: number }
+    sp500: { price: number; changePct: number }
+    sox: { price: number; changePct: number }
+    vix: { price: number }
+  }
+  foreignTrend: string
+  newsSummary: string
+  fearGreed: number | null
+  generatedAt: string
+}
+
+export async function fetchMarketOutlook(code: string, name: string): Promise<MarketOutlook> {
+  const { data } = await api.get('/stock-news/outlook', { params: { code, name } })
+  return data
+}
