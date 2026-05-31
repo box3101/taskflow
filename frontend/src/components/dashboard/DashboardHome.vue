@@ -161,22 +161,20 @@ function onNavigateTodos() {
         />
       </div>
 
-      <!-- 할일 + 프로젝트 (PC: 50:50, 모바일: 세로) -->
+      <!-- 프로젝트 + 할일 + 일정 (PC: 3열, 모바일: 세로) -->
       <div class="dashboard__content">
-        <TodoQuickList
-          :todos="todayTodos"
-          @add="onAddTodo"
-          @navigate-all="onNavigateTodos"
-        />
         <ProjectSummary
           :projects="activeProjects"
           @select="onSelectProject"
           @navigate-all="onNavigateProjects"
         />
+        <TodoQuickList
+          :todos="todayTodos"
+          @add="onAddTodo"
+          @navigate-all="onNavigateTodos"
+        />
+        <CalendarWidget />
       </div>
-
-      <!-- 캘린더 위젯 -->
-      <CalendarWidget />
     </template>
   </div>
 </template>
@@ -228,9 +226,15 @@ function onNavigateTodos() {
 
 .dashboard__content {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
   align-items: stretch;
+}
+
+@media (max-width: 1024px) {
+  .dashboard__content {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 768px) {
