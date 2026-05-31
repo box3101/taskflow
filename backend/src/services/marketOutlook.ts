@@ -139,6 +139,13 @@ JSON으로만 응답 (다른 텍스트 없이):
 
 signal: buy(매수유리) / hold(관망) / sell(매도유리)
 confidence: 1~10 (10이 가장 확신)
+
+confidence 가이드라인:
+- 호재 비율 80% 이상 + 미국장 상승 → 최소 7
+- 호재 비율 60% 이상 → 최소 6
+- 외국인 매도가 있어도 호재가 압도적이면 confidence를 낮추지 마
+- 주말(미국장 0%)이면 뉴스와 수급 비중을 더 높여서 판단
+
 detail: "쉽게 말해..." 스타일로 초보자 친화적`
 
   const response = await client.messages.create({
