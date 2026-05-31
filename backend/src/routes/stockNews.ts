@@ -14,7 +14,17 @@ const RELATED_KEYWORDS: Record<string, string[]> = {
   '005930': ['삼성전자', '삼성 반도체', '파운드리'],
 }
 
-// 네이버 모바일 뉴스 검색
+// 네이버 뉴스 URL에서 og:title 추출
+async function fetchOgTitle(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+    const html = await res.text()
+    const match = html.match(/property="og:title"[^>]*content="([^"]*)"/)
+    return match?.[1] || ''
+  } catch { return '' }
+}
+
+// 네이버 모바일 뉴스 검색 → URL 추출 → og:title로 정확한 제목 매핑
 async function fetchNewsFromNaver(query: string): Promise<{ title: string; url: string; time: string }[]> {
   try {
     const searchUrl = `https://m.search.naver.com/search.naver?where=m_news&query=${encodeURIComponent(query)}&sort=1`
@@ -24,28 +34,21 @@ async function fetchNewsFromNaver(query: string): Promise<{ title: string; url: 
     const html = await res.text()
     const seenUrls = new Set<string>()
 
-    // .title 링크에서 URL만 순서대로 추출 (중복 제거)
-    const urlRegex = /data-heatmap-target="\.title"[^>]*href="(https:\/\/n\.news\.naver\.com\/article\/[^"]+)"|href="(https:\/\/n\.news\.naver\.com\/article\/[^"]+)"[^>]*data-heatmap-target="\.title"/g
+    // .title 링크에서 URL 추출
+    const urlRegex = /href="(https:\/\/n\.news\.naver\.com\/article\/[^"]+)"[^>]*data-heatmap-target="\.title"/g
     const urls: string[] = []
     let match
     while ((match = urlRegex.exec(html)) !== null) {
-      const url = match[1] || match[2]
-      if (!seenUrls.has(url)) { seenUrls.add(url); urls.push(url) }
+      if (!seenUrls.has(match[1])) { seenUrls.add(match[1]); urls.push(match[1]) }
     }
 
-    // 제목은 JSON 데이터에서 추출 (15자 이상, 언론사명 제외)
-    const titleRegex = /"title":"([^"]{15,200})"/g
-    const titles: string[] = []
-    while ((match = titleRegex.exec(html)) !== null) {
-      titles.push(match[1].replace(/<\/?mark>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'))
-    }
+    // 각 URL에서 og:title 추출 (병렬, 최대 10개)
+    const limited = urls.slice(0, 10)
+    const titles = await Promise.all(limited.map(u => fetchOgTitle(u)))
 
-    // URL과 제목 매핑 (같은 순서)
-    const results: { title: string; url: string; time: string }[] = []
-    for (let i = 0; i < Math.min(urls.length, titles.length, 10); i++) {
-      results.push({ title: titles[i], url: urls[i], time: '' })
-    }
-    return results
+    return limited
+      .map((url, i) => ({ title: titles[i], url, time: '' }))
+      .filter(n => n.title.length > 0)
   } catch (e) {
     console.warn(`[stockNews] 네이버 검색 실패 (${query}):`, e)
     return []
