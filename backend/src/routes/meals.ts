@@ -93,14 +93,9 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const userId = req.user!.id
-    const id = Number(req.params.id)
+    const { id } = req.params
 
-    if (isNaN(id)) {
-      res.status(400).json({ message: '유효하지 않은 ID입니다.' })
-      return
-    }
-
-    const existing = await prisma.meal.findUnique({ where: { id } })
+    const existing = await prisma.meal.findFirst({ where: { id, userId } })
     if (!existing || existing.userId !== userId) {
       res.status(404).json({ message: '식단을 찾을 수 없습니다.' })
       return
@@ -118,7 +113,7 @@ router.put('/:id', async (req, res) => {
       return
     }
 
-    const updateData: Record<string, string> = {}
+    const updateData: Record<string, unknown> = {}
     if (type !== undefined) updateData.type = type
     if (content !== undefined) updateData.content = content.trim()
 
@@ -137,14 +132,9 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const userId = req.user!.id
-    const id = Number(req.params.id)
+    const { id } = req.params
 
-    if (isNaN(id)) {
-      res.status(400).json({ message: '유효하지 않은 ID입니다.' })
-      return
-    }
-
-    const existing = await prisma.meal.findUnique({ where: { id } })
+    const existing = await prisma.meal.findFirst({ where: { id, userId } })
     if (!existing || existing.userId !== userId) {
       res.status(404).json({ message: '식단을 찾을 수 없습니다.' })
       return
