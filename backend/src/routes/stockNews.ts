@@ -105,9 +105,11 @@ router.post('/analyze', async (req, res) => {
       if (cacheLog && Date.now() - cacheLog.fetchedAt.getTime() < CACHE_TTL_MS) continue
 
       const newsList = await fetchAllNews(code, name)
+      console.log(`[stock-news] ${name}: ${newsList.length}건 뉴스 수집`)
       if (newsList.length === 0) continue
 
       const analyzed = await analyzeNews(name, code, newsList)
+      console.log(`[stock-news] ${name}: AI 분석 ${analyzed.length}건 반환`)
 
       for (const item of analyzed) {
         const news = newsList[item.index]

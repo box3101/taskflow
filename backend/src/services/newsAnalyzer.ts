@@ -31,7 +31,7 @@ export async function analyzeNews(
 
   const response = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
+    max_tokens: 4096,
     messages: [
       {
         role: 'user',
@@ -66,10 +66,15 @@ summary는 15자 이내. reason은 한 문장.`,
 
   try {
     const jsonMatch = text.match(/\[[\s\S]*\]/)
-    if (!jsonMatch) return []
-    return JSON.parse(jsonMatch[0]) as AnalyzedNews[]
-  } catch {
-    console.warn('[newsAnalyzer] JSON 파싱 실패:', text.slice(0, 200))
+    if (!jsonMatch) {
+      console.warn('[newsAnalyzer] JSON 배열 없음. 응답:', text.slice(0, 300))
+      return []
+    }
+    const parsed = JSON.parse(jsonMatch[0]) as AnalyzedNews[]
+    console.log(`[newsAnalyzer] ${parsed.length}건 파싱 성공`)
+    return parsed
+  } catch (e) {
+    console.warn('[newsAnalyzer] JSON 파싱 실패:', text.slice(0, 300))
     return []
   }
 }
