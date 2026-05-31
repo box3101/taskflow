@@ -1,0 +1,59 @@
+import { ref } from 'vue'
+import api from '../api/client'
+
+export interface MealEntry {
+  id: string
+  date: string
+  type: 'lunch' | 'dinner' | 'snack'
+  content: string
+}
+
+export const MEAL_LABELS: Record<string, string> = {
+  lunch: '점심',
+  dinner: '저녁',
+  snack: '간식',
+}
+
+export const MEAL_ICONS: Record<string, string> = {
+  lunch: '☀️',
+  dinner: '🌙',
+  snack: '🍪',
+}
+
+export function useMeal() {
+  const meals = ref<MealEntry[]>([])
+  const loading = ref(false)
+
+  async function fetchByDate(date: string) {
+    loading.value = true
+    try {
+      const { data } = await api.get('/meals', { params: { date } })
+      meals.value = data.data
+    } catch {
+      meals.value = []
+      throw new Error('식단 데이터를 불러올 수 없습니다.')
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function addMeal(entry: Omit<MealEntry, 'id'>) {
+    const { data } = await api.post('/meals', entry)
+    meals.value.push(data.data)
+    return data.data
+  }
+
+  async function updateMeal(id: string, entry: Partial<MealEntry>) {
+    const { data } = await api.put(`/meals/${id}`, entry)
+    const idx = meals.value.findIndex(m => m.id === id)
+    if (idx >= 0) meals.value[idx] = data.data
+    return data.data
+  }
+
+  async function deleteMeal(id: string) {
+    await api.delete(`/meals/${id}`)
+    meals.value = meals.value.filter(m => m.id !== id)
+  }
+
+  return { meals, loading, fetchByDate, addMeal, updateMeal, deleteMeal }
+}
