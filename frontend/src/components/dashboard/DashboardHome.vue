@@ -10,6 +10,7 @@ import StatCard from './StatCard.vue'
 import TodoQuickList from './TodoQuickList.vue'
 import ProjectSummary from './ProjectSummary.vue'
 import WeatherOutfit from './WeatherOutfit.vue'
+import MoodWidget from './MoodWidget.vue'
 import CalendarWidget from '../calendar/CalendarWidget.vue'
 
 const router = useRouter()
@@ -141,6 +142,9 @@ function onNavigateTodos() {
         <DailyQuote class="dashboard__quote" />
         <WeatherOutfit />
       </div>
+
+      <!-- 기분 트래커 -->
+      <MoodWidget />
 
       <!-- 요약 카드 -->
       <div class="dashboard__stats">
