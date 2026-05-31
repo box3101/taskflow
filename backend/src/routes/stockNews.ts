@@ -14,7 +14,7 @@ const RELATED_KEYWORDS: Record<string, string[]> = {
   '005930': ['삼성전자', '삼성 반도체', '파운드리'],
 }
 
-// 네이버 모바일 뉴스 검색 — 제목+URL을 한 블록에서 함께 추출
+// 네이버 모바일 뉴스 검색
 async function fetchNewsFromNaver(query: string): Promise<{ title: string; url: string; time: string }[]> {
   try {
     const searchUrl = `https://m.search.naver.com/search.naver?where=m_news&query=${encodeURIComponent(query)}&sort=1`
@@ -22,32 +22,30 @@ async function fetchNewsFromNaver(query: string): Promise<{ title: string; url: 
       headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15' },
     })
     const html = await res.text()
-    const results: { title: string; url: string; time: string }[] = []
     const seenUrls = new Set<string>()
 
-    // href와 title이 같은 <a> 태그에서 함께 추출 (순서 보장)
-    const linkRegex = /href="(https:\/\/n\.news\.naver\.com\/article\/[^"]+)"[^>]*>([^<]+)</g
+    // .title 링크에서 URL만 순서대로 추출 (중복 제거)
+    const urlRegex = /data-heatmap-target="\.title"[^>]*href="(https:\/\/n\.news\.naver\.com\/article\/[^"]+)"|href="(https:\/\/n\.news\.naver\.com\/article\/[^"]+)"[^>]*data-heatmap-target="\.title"/g
+    const urls: string[] = []
     let match
-    while ((match = linkRegex.exec(html)) !== null) {
-      const url = match[1]
-      const text = match[2].replace(/<\/?mark>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim()
-      if (text.length < 10 || seenUrls.has(url)) continue
-      seenUrls.add(url)
-      results.push({ title: text, url, time: '' })
+    while ((match = urlRegex.exec(html)) !== null) {
+      const url = match[1] || match[2]
+      if (!seenUrls.has(url)) { seenUrls.add(url); urls.push(url) }
     }
 
-    // 위 방식으로 못 잡으면 URL만 수집하고 제목은 빈값
-    if (results.length === 0) {
-      const urlRegex = /href="(https:\/\/n\.news\.naver\.com\/article\/[^"]+)"/g
-      while ((match = urlRegex.exec(html)) !== null) {
-        if (!seenUrls.has(match[1])) {
-          seenUrls.add(match[1])
-          results.push({ title: '', url: match[1], time: '' })
-        }
-      }
+    // 제목은 JSON 데이터에서 추출 (15자 이상, 언론사명 제외)
+    const titleRegex = /"title":"([^"]{15,200})"/g
+    const titles: string[] = []
+    while ((match = titleRegex.exec(html)) !== null) {
+      titles.push(match[1].replace(/<\/?mark>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'))
     }
 
-    return results.slice(0, 10)
+    // URL과 제목 매핑 (같은 순서)
+    const results: { title: string; url: string; time: string }[] = []
+    for (let i = 0; i < Math.min(urls.length, titles.length, 10); i++) {
+      results.push({ title: titles[i], url: urls[i], time: '' })
+    }
+    return results
   } catch (e) {
     console.warn(`[stockNews] 네이버 검색 실패 (${query}):`, e)
     return []
