@@ -232,10 +232,33 @@ router.get('/outlook', async (req, res) => {
   }
 
   try {
-    // 기존 /stock/investor API와 동일한 로직으로 외국인/기관 동향 가져오기
-    const investorRes = await fetch(`http://localhost:4000/stock/investor/${code}`)
-    const investorData = await investorRes.json()
-    const trends = (investorData.trends || []).slice(0, 5)
+    // 네이버 금융에서 직접 외국인/기관 동향 가져오기
+    const naverRes = await fetch(`https://finance.naver.com/item/frgn.naver?code=${code}&page=1`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    })
+    const html = await naverRes.text()
+    const parseNum = (v: string) => Number(v.replace(/,/g, '').replace(/\+/g, '').trim()) || 0
+    const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/g
+    const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/g
+    const trends: any[] = []
+    let rowMatch
+    while ((rowMatch = rowRegex.exec(html)) !== null) {
+      const row = rowMatch[1]
+      const tds: string[] = []
+      let tdMatch
+      const localTdRegex = /<td[^>]*>([\s\S]*?)<\/td>/g
+      while ((tdMatch = localTdRegex.exec(row)) !== null) {
+        tds.push(tdMatch[1].replace(/<[^>]+>/g, '').trim())
+      }
+      if (tds.length >= 9 && /^\d{4}\.\d{2}\.\d{2}$/.test(tds[0])) {
+        trends.push({
+          date: tds[0].replace(/\./g, ''),
+          foreign: parseNum(tds[6]),
+          institution: parseNum(tds[5]),
+        })
+      }
+      if (trends.length >= 5) break
+    }
 
     const outlook = await generateOutlook(name, code, trends)
     outlookCache = { data: outlook, fetchedAt: Date.now() }
