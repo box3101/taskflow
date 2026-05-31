@@ -1,36 +1,49 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import {
   UiIcon, UiButton, UiDropdownMenu, UiConfirm, UiToast,
 } from '@leechanyong/ispark-ui'
 import type { DropdownMenuItemDef } from '@leechanyong/ispark-ui'
 import { useAuthStore } from '../stores/auth'
-import DashboardHome from '../components/dashboard/DashboardHome.vue'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 
-// 사이드 메뉴
 const menuOpen = ref(false)
+
 const menuItems = [
-  { label: '캘린더', value: 'calendar', icon: 'calendar' },
-  { label: 'AI Tools', value: 'ai-tools', icon: 'bot' },
-  { label: '프로젝트', value: 'projects', icon: 'folder' },
-  { label: '할일', value: 'todos', icon: 'check-square' },
-  { label: '건강', value: 'health', icon: 'heart-pulse' },
-  { label: '주식', value: 'stock', icon: 'trending-up' },
+  { label: '홈', value: '', icon: 'home', path: '/', pinned: true },
+  { label: '캘린더', value: 'calendar', icon: 'calendar', path: '/calendar', pinned: true },
+  { label: 'AI Tools', value: 'ai-tools', icon: 'bot', path: '/ai-tools', pinned: false },
+  { label: '프로젝트', value: 'projects', icon: 'folder', path: '/projects', pinned: true },
+  { label: '할일', value: 'todos', icon: 'check-square', path: '/todos', pinned: true },
+  { label: '건강', value: 'health', icon: 'heart-pulse', path: '/health', pinned: false },
+  { label: '주식', value: 'stock', icon: 'trending-up', path: '/stock', pinned: false },
 ]
 
-function onMenuSelect(value: string) {
+const pinnedItems = menuItems.filter(item => item.pinned)
+const moreItems = menuItems.filter(item => !item.pinned)
+
+// 더보기 메뉴 열림 상태
+const moreOpen = ref(false)
+
+const currentValue = computed(() => {
+  const path = route.path
+  const match = menuItems.find(item => item.path !== '/' && path.startsWith(item.path))
+  return match?.value ?? ''
+})
+
+// 현재 활성 메뉴가 더보기에 포함된 항목인지
+const isMoreActive = computed(() => {
+  return moreItems.some(item => currentValue.value === item.value)
+})
+
+function navigate(item: typeof menuItems[0]) {
   menuOpen.value = false
-  if (value === 'calendar') {
-    router.push('/calendar')
-  } else if (value === 'health') {
-    router.push('/health')
-  } else {
-    router.push(`/main?tab=${value}`)
-  }
+  moreOpen.value = false
+  router.push(item.path)
 }
 
 const userMenuItems: DropdownMenuItemDef[] = [
@@ -80,7 +93,8 @@ function onUserMenuSelect(value: string) {
           v-for="item in menuItems"
           :key="item.value"
           class="side-menu__item"
-          @click="onMenuSelect(item.value)"
+          :class="{ 'side-menu__item--active': currentValue === item.value }"
+          @click="navigate(item)"
         >
           <UiIcon :name="item.icon" :size="20" />
           <span>{{ item.label }}</span>
@@ -89,27 +103,51 @@ function onUserMenuSelect(value: string) {
     </Transition>
 
     <main class="main">
-      <DashboardHome />
+      <router-view />
     </main>
 
     <!-- 하단 네비게이션 바 -->
     <nav class="bottom-nav">
+      <!-- 고정 탭 -->
       <button
-        class="bottom-nav__item bottom-nav__item--active"
-      >
-        <UiIcon name="home" :size="18" />
-        <span>홈</span>
-      </button>
-      <button
-        v-for="item in menuItems"
+        v-for="item in pinnedItems"
         :key="item.value"
         class="bottom-nav__item"
-        @click="onMenuSelect(item.value)"
+        :class="{ 'bottom-nav__item--active': currentValue === item.value }"
+        @click="navigate(item)"
       >
         <UiIcon :name="item.icon" :size="18" />
         <span>{{ item.label }}</span>
       </button>
+      <!-- 더보기 버튼 -->
+      <div class="bottom-nav__more-wrapper">
+        <button
+          class="bottom-nav__item"
+          :class="{ 'bottom-nav__item--active': isMoreActive }"
+          @click.stop="moreOpen = !moreOpen"
+        >
+          <UiIcon name="ellipsis" :size="18" />
+          <span>더보기</span>
+        </button>
+        <!-- 더보기 팝업 -->
+        <Transition name="more-popup">
+          <div v-if="moreOpen" class="more-popup">
+            <button
+              v-for="item in moreItems"
+              :key="item.value"
+              class="more-popup__item"
+              :class="{ 'more-popup__item--active': currentValue === item.value }"
+              @click="navigate(item)"
+            >
+              <UiIcon :name="item.icon" :size="18" />
+              <span>{{ item.label }}</span>
+            </button>
+          </div>
+        </Transition>
+      </div>
     </nav>
+    <!-- 더보기 백드롭 -->
+    <div v-if="moreOpen" class="more-backdrop" @click="moreOpen = false" />
 
     <UiConfirm />
     <UiToast />
@@ -168,6 +206,7 @@ function onUserMenuSelect(value: string) {
   font-size: 14px; color: #374151; cursor: pointer;
   transition: background 0.15s, color 0.15s;
   &:hover { background: #f3f4f6; }
+  &--active { background: #eef2ff; color: #4f6af6; font-weight: 600; }
 }
 
 .bottom-nav {
@@ -186,6 +225,39 @@ function onUserMenuSelect(value: string) {
   &:hover { background: #f3f4f6; color: #374151; }
   &--active { background: #eef2ff; color: #4f6af6; font-weight: 600; }
 }
+
+.bottom-nav__more-wrapper {
+  position: relative;
+}
+
+.more-popup {
+  position: absolute; bottom: calc(100% + 8px); right: 0;
+  background: #fff; border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  padding: 6px;
+  min-width: 160px;
+  z-index: 102;
+}
+
+.more-popup__item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 10px 14px;
+  border: none; background: none; border-radius: 8px;
+  font-size: 14px; color: #374151; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  &:hover { background: #f3f4f6; }
+  &--active { background: #eef2ff; color: #4f6af6; font-weight: 600; }
+}
+
+.more-backdrop {
+  position: fixed; inset: 0; z-index: 100;
+}
+
+.more-popup-enter-active { transition: opacity 0.15s, transform 0.15s; }
+.more-popup-leave-active { transition: opacity 0.1s, transform 0.1s; }
+.more-popup-enter-from { opacity: 0; transform: translateY(8px); }
+.more-popup-leave-to { opacity: 0; transform: translateY(8px); }
 
 .slide-left-enter-active,
 .slide-left-leave-active { transition: transform 0.25s ease; }
