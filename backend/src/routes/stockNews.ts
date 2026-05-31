@@ -112,7 +112,7 @@ router.post('/analyze', async (req, res) => {
       console.log(`[stock-news] ${name}: AI 분석 ${analyzed.length}건 반환`)
 
       for (const item of analyzed) {
-        if (item.importance !== 'high') continue // 주가에 직접 영향 있는 뉴스만 저장
+        if (item.importance === 'low') continue // low는 버림, high+medium만 저장
         const news = newsList[item.index]
         if (!news) continue
 
