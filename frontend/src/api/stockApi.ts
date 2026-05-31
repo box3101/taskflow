@@ -208,6 +208,8 @@ export interface MarketOutlook {
     sp500: { price: number; changePct: number }
     sox: { price: number; changePct: number }
     vix: { price: number }
+    nasdaqFutures: { price: number; changePct: number }
+    usdkrw: { price: number; changePct: number }
   }
   foreignTrend: string
   newsSummary: string
