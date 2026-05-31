@@ -324,37 +324,6 @@ async function onMealDeleted() {
   padding: 16px 0;
 }
 
-.health-page__list {
-  display: flex; flex-direction: column; gap: 8px;
-}
-
-.health-page__item {
-  background: #fff; border-radius: 10px; padding: 14px 16px;
-  border: 1px solid #f3f4f6;
-}
-
-.health-page__item-name {
-  font-size: 15px; font-weight: 600; color: #1f2937; margin-bottom: 4px;
-}
-
-.health-page__item-detail {
-  display: flex; gap: 8px; font-size: 13px; color: #6b7280;
-}
-
-.health-page__item-memo {
-  font-size: 12px; color: #9ca3af; margin-top: 4px;
-}
-
-.health-page__empty {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 48px 0; color: #9ca3af; gap: 12px;
-  p { font-size: 14px; margin: 0; }
-}
-
-.health-page__actions {
-  display: flex; justify-content: center; margin-top: 16px;
-}
-
 @media (max-width: 768px) {
   .header { padding: 0 12px; }
   .side-menu { width: 240px; }
