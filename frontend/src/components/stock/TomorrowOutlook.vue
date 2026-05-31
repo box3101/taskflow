@@ -40,6 +40,12 @@ function fmtPct(n: number) {
 function pctClass(n: number) {
   return n >= 0 ? 'up' : 'down'
 }
+
+function splitSentences(text: string): string[] {
+  if (!text) return []
+  // 줄바꿈 또는 마침표+공백 기준으로 분리
+  return text.split(/\n|(?<=\.\s)/).map(s => s.trim()).filter(s => s.length > 0)
+}
 </script>
 
 <template>
@@ -101,9 +107,11 @@ function pctClass(n: number) {
         <span>{{ outlook.newsSummary }}</span>
       </div>
 
-      <!-- 상세 설명 -->
+      <!-- 상세 설명 (문장 단위 분리) -->
       <div class="outlook__detail">
-        <p v-for="(para, i) in outlook.detail.split('\n')" :key="i">{{ para }}</p>
+        <p v-for="(sentence, i) in splitSentences(outlook.detail)" :key="i" class="outlook__sentence">
+          {{ sentence }}
+        </p>
       </div>
 
       <!-- 리스크 -->
@@ -161,7 +169,10 @@ function pctClass(n: number) {
 .outlook__detail {
   background: #f9fafb; border-radius: 8px; padding: 14px 16px;
   font-size: 13px; color: #374151; line-height: 1.8; margin-bottom: 10px;
-  p { margin: 0; & + p { margin-top: 6px; } }
+}
+.outlook__sentence {
+  margin: 0; padding: 6px 0;
+  & + & { border-top: 1px solid #eef0f2; }
 }
 
 .outlook__risks {
