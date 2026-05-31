@@ -154,6 +154,8 @@ async function onMealDeleted() {
           :events="calendarHintEvents"
           :selected-date="selectedDate"
           @select-date="selectedDate = $event"
+          @swipe-left="nextMonth"
+          @swipe-right="prevMonth"
         />
       </div>
 
