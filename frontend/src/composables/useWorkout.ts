@@ -15,7 +15,7 @@ export interface WorkoutEntry {
 export function useWorkout() {
   const workouts = ref<WorkoutEntry[]>([])
   const recentWorkouts = ref<WorkoutEntry[]>([])
-  const hintDates = ref<string[]>([])
+  const monthHints = ref<{ date: string; title: string; count: number }[]>([])
   const loading = ref(false)
 
   async function fetchByDate(date: string) {
@@ -34,7 +34,7 @@ export function useWorkout() {
   async function fetchMonthHints(month: string) {
     try {
       const { data } = await api.get('/workouts', { params: { month } })
-      hintDates.value = data.data
+      monthHints.value = data.data
     } catch {
       hintDates.value = []
     }
@@ -67,5 +67,5 @@ export function useWorkout() {
     workouts.value = workouts.value.filter(w => w.id !== id)
   }
 
-  return { workouts, recentWorkouts, hintDates, loading, fetchByDate, fetchMonthHints, fetchRecent, addWorkout, updateWorkout, deleteWorkout }
+  return { workouts, recentWorkouts, monthHints, loading, fetchByDate, fetchMonthHints, fetchRecent, addWorkout, updateWorkout, deleteWorkout }
 }

@@ -12,19 +12,29 @@ const TYPE_ORDER: Record<string, number> = { breakfast: 0, lunch: 1, dinner: 2, 
 router.get('/', async (req, res) => {
   try {
     const userId = req.user!.id
-    const date = req.query.date as string
-
     const date = req.query.date as string | undefined
     const month = req.query.month as string | undefined
 
-    // 월별 조회 (?month=YYYY-MM) — 힌트용 날짜 목록만 반환
+    // 월별 조회 (?month=YYYY-MM) — 힌트용: 날짜별 첫 식단 + 건수
     if (month && /^\d{4}-\d{2}$/.test(month)) {
       const meals = await prisma.meal.findMany({
         where: { userId, date: { startsWith: month } },
-        select: { date: true },
+        select: { date: true, type: true, content: true },
+        orderBy: { createdAt: 'asc' },
       })
-      const dates = [...new Set(meals.map(m => m.date))]
-      res.json({ data: dates })
+      const LABELS: Record<string, string> = { breakfast: '아침', lunch: '점심', dinner: '저녁', snack: '간식' }
+      const map = new Map<string, { firstLabel: string; count: number }>()
+      for (const m of meals) {
+        const entry = map.get(m.date)
+        if (entry) { entry.count++ }
+        else { map.set(m.date, { firstLabel: `${LABELS[m.type] || m.type}: ${m.content}`, count: 1 }) }
+      }
+      const hints = Array.from(map.entries()).map(([d, v]) => ({
+        date: d,
+        title: v.count > 1 ? `${v.firstLabel} 외 ${v.count - 1}건` : v.firstLabel,
+        count: v.count,
+      }))
+      res.json({ data: hints })
       return
     }
 

@@ -9,19 +9,29 @@ router.use(authenticate)
 router.get('/', async (req, res) => {
   try {
     const userId = req.user!.id
-    const date = req.query.date as string
-
     const date = req.query.date as string | undefined
     const month = req.query.month as string | undefined
 
-    // 월별 조회 (?month=YYYY-MM) — 힌트용 날짜 목록만 반환
+    // 월별 조회 (?month=YYYY-MM) — 힌트용: 날짜별 첫 운동명 + 건수
     if (month && /^\d{4}-\d{2}$/.test(month)) {
       const workouts = await prisma.workout.findMany({
         where: { userId, date: { startsWith: month } },
-        select: { date: true },
+        select: { date: true, name: true },
+        orderBy: { createdAt: 'asc' },
       })
-      const dates = [...new Set(workouts.map(w => w.date))]
-      res.json({ data: dates })
+      // 날짜별 그룹핑: { date, firstName, count }
+      const map = new Map<string, { firstName: string; count: number }>()
+      for (const w of workouts) {
+        const entry = map.get(w.date)
+        if (entry) { entry.count++ }
+        else { map.set(w.date, { firstName: w.name, count: 1 }) }
+      }
+      const hints = Array.from(map.entries()).map(([d, v]) => ({
+        date: d,
+        title: v.count > 1 ? `${v.firstName} 외 ${v.count - 1}건` : v.firstName,
+        count: v.count,
+      }))
+      res.json({ data: hints })
       return
     }
 

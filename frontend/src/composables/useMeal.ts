@@ -24,13 +24,13 @@ export const MEAL_ICONS: Record<string, string> = {
 
 export function useMeal() {
   const meals = ref<MealEntry[]>([])
-  const hintDates = ref<string[]>([])
+  const monthHints = ref<{ date: string; title: string; count: number }[]>([])
   const loading = ref(false)
 
   async function fetchMonthHints(month: string) {
     try {
       const { data } = await api.get('/meals', { params: { month } })
-      hintDates.value = data.data
+      monthHints.value = data.data
     } catch {
       hintDates.value = []
     }
@@ -67,5 +67,5 @@ export function useMeal() {
     meals.value = meals.value.filter(m => m.id !== id)
   }
 
-  return { meals, hintDates, loading, fetchByDate, fetchMonthHints, addMeal, updateMeal, deleteMeal }
+  return { meals, monthHints, loading, fetchByDate, fetchMonthHints, addMeal, updateMeal, deleteMeal }
 }
