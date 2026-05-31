@@ -157,6 +157,13 @@ async function onMealDeleted() {
             <UiButton class="health-page__today" variant="ghost" size="sm" @click="goToday">오늘</UiButton>
           </div>
         </div>
+        <!-- 스트릭 + 월간 통계 -->
+        <div class="health-page__stats">
+          <span v-if="streak > 0" class="health-page__streak">🔥 {{ streak }}일 연속 운동!</span>
+          <span v-else class="health-page__streak health-page__streak--empty">오늘 운동을 기록해보세요</span>
+          <span class="health-page__stat">💪 {{ monthWorkoutCount }}회</span>
+          <span class="health-page__stat">🍚 {{ monthMealCount }}끼</span>
+        </div>
         <CalendarMonth
           :year="currentYear"
           :month="currentMonth"
@@ -166,13 +173,6 @@ async function onMealDeleted() {
           @swipe-left="nextMonth"
           @swipe-right="prevMonth"
         />
-        <!-- 스트릭 + 월간 통계 -->
-        <div class="health-page__stats">
-          <span v-if="streak > 0" class="health-page__streak">🔥 {{ streak }}일 연속 운동!</span>
-          <span v-else class="health-page__streak health-page__streak--empty">오늘 운동을 기록해보세요</span>
-          <span class="health-page__stat">💪 {{ monthWorkoutCount }}회</span>
-          <span class="health-page__stat">🍚 {{ monthMealCount }}끼</span>
-        </div>
       </div>
 
       <!-- 우측: 사이드 패널 -->
@@ -234,21 +234,22 @@ async function onMealDeleted() {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-top: 16px;
-  padding: 12px 16px;
-  background: #f9fafb;
+  margin: 12px 0 16px;
+  padding: 14px 16px;
+  background: #eff6ff;
+  border-left: 3px solid #3b82f6;
   border-radius: 8px;
   font-size: 14px;
-  color: #4b5563;
+  color: #1f2937;
 }
 
 .health-page__streak {
-  font-weight: 600;
+  font-weight: 700;
   color: #ef4444;
 
   &--empty {
-    color: #9ca3af;
-    font-weight: 400;
+    color: #6b7280;
+    font-weight: 500;
   }
 }
 

@@ -73,25 +73,7 @@ function getDday(dueDate: string | null): { label: string; variant: 'danger' | '
         </UiBadge>
       </div>
 
-      <!-- 더보기 -->
-      <button
-        v-if="remainingCount > 0"
-        class="todo-quick__more"
-        @click="emit('navigateAll')"
-      >
-        {{ remainingCount }}개 더보기
-      </button>
     </div>
-
-    <!-- 빠른 추가 -->
-    <form class="todo-quick__add" @submit.prevent="onQuickAdd">
-      <UiInput
-        v-model="quickTitle"
-        placeholder="할일 빠른 추가..."
-        size="sm"
-        @keyup.enter="onQuickAdd"
-      />
-    </form>
   </div>
 </template>
 
