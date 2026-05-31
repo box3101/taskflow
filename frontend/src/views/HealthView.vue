@@ -8,7 +8,9 @@ import {
 import type { DropdownMenuItemDef } from '@leechanyong/ispark-ui'
 import { useAuthStore } from '../stores/auth'
 import { useWorkout } from '../composables/useWorkout'
-import { useMeal, MEAL_LABELS, MEAL_ICONS } from '../composables/useMeal'
+import { useMeal } from '../composables/useMeal'
+import WorkoutTab from '../components/health/WorkoutTab.vue'
+import MealTab from '../components/health/MealTab.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -84,7 +86,7 @@ const tabItems = [
 ]
 
 // Composables
-const { workouts, loading: workoutLoading, fetchByDate: fetchWorkouts } = useWorkout()
+const { workouts, recentWorkouts, loading: workoutLoading, fetchByDate: fetchWorkouts, fetchRecent: fetchRecentWorkouts } = useWorkout()
 const { meals, loading: mealLoading, fetchByDate: fetchMeals } = useMeal()
 
 const loading = computed(() => workoutLoading.value || mealLoading.value)
@@ -101,7 +103,30 @@ async function loadData() {
 }
 
 watch(selectedDate, () => { loadData() })
-onMounted(() => { loadData() })
+onMounted(() => {
+  loadData()
+  fetchRecentWorkouts()
+})
+
+// 운동 이벤트 핸들러
+async function onWorkoutSaved() {
+  await fetchWorkouts(selectedDate.value)
+  await fetchRecentWorkouts()
+}
+
+async function onWorkoutDeleted() {
+  await fetchWorkouts(selectedDate.value)
+  await fetchRecentWorkouts()
+}
+
+// 식단 이벤트 핸들러
+async function onMealSaved() {
+  await fetchMeals(selectedDate.value)
+}
+
+async function onMealDeleted() {
+  await fetchMeals(selectedDate.value)
+}
 </script>
 
 <template>
@@ -176,51 +201,25 @@ onMounted(() => { loadData() })
         <!-- 컨텐츠 영역 -->
         <div class="health-page__content">
           <!-- 운동 탭 -->
-          <div v-if="activeTab === 'workout'">
-            <div v-if="workouts.length > 0" class="health-page__list">
-              <div v-for="w in workouts" :key="w.id" class="health-page__item">
-                <div class="health-page__item-name">{{ w.name }}</div>
-                <div class="health-page__item-detail">
-                  <span v-if="w.weight">{{ w.weight }}kg</span>
-                  <span v-if="w.sets && w.reps">{{ w.sets }}세트 x {{ w.reps }}회</span>
-                  <span v-if="w.duration">{{ w.duration }}분</span>
-                </div>
-                <div v-if="w.memo" class="health-page__item-memo">{{ w.memo }}</div>
-              </div>
-            </div>
-            <div v-else class="health-page__empty">
-              <UiIcon name="dumbbell" :size="32" />
-              <p>오늘의 운동 기록이 없습니다.</p>
-            </div>
-            <div class="health-page__actions">
-              <UiButton variant="outline" size="sm" @click="() => {}">
-                <template #icon-left><UiIcon name="plus" :size="16" /></template>
-                운동 추가
-              </UiButton>
-            </div>
-          </div>
+          <WorkoutTab
+            v-if="activeTab === 'workout'"
+            :workouts="workouts"
+            :recent-workouts="recentWorkouts"
+            :loading="workoutLoading"
+            :selected-date="selectedDate"
+            @saved="onWorkoutSaved"
+            @deleted="onWorkoutDeleted"
+          />
 
           <!-- 식단 탭 -->
-          <div v-if="activeTab === 'meal'">
-            <div v-if="meals.length > 0" class="health-page__list">
-              <div v-for="m in meals" :key="m.id" class="health-page__item">
-                <div class="health-page__item-name">
-                  <span>{{ MEAL_ICONS[m.type] || '' }} {{ MEAL_LABELS[m.type] || m.type }}</span>
-                </div>
-                <div class="health-page__item-detail">{{ m.content }}</div>
-              </div>
-            </div>
-            <div v-else class="health-page__empty">
-              <UiIcon name="utensils" :size="32" />
-              <p>오늘의 식단 기록이 없습니다.</p>
-            </div>
-            <div class="health-page__actions">
-              <UiButton variant="outline" size="sm" @click="() => {}">
-                <template #icon-left><UiIcon name="plus" :size="16" /></template>
-                식단 추가
-              </UiButton>
-            </div>
-          </div>
+          <MealTab
+            v-if="activeTab === 'meal'"
+            :meals="meals"
+            :loading="mealLoading"
+            :selected-date="selectedDate"
+            @saved="onMealSaved"
+            @deleted="onMealDeleted"
+          />
         </div>
       </div>
     </main>
