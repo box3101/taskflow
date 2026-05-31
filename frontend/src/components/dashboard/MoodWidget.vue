@@ -76,40 +76,40 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .mood-widget {
-  background: $color-bg-elevated;
-  border-radius: $border-radius-lg;
-  padding: $spacing-lg;
-  border: 1px solid $color-border-light;
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  border: 1px solid #ecf0f3;
 }
 
 .mood-widget__title {
-  margin: 0 0 $spacing-md;
-  font-weight: $font-weight-semibold;
-  color: $color-text-heading;
+  margin: 0 0 16px;
+  font-weight: 600;
+  color: #1e2124;
 }
 
 .mood-widget__options {
   display: flex;
-  gap: $spacing-md;
+  gap: 16px;
 }
 
 .mood-widget__emoji-btn {
   font-size: 28px;
   line-height: 1;
-  padding: $spacing-sm;
+  padding: 8px;
   border: none;
   background: none;
-  border-radius: $border-radius-base;
+  border-radius: 6px;
   cursor: pointer;
-  transition: transform $transition-fast, background $transition-fast;
+  transition: transform 0.15s, background 0.15s;
 
   &:hover {
     transform: scale(1.2);
-    background: $color-border-light;
+    background: #ecf0f3;
   }
 
   &.is-selected {
-    background: var(--color-primary-bg);
+    background: var(--color-primary-bg, #eff3ff);
     transform: scale(1.2);
   }
 }
@@ -117,12 +117,12 @@ onMounted(async () => {
 .mood-widget__result {
   display: flex;
   align-items: center;
-  gap: $spacing-sm;
+  gap: 8px;
 }
 
 .mood-widget__label {
-  color: $color-text-primary;
-  font-weight: $font-weight-medium;
+  color: #4d5462;
+  font-weight: 500;
 }
 
 .mood-widget__selected-emoji {
@@ -133,18 +133,18 @@ onMounted(async () => {
 .mood-widget__stats {
   display: flex;
   align-items: center;
-  gap: $spacing-sm;
-  margin-top: $spacing-md;
-  padding-top: $spacing-md;
-  border-top: 1px solid $color-border-light;
-  color: $color-text-secondary;
-  font-size: $font-size-sm;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #ecf0f3;
+  color: #64748b;
+  font-size: 12px;
   flex-wrap: wrap;
 }
 
 .mood-widget__stats-label {
-  font-weight: $font-weight-medium;
-  color: $color-text-primary;
+  font-weight: 500;
+  color: #4d5462;
 }
 
 .mood-widget__stat-item {
