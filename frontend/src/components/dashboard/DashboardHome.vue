@@ -137,14 +137,12 @@ function onNavigateTodos() {
         </h1>
       </div>
 
-      <!-- 명언 + 날씨 -->
+      <!-- 명언 + 기분 + 날씨 -->
       <div class="dashboard__quote-weather">
         <DailyQuote class="dashboard__quote" />
+        <MoodWidget />
         <WeatherOutfit />
       </div>
-
-      <!-- 기분 트래커 -->
-      <MoodWidget />
 
       <!-- 요약 카드 -->
       <div class="dashboard__stats">

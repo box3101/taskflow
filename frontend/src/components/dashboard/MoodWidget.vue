@@ -76,27 +76,35 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .mood-widget {
+  flex-shrink: 0;
+  width: 220px;
   background: #fff;
-  border-radius: 8px;
-  padding: 24px;
+  border-radius: 12px;
+  padding: 16px;
   border: 1px solid #ecf0f3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
 }
 
 .mood-widget__title {
-  margin: 0 0 16px;
+  margin: 0 0 10px;
+  font-size: 13px;
   font-weight: 600;
   color: #1e2124;
 }
 
 .mood-widget__options {
   display: flex;
-  gap: 16px;
+  gap: 6px;
 }
 
 .mood-widget__emoji-btn {
-  font-size: 28px;
+  font-size: 22px;
   line-height: 1;
-  padding: 8px;
+  padding: 4px;
   border: none;
   background: none;
   border-radius: 6px;
@@ -117,28 +125,31 @@ onMounted(async () => {
 .mood-widget__result {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .mood-widget__label {
   color: #4d5462;
+  font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .mood-widget__selected-emoji {
-  font-size: 28px;
+  font-size: 24px;
   line-height: 1;
 }
 
 .mood-widget__stats {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 16px;
-  padding-top: 16px;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
   border-top: 1px solid #ecf0f3;
   color: #64748b;
-  font-size: 12px;
+  font-size: 11px;
   flex-wrap: wrap;
 }
 
@@ -149,5 +160,24 @@ onMounted(async () => {
 
 .mood-widget__stat-item {
   white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .mood-widget {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .mood-widget__title {
+    margin: 0;
+  }
+
+  .mood-widget__stats {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0;
+  }
 }
 </style>
