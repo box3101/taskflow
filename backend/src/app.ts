@@ -13,6 +13,8 @@ import skillUpRouter from './routes/skillUp'
 import dailyMottoRouter from './routes/dailyMotto'
 import calendarRouter from './routes/calendar'
 import moodRouter from './routes/moods'
+import mealRouter from './routes/meals'
+import workoutRouter from './routes/workouts'
 
 const app = express()
 
@@ -32,6 +34,8 @@ app.use('/skill-up', skillUpRouter)
 app.use('/daily-motto', dailyMottoRouter)
 app.use('/calendar', calendarRouter)
 app.use('/moods', moodRouter)
+app.use('/meals', mealRouter)
+app.use('/workouts', workoutRouter)
 
 // 헬스체크
 app.get('/health', (_req, res) => {
