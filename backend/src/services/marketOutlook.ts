@@ -75,9 +75,10 @@ function summarizeForeignTrend(trends: any[]): string {
 
 // 뉴스 sentiment 요약
 async function summarizeNewsSentiment(stockCode: string): Promise<string> {
-  const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
   const news = await prisma.stockNews.findMany({
-    where: { stockCode, createdAt: { gte: fiveDaysAgo } },
+    where: { stockCode },
+    orderBy: { createdAt: 'desc' },
+    take: 30,
   })
   const pos = news.filter(n => n.sentiment === 'positive').length
   const neg = news.filter(n => n.sentiment === 'negative').length
