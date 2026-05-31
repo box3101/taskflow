@@ -43,8 +43,11 @@ function pctClass(n: number) {
 
 function splitSentences(text: string): string[] {
   if (!text) return []
-  // 줄바꿈 또는 마침표+공백 기준으로 분리
-  return text.split(/\n|(?<=\.\s)/).map(s => s.trim()).filter(s => s.length > 0)
+  return text
+    .split(/\n/)
+    .flatMap(line => line.split(/(?<=다\.)\s*/))
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
 }
 </script>
 
