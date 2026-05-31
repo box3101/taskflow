@@ -66,6 +66,11 @@ function importanceColor(imp: string) {
   return '#9ca3af'
 }
 
+function dotColor(item: any) {
+  if (item.source === 'news') return '#22c55e' // 뉴스 = 초록
+  return importanceColor(item.importance) // 확정 일정 = importance 컬러
+}
+
 function prevMonth() {
   if (currentMonth.value === 1) { currentYear.value--; currentMonth.value = 12 }
   else currentMonth.value--
@@ -188,7 +193,7 @@ watch([currentYear, currentMonth], () => {
           <span
             v-for="(item, j) in getItems(d.dateStr)" :key="j"
             class="stock-cal__dot"
-            :style="{ background: importanceColor(item.importance) }"
+            :style="{ background: dotColor(item) }"
           />
         </div>
       </button>
@@ -201,7 +206,7 @@ watch([currentYear, currentMonth], () => {
       <div v-for="item in selectedItems" :key="item.id || item.title"
         class="stock-cal__news" :class="{ 'stock-cal__news--clickable': item.impact || item.url }"
         @click="showImpact(item)">
-        <span class="stock-cal__imp" :style="{ background: importanceColor(item.importance) }" />
+        <span class="stock-cal__imp" :style="{ background: dotColor(item) }" />
         <div class="stock-cal__news-body">
           <span class="stock-cal__news-title">{{ item.summary }}</span>
           <span v-if="getStockName(item.stockCode)" class="stock-cal__news-stock">{{ getStockName(item.stockCode) }}</span>
