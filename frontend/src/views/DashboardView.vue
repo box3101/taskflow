@@ -6,10 +6,12 @@ import {
 } from '@leechanyong/ispark-ui'
 import type { DropdownMenuItemDef } from '@leechanyong/ispark-ui'
 import { useAuthStore } from '../stores/auth'
+import { useTheme } from '../composables/useTheme'
 import DashboardHome from '../components/dashboard/DashboardHome.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
+const { theme, toggle } = useTheme()
 
 // 사이드 메뉴
 const menuOpen = ref(false)
@@ -52,6 +54,11 @@ function onUserMenuSelect(value: string) {
         <img src="/logo.svg" alt="CYLEE" class="header-logo" @click="router.push('/')" style="cursor: pointer;" />
       </div>
       <div class="header-right">
+        <UiButton variant="ghost" size="sm" icon-only :aria-label="theme === 'dark' ? '라이트 모드' : '다크 모드'" @click="toggle">
+          <template #icon-left>
+            <UiIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" />
+          </template>
+        </UiButton>
         <UiButton class="storybook-link" as="a" href="https://box3101.github.io/ispark-ui/" target="_blank" size="sm" variant="outline">📖 Storybook</UiButton>
         <UiDropdownMenu
           :items="userMenuItems"
@@ -210,5 +217,17 @@ function onUserMenuSelect(value: string) {
     padding: 6px 12px; font-size: 10px;
   }
   .main { padding: 16px 12px; }
+}
+
+// 다크모드 기본 스타일
+:global([data-theme="dark"]) {
+  .layout { background: #111827; color: #d1d5db; }
+  .header { background: #1f2937; border-bottom-color: #374151; }
+  .menu-toggle-btn { color: #d1d5db; &:hover { background: #374151; } }
+  .side-menu { background: #1f2937; border-right-color: #374151; }
+  .side-menu__item { color: #d1d5db; &:hover { background: #374151; } }
+  .bottom-nav { background: #1f2937; border-top-color: #374151; }
+  .bottom-nav__item { color: #9ca3af; &:hover { background: #374151; color: #d1d5db; } }
+  .user-avatar-btn:hover { background: #374151; }
 }
 </style>
