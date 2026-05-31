@@ -12,6 +12,7 @@ import aiToolRouter from './routes/aiTools'
 import skillUpRouter from './routes/skillUp'
 import dailyMottoRouter from './routes/dailyMotto'
 import calendarRouter from './routes/calendar'
+import moodRouter from './routes/moods'
 
 const app = express()
 
@@ -30,6 +31,7 @@ app.use('/ai-tools', aiToolRouter)
 app.use('/skill-up', skillUpRouter)
 app.use('/daily-motto', dailyMottoRouter)
 app.use('/calendar', calendarRouter)
+app.use('/moods', moodRouter)
 
 // 헬스체크
 app.get('/health', (_req, res) => {
