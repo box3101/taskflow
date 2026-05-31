@@ -24,6 +24,8 @@ model User {
   dailyMottos    DailyMotto[]
   calendarEvents CalendarEvent[]
   moods          Mood[]
+  workouts       Workout[]
+  meals          Meal[]
 
   @@map("users")
 }
@@ -235,4 +237,36 @@ model Mood {
 
   @@unique([userId, date])
   @@map("moods")
+}
+
+// 운동 트래커
+model Workout {
+  id        String   @id @default(uuid())
+  date      String
+  name      String
+  weight    Float?
+  sets      Int?
+  reps      Int?
+  duration  Int?
+  memo      String?
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("workouts")
+}
+
+// 식사 트래커
+model Meal {
+  id        String   @id @default(uuid())
+  date      String
+  type      String
+  content   String
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("meals")
 }
