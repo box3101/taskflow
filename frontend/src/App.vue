@@ -326,22 +326,76 @@ body {
 
 /* 날씨 위젯 전체 텍스트 */
 [data-theme="dark"] .weather-outfit * {
-  color: #d1d5db !important;
+  color: #e5e7eb !important;
 }
 [data-theme="dark"] .weather-outfit__status {
   color: #60a5fa !important;
 }
+[data-theme="dark"] .weather-outfit__row3,
+[data-theme="dark"] .weather-outfit__outfit {
+  color: #d1d5db !important;
+  background: rgba(255,255,255,0.08) !important;
+  border-color: #374151 !important;
+}
 
-/* 하단 탭바 active 상태 */
+/* 하단 탭바 */
+[data-theme="dark"] .bottom-nav {
+  background: #111827 !important;
+  border-top: 1px solid #1f2937 !important;
+}
+[data-theme="dark"] .bottom-nav__item {
+  color: #6b7280 !important;
+}
+[data-theme="dark"] .bottom-nav__item:hover {
+  color: #d1d5db !important;
+}
 [data-theme="dark"] .bottom-nav__item.is-active {
-  background: #374151 !important;
+  background: #1f2937 !important;
   color: #f3f4f6 !important;
 }
 
-/* 오늘의 일정 Todo 카드 배경 (라이트 핑크 → 다크 대응) */
-[data-theme="dark"] .calendar-widget__event {
-  background: #3b1f1f !important;
-  border-color: #7f1d1d !important;
+/* 오늘의 일정 Todo/Issue 카드 — 다크 대응 */
+[data-theme="dark"] .calendar-widget__event,
+[data-theme="dark"] .calendar-widget__item-card,
+[data-theme="dark"] [class*="calendar-widget"] [class*="card"],
+[data-theme="dark"] [class*="calendar-widget"] [class*="item"] {
+  background: #1f2937 !important;
+  border-color: #374151 !important;
+  color: #d1d5db !important;
+}
+[data-theme="dark"] [class*="calendar-widget"] [class*="title"] {
+  color: #f3f4f6 !important;
+}
+[data-theme="dark"] [class*="calendar-widget"] [class*="sub"],
+[data-theme="dark"] [class*="calendar-widget"] [class*="meta"],
+[data-theme="dark"] [class*="calendar-widget"] [class*="date"] {
+  color: #9ca3af !important;
+}
+
+/* UiButton 다크모드 hover */
+[data-theme="dark"] .ui-button.variant-secondary {
+  background: #374151 !important;
+  border-color: #4b5563 !important;
+  color: #d1d5db !important;
+}
+[data-theme="dark"] .ui-button.variant-secondary:hover {
+  background: #4b5563 !important;
+}
+[data-theme="dark"] .ui-button.variant-outline {
+  background: #1f2937 !important;
+  border-color: #4b5563 !important;
+  color: #d1d5db !important;
+}
+[data-theme="dark"] .ui-button.variant-outline:hover {
+  border-color: #60a5fa !important;
+  color: #60a5fa !important;
+}
+[data-theme="dark"] .ui-button.variant-ghost {
+  color: #9ca3af !important;
+}
+[data-theme="dark"] .ui-button.variant-ghost:hover {
+  background: #374151 !important;
+  color: #d1d5db !important;
 }
 
 /* 스크롤바 */
