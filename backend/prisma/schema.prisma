@@ -23,6 +23,7 @@ model User {
   skillProgresses SkillProgress[]
   dailyMottos    DailyMotto[]
   calendarEvents CalendarEvent[]
+  moods          Mood[]
 
   @@map("users")
 }
@@ -220,4 +221,18 @@ model StockNewsCacheLog {
   fetchedAt DateTime @default(now()) @map("fetched_at")
 
   @@map("stock_news_cache_log")
+}
+
+// 기분 트래커
+model Mood {
+  id        String   @id @default(uuid())
+  date      String   // 'YYYY-MM-DD'
+  mood      Int      // 1-5
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, date])
+  @@map("moods")
 }
