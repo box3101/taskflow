@@ -67,8 +67,14 @@ function importanceColor(imp: string) {
 }
 
 function dotColor(item: any) {
-  if (item.source === 'news') return '#22c55e' // 뉴스 = 초록
-  return importanceColor(item.importance) // 확정 일정 = importance 컬러
+  if (item.source === 'news') return sentimentColor(item.sentiment)
+  return importanceColor(item.importance)
+}
+
+function sentimentColor(s: string) {
+  if (s === 'positive') return '#22c55e'
+  if (s === 'negative') return '#ef4444'
+  return '#f59e0b' // neutral = 주황
 }
 
 function prevMonth() {
