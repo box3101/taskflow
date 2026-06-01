@@ -1,8 +1,8 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import prisma from '../prisma'
 
-const API_KEY = process.env.ANTHROPIC_API_KEY
-const client = API_KEY ? new Anthropic({ apiKey: API_KEY }) : null
+const API_KEY = process.env.GEMINI_API_KEY
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null
 
 interface MarketData {
   nasdaq: { price: number; changePct: number }
@@ -105,7 +105,7 @@ export async function generateOutlook(
   stockCode: string,
   investorTrends: any[]
 ): Promise<OutlookResult> {
-  if (!client) {
+  if (!genAI) {
     throw new Error('AI_UNAVAILABLE')
   }
 
@@ -153,13 +153,9 @@ confidence 가이드라인:
 
 detail: "쉽게 말해..." 스타일로 초보자 친화적`
 
-  const response = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
-    messages: [{ role: 'user', content: prompt }],
-  })
-
-  const text = response.content[0].type === 'text' ? response.content[0].text : ''
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+  const result = await model.generateContent(prompt)
+  const text = result.response.text()
 
   let parsed = { signal: 'hold' as const, confidence: 5, summary: '분석 중', detail: '', risks: '' }
   try {

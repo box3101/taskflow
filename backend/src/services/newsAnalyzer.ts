@@ -1,7 +1,7 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const API_KEY = process.env.ANTHROPIC_API_KEY
-const client = API_KEY ? new Anthropic({ apiKey: API_KEY }) : null
+const API_KEY = process.env.GEMINI_API_KEY
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null
 
 interface NewsInput {
   title: string
@@ -25,22 +25,18 @@ export async function analyzeNews(
   newsList: NewsInput[]
 ): Promise<AnalyzedNews[]> {
   if (newsList.length === 0) return []
-  if (!client) {
-    console.warn('[newsAnalyzer] ANTHROPIC_API_KEY 미설정 — AI 분석 스킵')
+  if (!genAI) {
+    console.warn('[newsAnalyzer] GEMINI_API_KEY 미설정 — AI 분석 스킵')
     return []
   }
+
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
   const newsText = newsList
     .map((n, i) => `[${i}] ${n.title}`)
     .join('\n')
 
-  const response = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 4096,
-    messages: [
-      {
-        role: 'user',
-        content: `다음 뉴스들이 ${stockName}(${stockCode}) 주가에 미치는 영향을 분류해주세요.
+  const prompt = `다음 뉴스들이 ${stockName}(${stockCode}) 주가에 미치는 영향을 분류해주세요.
 
 ${newsText}
 
@@ -59,15 +55,13 @@ sentiment 기준:
 - negative: 주가에 나쁜 뉴스 (악재)
 - neutral: 판단 어려움 또는 양방향
 
-eventDate: "6월 5일", "7월 23일" 같이 정확한 날짜가 명시된 경우에만 설정. "다음주", "이번주", "내달 초" 같은 모호한 표현은 반드시 null. 확실하지 않으면 null
+eventDate: "6월 5일", "7월 23일" 같이 정확한 날짜가 명시된 경우에만 설정. 모호한 표현은 null.
 
-explain: 주식 초보도 이해할 수 있게 "이게 왜 좋은(나쁜) 건지" 쉽게 설명. "쉽게 말해..." 스타일.
-summary는 15자 이내. reason은 한 문장.`,
-      },
-    ],
-  })
+explain: 주식 초보도 이해할 수 있게 쉽게 설명. "쉽게 말해..." 스타일.
+summary는 15자 이내. reason은 한 문장.`
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : ''
+  const result = await model.generateContent(prompt)
+  const text = result.response.text()
 
   try {
     const jsonMatch = text.match(/\[[\s\S]*\]/)
