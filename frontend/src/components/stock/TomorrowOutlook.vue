@@ -120,6 +120,18 @@ function splitSentences(text: string): string[] {
             {{ outlook.marketData.usdkrw.price.toFixed(0) }}원
           </span>
         </div>
+        <div v-if="outlook.marketData.nvda" class="outlook__index">
+          <span class="outlook__index-name">엔비디아</span>
+          <span class="outlook__index-val" :class="pctClass(outlook.marketData.nvda.changePct)">
+            {{ fmtPct(outlook.marketData.nvda.changePct) }}
+          </span>
+        </div>
+        <div v-if="outlook.marketData.mu" class="outlook__index">
+          <span class="outlook__index-name">마이크론</span>
+          <span class="outlook__index-val" :class="pctClass(outlook.marketData.mu.changePct)">
+            {{ fmtPct(outlook.marketData.mu.changePct) }}
+          </span>
+        </div>
       </div>
 
       <!-- 수급 + 뉴스 -->

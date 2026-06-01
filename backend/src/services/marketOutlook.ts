@@ -11,6 +11,8 @@ interface MarketData {
   vix: { price: number }
   nasdaqFutures: { price: number; changePct: number }
   usdkrw: { price: number; changePct: number }
+  nvda: { price: number; changePct: number }
+  mu: { price: number; changePct: number }
 }
 
 interface OutlookResult {
@@ -51,15 +53,17 @@ async function fetchYahooQuote(symbol: string): Promise<{ price: number; changeP
 
 // 미국 시장 데이터 수집
 async function fetchMarketData(): Promise<MarketData> {
-  const [nasdaq, sp500, sox, vix, kospi200, usdkrw] = await Promise.all([
+  const [nasdaq, sp500, sox, vix, kospi200, usdkrw, nvda, mu] = await Promise.all([
     fetchYahooQuote('^IXIC'),
     fetchYahooQuote('^GSPC'),
     fetchYahooQuote('^SOX'),
     fetchYahooQuote('^VIX'),
     fetchYahooQuote('^KS200'),  // 코스피200 지수 (야간선물 대체)
     fetchYahooQuote('KRW=X'),
+    fetchYahooQuote('NVDA'),    // 엔비디아
+    fetchYahooQuote('MU'),      // 마이크론
   ])
-  return { nasdaq, sp500, sox, vix, nasdaqFutures: kospi200, usdkrw }
+  return { nasdaq, sp500, sox, vix, nasdaqFutures: kospi200, usdkrw, nvda, mu }
 }
 
 // 외국인/기관 동향 요약
@@ -129,6 +133,10 @@ export async function generateOutlook(
 - VIX(공포지수): ${marketData.vix.price}
 - 코스피200: ${marketData.nasdaqFutures.price.toLocaleString()} (${marketData.nasdaqFutures.changePct >= 0 ? '+' : ''}${marketData.nasdaqFutures.changePct}%)
 - 원/달러 환율: ${marketData.usdkrw.price.toFixed(1)}원 (${marketData.usdkrw.changePct >= 0 ? '+' : ''}${marketData.usdkrw.changePct}%)
+
+[핵심 관련주]
+- 엔비디아(NVDA): $${marketData.nvda.price.toLocaleString()} (${marketData.nvda.changePct >= 0 ? '+' : ''}${marketData.nvda.changePct}%) — HBM 최대 고객사, 물량 70%
+- 마이크론(MU): $${marketData.mu.price.toLocaleString()} (${marketData.mu.changePct >= 0 ? '+' : ''}${marketData.mu.changePct}%) — HBM 경쟁사, 업종 동반 움직임
 
 [한국 수급]
 ${foreignTrend}
