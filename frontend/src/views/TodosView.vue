@@ -64,6 +64,7 @@ const sortOptions: SelectOption[] = [
 const todoSubTab = ref('todo')
 const todoSubTabs = computed<TabItem[]>(() => [
   { label: '할일', value: 'todo', count: incompleteTodos.value.length || undefined },
+  { label: '반복', value: 'repeat', count: repeatTodos.value.length || undefined },
   { label: '완료', value: 'done', count: completedTodos.value.length || undefined },
   { label: '휴지통', value: 'trash', count: trashTodos.value.length || undefined },
 ])
@@ -126,7 +127,7 @@ const incompleteTodos = computed(() => {
   const weekEnd = new Date(weekStart)
   weekEnd.setDate(weekStart.getDate() + 6)
 
-  let filtered = todos.value.filter(t => !t.done)
+  let filtered = todos.value.filter(t => !t.done && !t.repeatType)
 
   if (todoFilter.value !== 'all') {
     filtered = filtered.filter(t => {
@@ -157,6 +158,9 @@ const incompleteTodos = computed(() => {
     }
   })
 })
+
+// 반복 할일
+const repeatTodos = computed(() => todos.value.filter(t => !t.done && !!t.repeatType))
 
 const completedTodos = computed(() => todos.value.filter(t => t.done))
 
@@ -453,6 +457,24 @@ async function emptyTrash() {
               <UiBadge v-if="todo.memo" variant="info" size="xs">메모</UiBadge>
               <UiBadge v-if="todo.files && todo.files.length > 0" variant="default" size="xs">파일 {{ todo.files.length }}</UiBadge>
             </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- 할일 서브탭: 반복 -->
+    <template v-if="todoSubTab === 'repeat'">
+      <UiEmpty v-if="repeatTodos.length === 0" title="반복 할일이 없어요" description="할일 추가 시 반복 옵션을 설정해보세요." />
+      <div v-else class="todo-cards">
+        <div
+          v-for="todo in repeatTodos"
+          :key="todo.id"
+          class="todo-card"
+          @click="openEditDrawer(todo)"
+        >
+          <div class="todo-card__title">{{ todo.title }}</div>
+          <div class="todo-card__tags">
+            <UiBadge variant="info" size="xs">🔄 {{ repeatLabel(todo.repeatType!, todo.repeatDay) }}</UiBadge>
           </div>
         </div>
       </div>
