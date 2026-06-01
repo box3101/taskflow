@@ -122,7 +122,7 @@ router.patch('/:id', async (req, res) => {
   try {
     const userId = req.user!.id
     const id = Number(req.params.id)
-    const { done, title, memo, dueDate } = req.body
+    const { done, title, memo, dueDate, repeatType, repeatDay } = req.body
 
     // 본인 할일인지 확인
     const existing = await prisma.todo.findFirst({ where: { id, userId } })
@@ -146,6 +146,12 @@ router.patch('/:id', async (req, res) => {
         const parsed = new Date(dueDate)
         if (!isNaN(parsed.getTime())) updateData.dueDate = parsed
       }
+    }
+    if (repeatType !== undefined) {
+      updateData.repeatType = ['daily', 'weekly', 'monthly'].includes(repeatType) ? repeatType : null
+    }
+    if (repeatDay !== undefined) {
+      updateData.repeatDay = repeatDay !== null ? Number(repeatDay) : null
     }
 
     const todo = await prisma.todo.update({
