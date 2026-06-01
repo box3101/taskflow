@@ -4,8 +4,9 @@ import { CalendarDate } from '@internationalized/date'
 import type { DateValue } from '@internationalized/date'
 import {
   UiDrawer, UiInput, UiTextarea, UiDatePicker, UiButton, UiToggle,
-  openToast, openConfirm,
+  UiFileList, UiFileUpload, openToast, openConfirm,
 } from '@leechanyong/ispark-ui'
+import type { FileItem } from '@leechanyong/ispark-ui'
 import api from '../../api/client'
 import type { Todo, TodoFile } from '../../types/todo'
 
@@ -21,6 +22,7 @@ const emit = defineEmits<{
 }>()
 
 const loading = ref(false)
+const saving = ref(false)
 const title = ref('')
 const dueDate = ref<DateValue | undefined>(undefined)
 const memo = ref('')
@@ -44,10 +46,6 @@ function getFileUrl(filePath: string) {
   return `http://localhost:4000/uploads/${filePath}`
 }
 
-function isImage(mimetype: string) {
-  return mimetype.startsWith('image/')
-}
-
 watch(() => [props.open, props.todoId], async ([open, id]) => {
   if (!open || !id) return
   loading.value = true
@@ -69,7 +67,7 @@ watch(() => [props.open, props.todoId], async ([open, id]) => {
 }, { immediate: true })
 
 async function onSave() {
-  if (!todo.value) return
+  if (!todo.value || saving.value) return
   const trimTitle = title.value.trim()
   if (!trimTitle) return
 
@@ -86,6 +84,7 @@ async function onSave() {
     return
   }
 
+  saving.value = true
   try {
     await api.patch(`/todos/${todo.value.id}`, patch)
     emit('update:open', false)
@@ -93,6 +92,8 @@ async function onSave() {
     openToast({ message: '할일이 수정되었습니다.', type: 'success' })
   } catch {
     openToast({ message: '수정에 실패했습니다.', type: 'error' })
+  } finally {
+    saving.value = false
   }
 }
 
@@ -128,26 +129,24 @@ async function onDelete() {
   }
 }
 
-async function onFileUpload(e: Event) {
+async function onFileSelect(file: File) {
   if (!todo.value) return
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
   fileUploading.value = true
   try {
     const formData = new FormData()
     formData.append('file', file)
-    const { data } = await api.post(`/todos/${todo.value.id}/files`, formData)
+    const { data } = await api.post(`/todos/${todo.value.id}/files`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
     files.value.push(data.data)
   } catch {
     openToast({ message: '파일 업로드에 실패했습니다.', type: 'error' })
   } finally {
     fileUploading.value = false
-    input.value = ''
   }
 }
 
-async function deleteFile(file: TodoFile) {
+async function deleteFile(file: FileItem) {
   if (!todo.value) return
   try {
     await api.delete(`/todos/${todo.value.id}/files/${file.id}`)
@@ -172,32 +171,8 @@ async function deleteFile(file: TodoFile) {
       <!-- 파일 첨부 -->
       <div class="drawer-field">
         <label class="drawer-field__label">첨부파일</label>
-        <div class="drawer-files">
-          <div v-for="file in files" :key="file.id" :class="isImage(file.mimetype) ? 'drawer-file drawer-file--image' : 'drawer-file'">
-            <template v-if="isImage(file.mimetype)">
-              <a :href="getFileUrl(file.path)" target="_blank" class="drawer-file__preview">
-                <img :src="getFileUrl(file.path)" class="drawer-file__img" />
-              </a>
-              <div class="drawer-file__info">
-                <span class="drawer-file__name">{{ file.filename }}</span>
-                <button class="drawer-file__delete" @click="deleteFile(file)" type="button">
-                  <i class="icon-close size-12" />
-                </button>
-              </div>
-            </template>
-            <template v-else>
-              <span class="drawer-file__icon">📎</span>
-              <a :href="getFileUrl(file.path)" target="_blank" class="drawer-file__name">{{ file.filename }}</a>
-              <button class="drawer-file__delete" @click="deleteFile(file)" type="button">
-                <i class="icon-close size-12" />
-              </button>
-            </template>
-          </div>
-          <label class="drawer-file-add" :class="{ 'drawer-file-add--disabled': fileUploading }">
-            <input type="file" hidden @change="onFileUpload" :disabled="fileUploading" />
-            {{ fileUploading ? '업로드 중...' : '+ 파일 추가' }}
-          </label>
-        </div>
+        <UiFileList :files="files" :get-url="getFileUrl" @delete="deleteFile" />
+        <UiFileUpload :loading="fileUploading" @upload="onFileSelect" />
       </div>
     </form>
     <template #footer>
@@ -213,7 +188,7 @@ async function deleteFile(file: TodoFile) {
         </div>
         <div class="todo-drawer-footer__right">
           <UiButton variant="ghost" size="sm" @click="emit('update:open', false)">취소</UiButton>
-          <UiButton variant="primary" size="sm" @click="onSave">저장</UiButton>
+          <UiButton variant="primary" size="sm" :loading="saving" @click="onSave">저장</UiButton>
         </div>
       </div>
     </template>
@@ -235,82 +210,6 @@ async function deleteFile(file: TodoFile) {
   font-size: 13px;
   font-weight: 600;
   color: #374151;
-}
-.drawer-files {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.drawer-file {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  background: #f9fafb;
-  border-radius: 6px;
-  font-size: 13px;
-  &--image {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-.drawer-file__preview {
-  display: block;
-  border-radius: 4px;
-  overflow: hidden;
-}
-.drawer-file__img {
-  width: 100%;
-  max-height: 200px;
-  object-fit: cover;
-  border-radius: 4px;
-}
-.drawer-file__info {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 0;
-}
-.drawer-file__icon {
-  font-size: 16px;
-}
-.drawer-file__name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #374151;
-  text-decoration: none;
-  &:hover { text-decoration: underline; }
-}
-.drawer-file__delete {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  border-radius: 4px;
-  color: #9ca3af;
-  &:hover { background: #fee2e2; color: #ef4444; }
-}
-.drawer-file-add {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border: 1px dashed #d1d5db;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #6b7280;
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
-  &:hover { border-color: #3b82f6; color: #3b82f6; }
-  &--disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .todo-drawer-footer {
   display: flex;

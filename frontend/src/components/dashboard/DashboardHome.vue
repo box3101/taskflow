@@ -116,11 +116,11 @@ function onSelectProject(project: any) {
 }
 
 function onNavigateProjects() {
-  router.push('/main?tab=projects')
+  router.push('/projects')
 }
 
 function onNavigateTodos() {
-  router.push('/main?tab=todos')
+  router.push('/todos')
 }
 </script>
 
@@ -155,7 +155,7 @@ function onNavigateTodos() {
         <StatCard
           icon="circle-check"
           icon-bg="#fef3c7"
-          label="오늘 할일"
+          label="할일 완료"
           :value="completedCount"
           :sub="completionSub"
         />

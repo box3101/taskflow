@@ -16,6 +16,27 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 })
 
+const UPLOADS_DIR = path.resolve(path.join(__dirname, '../../uploads'))
+
+// 디스크에서 파일 안전 삭제 (uploads 디렉토리 밖 접근 방지)
+function removeFileFromDisk(filePath: string) {
+  const fullPath = path.resolve(path.join(UPLOADS_DIR, filePath))
+  if (!fullPath.startsWith(UPLOADS_DIR)) return
+  if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath)
+}
+
+// 할일에 연결된 파일들을 디스크에서 일괄 삭제
+async function removeFilesForTodos(todoIds: number[]) {
+  if (todoIds.length === 0) return
+  const files = await prisma.todoFile.findMany({
+    where: { todoId: { in: todoIds } },
+    select: { path: true },
+  })
+  for (const f of files) {
+    removeFileFromDisk(f.path)
+  }
+}
+
 const router = Router()
 router.use(authenticate)
 
@@ -100,10 +121,11 @@ router.patch('/:id', async (req, res) => {
     const todo = await prisma.todo.update({
       where: { id },
       data: updateData,
+      include: { files: true },
     })
     res.json({ data: todo })
   } catch (err) {
-    console.error('POST /todos error:', err)
+    console.error('PATCH /todos error:', err)
     res.status(500).json({ message: '서버 오류가 발생했습니다.' })
   }
 })
@@ -146,6 +168,13 @@ router.get('/:id', async (req, res) => {
 router.delete('/trash/empty', async (req, res) => {
   try {
     const userId = req.user!.id
+    // 삭제 대상 할일 ID 조회 → 디스크 파일 정리 → DB 삭제
+    const trashed = await prisma.todo.findMany({
+      where: { userId, deletedAt: { not: null } },
+      select: { id: true },
+    })
+    const ids = trashed.map(t => t.id)
+    await removeFilesForTodos(ids)
     await prisma.todo.deleteMany({
       where: { userId, deletedAt: { not: null } },
     })
@@ -170,6 +199,7 @@ router.delete('/:id', async (req, res) => {
     const todo = await prisma.todo.update({
       where: { id },
       data: { deletedAt: new Date() },
+      include: { files: true },
     })
     res.json({ data: todo })
   } catch {
@@ -192,6 +222,7 @@ router.patch('/:id/restore', async (req, res) => {
     const todo = await prisma.todo.update({
       where: { id },
       data: { deletedAt: null },
+      include: { files: true },
     })
     res.json({ data: todo })
   } catch {
@@ -211,6 +242,8 @@ router.delete('/:id/permanent', async (req, res) => {
       return
     }
 
+    // 디스크 파일 정리 후 DB 삭제
+    await removeFilesForTodos([id])
     await prisma.todo.delete({ where: { id } })
     res.json({ success: true })
   } catch {
@@ -231,6 +264,8 @@ router.post('/:id/files', upload.single('file'), async (req, res) => {
 
     const existing = await prisma.todo.findFirst({ where: { id, userId } })
     if (!existing) {
+      // 소유권 체크 실패 — 이미 저장된 파일 정리
+      removeFileFromDisk(file.filename)
       res.status(404).json({ message: '할일을 찾을 수 없습니다.' })
       return
     }
@@ -249,6 +284,8 @@ router.post('/:id/files', upload.single('file'), async (req, res) => {
     })
     res.status(201).json({ data: todoFile })
   } catch {
+    // DB 실패 시 디스크 파일 롤백
+    if (req.file) removeFileFromDisk(req.file.filename)
     res.status(500).json({ message: '파일 업로드에 실패했습니다.' })
   }
 })
@@ -272,9 +309,8 @@ router.delete('/:id/files/:fileId', async (req, res) => {
       return
     }
 
-    // 디스크에서 삭제
-    const filePath = path.join(__dirname, '../../uploads', file.path)
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
+    // 디스크에서 삭제 (path traversal 방지)
+    removeFileFromDisk(file.path)
 
     await prisma.todoFile.delete({ where: { id: fileId } })
     res.json({ success: true })

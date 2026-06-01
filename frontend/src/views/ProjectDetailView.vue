@@ -383,18 +383,16 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="layout">
-    <header class="header">
+  <div class="project-detail">
+    <div class="project-detail__header">
       <div class="header-left">
         <UiButton variant="ghost" size="sm" @click="goBack">← 목록</UiButton>
         <h1 class="header-title">{{ project?.name || '...' }}</h1>
       </div>
       <UiButton v-if="!loading" variant="primary" size="sm" @click="startCreate">+ 이슈 추가</UiButton>
-    </header>
+    </div>
 
-    <div>
-      <main class="main">
-        <UiLoading v-if="loading" overlay />
+    <UiLoading v-if="loading" overlay />
         <template v-else>
           <UiTab v-model="activeTab" :tabs="tabs" />
 
@@ -597,9 +595,6 @@ onMounted(async () => {
             </div>
           </div>
         </template>
-      </main>
-
-    </div>
 
     <!-- 이슈 생성 Drawer -->
     <UiDrawer v-model:open="createDrawerOpen" title="이슈 추가" width="420px" max-width="600px">
@@ -719,19 +714,12 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
-.layout { min-height: 100vh; }
-.header {
+.project-detail__header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 24px; height: 56px; background: #fff; border-bottom: 1px solid #e6e8ec;
+  margin-bottom: 24px;
 }
 .header-left { display: flex; align-items: center; gap: 12px; }
 .header-title { font-size: 18px; font-weight: 700; }
-
-.main {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 32px 24px;
-}
 .tab-content { margin-top: 24px; }
 
 // ── Drawer 폼 ──

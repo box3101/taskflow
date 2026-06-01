@@ -55,7 +55,7 @@
         </template>
         <template v-else>
           <UiButton variant="outline" @click="cancelEdit">취소</UiButton>
-          <UiButton @click="handleSave" :disabled="!form.title.trim()">저장</UiButton>
+          <UiButton @click="handleSave" :disabled="!form.title.trim()" :loading="saving">저장</UiButton>
         </template>
       </div>
     </template>
@@ -71,6 +71,7 @@ import type { AiTool } from './AiToolCard.vue'
 const props = defineProps<{
   open: boolean
   tool: AiTool | null
+  saving?: boolean
 }>()
 
 const emit = defineEmits<{

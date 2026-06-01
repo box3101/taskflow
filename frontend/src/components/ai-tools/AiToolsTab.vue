@@ -71,6 +71,7 @@
     <AiToolDrawer
       :open="drawerOpen"
       :tool="selectedTool"
+      :saving="saving"
       @close="closeDrawer"
       @save="handleSave"
       @delete="handleDelete"
@@ -93,6 +94,7 @@ const selectedCategory = ref('')
 const selectedTag = ref('')
 const drawerOpen = ref(false)
 const selectedTool = ref<AiTool | null>(null)
+const saving = ref(false)
 
 // 카테고리 태그 (세그먼트로 분리)
 const categoryTags = ['superpowers', 'gstack', 'codex']
@@ -163,6 +165,7 @@ function closeDrawer() {
 }
 
 async function handleSave(data: Partial<AiTool>) {
+  saving.value = true
   try {
     if (data.id) {
       await api.put(`/ai-tools/${data.id}`, data)
@@ -175,6 +178,8 @@ async function handleSave(data: Partial<AiTool>) {
     await loadTools()
   } catch {
     openToast({ message: '저장에 실패했습니다.', type: 'error' })
+  } finally {
+    saving.value = false
   }
 }
 

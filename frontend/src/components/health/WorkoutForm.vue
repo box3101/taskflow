@@ -62,7 +62,7 @@
           variant="danger"
           @click="handleDelete"
         >삭제</UiButton>
-        <UiButton @click="handleSave" :disabled="!form.name.trim()">저장</UiButton>
+        <UiButton @click="handleSave" :disabled="!form.name.trim()" :loading="saving">저장</UiButton>
       </div>
     </template>
   </UiDrawer>
@@ -88,6 +88,7 @@ const emit = defineEmits<{
 
 const { addWorkout, updateWorkout, deleteWorkout } = useWorkout()
 
+const saving = ref(false)
 const form = ref(createEmptyForm())
 
 function createEmptyForm() {
@@ -136,7 +137,7 @@ function toNumber(val: string): number | undefined {
 }
 
 async function handleSave() {
-  if (!form.value.name.trim()) return
+  if (!form.value.name.trim() || saving.value) return
 
   const entry = {
     date: props.selectedDate,
@@ -148,6 +149,7 @@ async function handleSave() {
     memo: form.value.memo.trim() || undefined,
   }
 
+  saving.value = true
   try {
     if (props.workout) {
       await updateWorkout(props.workout.id, entry)
@@ -160,6 +162,8 @@ async function handleSave() {
     emit('saved')
   } catch (e: any) {
     openToast({ message: e.message || '저장에 실패했습니다.', type: 'warning' })
+  } finally {
+    saving.value = false
   }
 }
 
