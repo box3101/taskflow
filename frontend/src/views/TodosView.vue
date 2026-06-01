@@ -470,7 +470,7 @@ async function emptyTrash() {
           v-for="todo in repeatTodos"
           :key="todo.id"
           class="todo-card"
-          @click="openEditDrawer(todo)"
+          @click="openTodoDrawer(todo)"
         >
           <div class="todo-card__title">{{ todo.title }}</div>
           <div class="todo-card__tags">
