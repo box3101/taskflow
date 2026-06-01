@@ -37,6 +37,20 @@ async function removeFilesForTodos(todoIds: number[]) {
   }
 }
 
+// 반복 할일 다음 날짜 계산
+function getNextRepeatDate(repeatType: string, repeatDay: number | null, baseDate: Date): Date {
+  const next = new Date(baseDate)
+  if (repeatType === 'daily') {
+    next.setDate(next.getDate() + 1)
+  } else if (repeatType === 'weekly' && repeatDay !== null) {
+    next.setDate(next.getDate() + 7)
+  } else if (repeatType === 'monthly' && repeatDay !== null) {
+    next.setMonth(next.getMonth() + 1)
+    next.setDate(repeatDay)
+  }
+  return next
+}
+
 const router = Router()
 router.use(authenticate)
 
@@ -78,8 +92,24 @@ router.post('/', async (req, res) => {
       if (!isNaN(parsed.getTime())) safeDueDate = parsed
     }
 
+    // repeatType, repeatDay 처리
+    const safeRepeatType = ['daily', 'weekly', 'monthly'].includes(req.body.repeatType)
+      ? req.body.repeatType
+      : null
+    const safeRepeatDay =
+      req.body.repeatDay !== undefined && req.body.repeatDay !== null
+        ? Number(req.body.repeatDay)
+        : null
+
     const todo = await prisma.todo.create({
-      data: { userId, title: title.trim(), dueDate: safeDueDate, memo: memo ?? null },
+      data: {
+        userId,
+        title: title.trim(),
+        dueDate: safeDueDate,
+        memo: memo ?? null,
+        repeatType: safeRepeatType,
+        repeatDay: safeRepeatDay,
+      },
     })
     res.status(201).json({ data: todo })
   } catch {
@@ -123,6 +153,30 @@ router.patch('/:id', async (req, res) => {
       data: updateData,
       include: { files: true },
     })
+
+    // 완료 시 반복 할일 자동 생성
+    if (
+      done === true &&
+      !existing.done &&
+      existing.repeatType &&
+      ['daily', 'weekly', 'monthly'].includes(existing.repeatType)
+    ) {
+      const baseDate = existing.dueDate ? new Date(existing.dueDate) : new Date()
+      const nextDate = getNextRepeatDate(existing.repeatType, existing.repeatDay, baseDate)
+      const dueDateStr = nextDate.toISOString().slice(0, 10) // YYYY-MM-DD
+
+      await prisma.todo.create({
+        data: {
+          userId,
+          title: existing.title,
+          repeatType: existing.repeatType,
+          repeatDay: existing.repeatDay,
+          dueDate: new Date(dueDateStr),
+          done: false,
+        },
+      })
+    }
+
     res.json({ data: todo })
   } catch (err) {
     console.error('PATCH /todos error:', err)
