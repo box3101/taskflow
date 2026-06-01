@@ -109,7 +109,7 @@ function splitSentences(text: string): string[] {
           <span class="outlook__index-val">{{ outlook.fearGreed }}</span>
         </div>
         <div class="outlook__index">
-          <span class="outlook__index-name">선물</span>
+          <span class="outlook__index-name">코스피200</span>
           <span class="outlook__index-val" :class="pctClass(outlook.marketData.nasdaqFutures.changePct)">
             {{ fmtPct(outlook.marketData.nasdaqFutures.changePct) }}
           </span>

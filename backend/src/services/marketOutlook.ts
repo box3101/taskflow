@@ -51,15 +51,15 @@ async function fetchYahooQuote(symbol: string): Promise<{ price: number; changeP
 
 // 미국 시장 데이터 수집
 async function fetchMarketData(): Promise<MarketData> {
-  const [nasdaq, sp500, sox, vix, nasdaqFutures, usdkrw] = await Promise.all([
+  const [nasdaq, sp500, sox, vix, kospi200, usdkrw] = await Promise.all([
     fetchYahooQuote('^IXIC'),
     fetchYahooQuote('^GSPC'),
     fetchYahooQuote('^SOX'),
     fetchYahooQuote('^VIX'),
-    fetchYahooQuote('NQ=F'),
+    fetchYahooQuote('^KS200'),  // 코스피200 지수 (야간선물 대체)
     fetchYahooQuote('KRW=X'),
   ])
-  return { nasdaq, sp500, sox, vix, nasdaqFutures, usdkrw }
+  return { nasdaq, sp500, sox, vix, nasdaqFutures: kospi200, usdkrw }
 }
 
 // 외국인/기관 동향 요약
@@ -127,7 +127,7 @@ export async function generateOutlook(
 - S&P500: ${marketData.sp500.price.toLocaleString()} (${marketData.sp500.changePct >= 0 ? '+' : ''}${marketData.sp500.changePct}%)
 - 필라델피아 반도체(SOX): ${marketData.sox.price.toLocaleString()} (${marketData.sox.changePct >= 0 ? '+' : ''}${marketData.sox.changePct}%)
 - VIX(공포지수): ${marketData.vix.price}
-- 나스닥 선물: ${marketData.nasdaqFutures.price.toLocaleString()} (${marketData.nasdaqFutures.changePct >= 0 ? '+' : ''}${marketData.nasdaqFutures.changePct}%)
+- 코스피200: ${marketData.nasdaqFutures.price.toLocaleString()} (${marketData.nasdaqFutures.changePct >= 0 ? '+' : ''}${marketData.nasdaqFutures.changePct}%)
 - 원/달러 환율: ${marketData.usdkrw.price.toFixed(1)}원 (${marketData.usdkrw.changePct >= 0 ? '+' : ''}${marketData.usdkrw.changePct}%)
 
 [한국 수급]
