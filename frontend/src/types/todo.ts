@@ -13,6 +13,8 @@ export interface Todo {
   memo: string | null
   done: boolean
   dueDate: string | null
+  repeatType: string | null
+  repeatDay: number | null
   createdAt: string
   deletedAt?: string | null
   files?: TodoFile[]

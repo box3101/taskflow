@@ -77,8 +77,44 @@ const drawerDueDate = ref<DateValue | undefined>(undefined)
 const drawerMemo = ref('')
 const drawerDone = ref(false)
 const drawerSaving = ref(false)
+const drawerRepeatType = ref('')
+const drawerRepeatDay = ref<number | null>(null)
 const drawerFiles = ref<TodoFile[]>([])
 const fileUploading = ref(false)
+
+// 반복 옵션
+const repeatOptions: SelectOption[] = [
+  { value: '', label: '반복 안함' },
+  { value: 'daily', label: '매일' },
+  { value: 'weekly', label: '매주' },
+  { value: 'monthly', label: '매월' },
+]
+
+const dayOptions: SelectOption[] = [
+  { value: 0, label: '일요일' },
+  { value: 1, label: '월요일' },
+  { value: 2, label: '화요일' },
+  { value: 3, label: '수요일' },
+  { value: 4, label: '목요일' },
+  { value: 5, label: '금요일' },
+  { value: 6, label: '토요일' },
+]
+
+const monthDayOptions: SelectOption[] = Array.from({ length: 31 }, (_, i) => ({
+  value: i + 1,
+  label: `${i + 1}일`,
+}))
+
+// 반복 라벨
+function repeatLabel(type: string, day?: number | null): string {
+  if (type === 'daily') return '매일'
+  if (type === 'weekly') {
+    const days = ['일', '월', '화', '수', '목', '금', '토']
+    return `매주 ${days[day ?? 0]}`
+  }
+  if (type === 'monthly') return `매월 ${day}일`
+  return ''
+}
 
 // 미완료 (필터 + 정렬)
 const incompleteTodos = computed(() => {
@@ -142,6 +178,8 @@ function openCreateTodoDrawer() {
   drawerTitle.value = ''
   drawerDueDate.value = undefined
   drawerMemo.value = ''
+  drawerRepeatType.value = ''
+  drawerRepeatDay.value = null
   todoDrawerOpen.value = true
 }
 
@@ -152,6 +190,8 @@ function openTodoDrawer(todo: Todo) {
   drawerDueDate.value = toCalendarDate(todo.dueDate)
   drawerMemo.value = todo.memo ?? ''
   drawerDone.value = todo.done
+  drawerRepeatType.value = todo.repeatType ?? ''
+  drawerRepeatDay.value = todo.repeatDay ?? null
   drawerFiles.value = todo.files ? [...todo.files] : []
   todoDrawerOpen.value = true
 }
@@ -172,11 +212,13 @@ async function saveTodoDrawer() {
 
   const dueDate = fromCalendarDate(drawerDueDate.value)
   const memo = drawerMemo.value.trim() || null
+  const repeatType = drawerRepeatType.value || null
+  const repeatDay = repeatType === 'weekly' || repeatType === 'monthly' ? drawerRepeatDay.value : null
 
   drawerSaving.value = true
   try {
     if (drawerMode.value === 'create') {
-      const { data } = await api.post('/todos', { title, dueDate, memo })
+      const { data } = await api.post('/todos', { title, dueDate, memo, repeatType, repeatDay })
       todos.value.push(data.data)
       todoDrawerOpen.value = false
       openToast({ message: '할일이 추가되었습니다.', type: 'success' })
@@ -186,6 +228,8 @@ async function saveTodoDrawer() {
       if (title !== todo.title) patch.title = title
       if (dueDate !== todo.dueDate) patch.dueDate = dueDate
       if (memo !== (todo.memo ?? null)) patch.memo = memo
+      if (repeatType !== (todo.repeatType ?? null)) patch.repeatType = repeatType
+      if (repeatDay !== (todo.repeatDay ?? null)) patch.repeatDay = repeatDay
 
       if (Object.keys(patch).length === 0) {
         todoDrawerOpen.value = false
@@ -461,6 +505,18 @@ async function emptyTrash() {
           <UiDatePicker v-model="drawerDueDate" type="date" size="sm" />
         </div>
         <UiTextarea v-model="drawerMemo" label="메모" placeholder="메모를 입력하세요..." :rows="5" />
+        <div class="drawer-field">
+          <label class="drawer-field__label">반복</label>
+          <UiSelect v-model="drawerRepeatType" :options="repeatOptions" placeholder="반복 안함" size="sm" />
+        </div>
+        <div v-if="drawerRepeatType === 'weekly'" class="drawer-field">
+          <label class="drawer-field__label">요일</label>
+          <UiSelect v-model="drawerRepeatDay" :options="dayOptions" placeholder="요일 선택" size="sm" />
+        </div>
+        <div v-if="drawerRepeatType === 'monthly'" class="drawer-field">
+          <label class="drawer-field__label">날짜</label>
+          <UiSelect v-model="drawerRepeatDay" :options="monthDayOptions" placeholder="날짜 선택" size="sm" />
+        </div>
         <div class="drawer-field">
           <label class="drawer-field__label">첨부파일</label>
           <UiFileList :files="drawerFiles" :get-url="getFileUrl" @delete="deleteFile" />
