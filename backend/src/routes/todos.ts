@@ -160,7 +160,7 @@ router.patch('/:id', async (req, res) => {
       include: { files: true },
     })
 
-    // 완료 시 반복 할일 자동 생성
+    // 완료 시 반복 할일 → 다음 반복일로 리셋 (새 할일 안 만들고 같은 할일 재사용)
     if (
       done === true &&
       !existing.done &&
@@ -169,18 +169,17 @@ router.patch('/:id', async (req, res) => {
     ) {
       const baseDate = existing.dueDate ? new Date(existing.dueDate) : new Date()
       const nextDate = getNextRepeatDate(existing.repeatType, existing.repeatDay, baseDate)
-      const dueDateStr = nextDate.toISOString().slice(0, 10) // YYYY-MM-DD
+      const dueDateStr = nextDate.toISOString().slice(0, 10)
 
-      await prisma.todo.create({
-        data: {
-          userId,
-          title: existing.title,
-          repeatType: existing.repeatType,
-          repeatDay: existing.repeatDay,
-          dueDate: new Date(dueDateStr),
-          done: false,
-        },
+      // 같은 할일을 미완료로 리셋 + 다음 반복일로 업데이트
+      await prisma.todo.update({
+        where: { id },
+        data: { done: false, dueDate: new Date(dueDateStr) },
       })
+
+      // 응답은 리셋된 상태로 반환
+      const resetTodo = await prisma.todo.findUnique({ where: { id }, include: { files: true } })
+      return res.json({ data: resetTodo })
     }
 
     res.json({ data: todo })
