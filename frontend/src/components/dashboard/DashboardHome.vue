@@ -33,14 +33,23 @@ const activeProjects = computed(() =>
   projects.value.filter(p => p.status === 'active')
 )
 
-// 대시보드용 할일 필터 (미완료 + 7일 이내 마감 또는 마감일 없음)
+// 대시보드용 할일 필터 (미완료 + 7일 이내 마감)
 const todayTodos = computed(() => {
   const now = new Date()
   now.setHours(0, 0, 0, 0)
+  const todayDay = now.getDay() // 0=일~6=토
 
   return todos.value.filter(t => {
     if (t.done) return false
-    if (!t.dueDate) return true
+
+    // 마감일 없는 경우: 반복 할일이면 오늘이 해당 요일인지 확인
+    if (!t.dueDate) {
+      if (t.repeatType === 'daily') return true
+      if (t.repeatType === 'weekly') return t.repeatDay === todayDay
+      if (t.repeatType === 'monthly') return now.getDate() === t.repeatDay
+      return true // 반복 아닌 마감일 없는 할일은 표시
+    }
+
     const due = new Date(t.dueDate)
     due.setHours(0, 0, 0, 0)
     return due.getTime() <= now.getTime() + 7 * 24 * 60 * 60 * 1000
