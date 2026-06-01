@@ -210,10 +210,21 @@ async function saveTodoDrawer() {
   const title = drawerTitle.value.trim()
   if (!title || drawerSaving.value) return
 
+  // 반복 유효성 검사: 매주/매월 선택 시 요일/날짜 필수
+  if (drawerRepeatType.value === 'weekly' && (drawerRepeatDay.value === null || drawerRepeatDay.value === undefined)) {
+    openToast({ message: '요일을 선택해주세요.', type: 'warning' })
+    return
+  }
+  if (drawerRepeatType.value === 'monthly' && (drawerRepeatDay.value === null || drawerRepeatDay.value === undefined)) {
+    openToast({ message: '날짜를 선택해주세요.', type: 'warning' })
+    return
+  }
+
   const dueDate = fromCalendarDate(drawerDueDate.value)
   const memo = drawerMemo.value.trim() || null
   const repeatType = drawerRepeatType.value || null
-  const repeatDay = repeatType === 'weekly' || repeatType === 'monthly' ? drawerRepeatDay.value : null
+  const repeatDayRaw = repeatType === 'weekly' || repeatType === 'monthly' ? drawerRepeatDay.value : null
+  const repeatDay = repeatDayRaw !== null && repeatDayRaw !== undefined ? Number(repeatDayRaw) : null
 
   drawerSaving.value = true
   try {
