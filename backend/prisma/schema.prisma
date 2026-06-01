@@ -90,7 +90,9 @@ model Todo {
   memo      String?  @db.Text
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-  deletedAt DateTime? @map("deleted_at")
+  deletedAt   DateTime? @map("deleted_at")
+  repeatType  String?   @map("repeat_type")   // 'none' | 'daily' | 'weekly' | 'monthly'
+  repeatDay   Int?      @map("repeat_day")    // weekly: 요일(0=일~6=토), monthly: 날짜(1~31)
 
   user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   files TodoFile[]
