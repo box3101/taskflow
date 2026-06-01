@@ -465,7 +465,7 @@ async function emptyTrash() {
     <!-- 할일 서브탭: 반복 -->
     <template v-if="todoSubTab === 'repeat'">
       <UiEmpty v-if="repeatTodos.length === 0" title="반복 할일이 없어요" description="할일 추가 시 반복 옵션을 설정해보세요." />
-      <div v-else class="todo-cards">
+      <div v-else class="todo-cards" style="margin-top: 16px;">
         <div
           v-for="todo in repeatTodos"
           :key="todo.id"
