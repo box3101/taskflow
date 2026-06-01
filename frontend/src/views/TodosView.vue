@@ -438,6 +438,7 @@ async function emptyTrash() {
           <div class="todo-card__footer">
             <div class="todo-card__tags">
               <UiBadge v-if="getDday(todo.dueDate)" :variant="getDday(todo.dueDate)!.variant" size="xs">{{ getDday(todo.dueDate)!.label }}</UiBadge>
+              <UiBadge v-if="todo.repeatType" variant="info" size="xs">🔄 {{ repeatLabel(todo.repeatType, todo.repeatDay) }}</UiBadge>
               <UiBadge v-if="todo.memo" variant="info" size="xs">메모</UiBadge>
               <UiBadge v-if="todo.files && todo.files.length > 0" variant="default" size="xs">파일 {{ todo.files.length }}</UiBadge>
             </div>
@@ -459,6 +460,7 @@ async function emptyTrash() {
           <div class="todo-card__footer">
             <div class="todo-card__tags">
               <UiBadge variant="primary" size="xs">완료</UiBadge>
+              <UiBadge v-if="todo.repeatType" variant="info" size="xs">🔄 {{ repeatLabel(todo.repeatType, todo.repeatDay) }}</UiBadge>
             </div>
             <div class="todo-card__actions">
               <button class="todo-card__action" @click.stop="toggleTodo(todo)" title="되돌리기">
