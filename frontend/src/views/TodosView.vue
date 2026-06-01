@@ -159,8 +159,18 @@ const incompleteTodos = computed(() => {
   })
 })
 
-// 반복 할일
-const repeatTodos = computed(() => todos.value.filter(t => !t.done && !!t.repeatType))
+// 반복 할일 (dueDate가 없거나 오늘 이하인 것만 — 미래 날짜는 숨김)
+const repeatTodos = computed(() => {
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  return todos.value.filter(t => {
+    if (t.done || !t.repeatType) return false
+    if (!t.dueDate) return true
+    const due = new Date(t.dueDate)
+    due.setHours(0, 0, 0, 0)
+    return due.getTime() <= now.getTime()
+  })
+})
 
 const completedTodos = computed(() => todos.value.filter(t => t.done))
 
@@ -273,7 +283,14 @@ async function onDrawerToggleDone(val: boolean) {
     if (idx !== -1) todos.value[idx] = data.data
     drawerTodo.value = data.data
     todoDrawerOpen.value = false
-    openToast({ message: val ? '완료 처리되었습니다.' : '할일로 복원되었습니다.', type: 'success' })
+    // 반복 할일 완료 시 다음 반복일 안내
+    if (val && data.data.repeatType && !data.data.done) {
+      const days = ['일', '월', '화', '수', '목', '금', '토']
+      const due = data.data.dueDate ? new Date(data.data.dueDate).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' }) : ''
+      openToast({ message: `✅ 완료! 다음 ${due}에 다시 나타납니다`, type: 'success' })
+    } else {
+      openToast({ message: val ? '완료 처리되었습니다.' : '할일로 복원되었습니다.', type: 'success' })
+    }
   } catch {
     drawerDone.value = !val
     openToast({ message: '상태 변경에 실패했습니다.', type: 'error' })
