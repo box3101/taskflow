@@ -1,7 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 import prisma from '../prisma'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const API_KEY = process.env.ANTHROPIC_API_KEY
+const client = API_KEY ? new Anthropic({ apiKey: API_KEY }) : null
 
 interface MarketData {
   nasdaq: { price: number; changePct: number }
@@ -104,6 +105,10 @@ export async function generateOutlook(
   stockCode: string,
   investorTrends: any[]
 ): Promise<OutlookResult> {
+  if (!client) {
+    throw new Error('AI_UNAVAILABLE')
+  }
+
   const [marketData, foreignTrend, newsSummary, fearGreed] = await Promise.all([
     fetchMarketData(),
     Promise.resolve(summarizeForeignTrend(investorTrends)),

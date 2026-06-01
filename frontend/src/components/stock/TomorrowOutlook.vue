@@ -11,6 +11,7 @@ const props = defineProps<{
 const outlook = ref<MarketOutlook | null>(null)
 const loading = ref(false)
 const error = ref(false)
+const aiUnavailable = ref(false)
 
 const signalConfig = {
   buy: { label: '매수 유리', emoji: '🟢', bg: '#f0fdf4', border: '#22c55e', color: '#15803d' },
@@ -24,8 +25,12 @@ async function load() {
   error.value = false
   try {
     outlook.value = await fetchMarketOutlook(props.code, props.name)
-  } catch {
-    error.value = true
+  } catch (e: any) {
+    if (e?.response?.status === 503) {
+      aiUnavailable.value = true
+    } else {
+      error.value = true
+    }
   } finally {
     loading.value = false
   }
@@ -60,7 +65,8 @@ function splitSentences(text: string): string[] {
 
     <UiLoading v-if="loading" overlay />
 
-    <div v-if="error && !loading" class="outlook__error">전망 데이터를 불러올 수 없습니다.</div>
+    <div v-if="aiUnavailable && !loading" class="outlook__error" style="color: #6b7280;">AI 분석 기능은 현재 사용할 수 없습니다.</div>
+    <div v-else-if="error && !loading" class="outlook__error">전망 데이터를 불러올 수 없습니다.</div>
 
     <template v-if="outlook && !loading">
       <!-- 시그널 -->

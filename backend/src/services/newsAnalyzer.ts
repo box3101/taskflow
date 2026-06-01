@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const API_KEY = process.env.ANTHROPIC_API_KEY
+const client = API_KEY ? new Anthropic({ apiKey: API_KEY }) : null
 
 interface NewsInput {
   title: string
@@ -24,6 +25,10 @@ export async function analyzeNews(
   newsList: NewsInput[]
 ): Promise<AnalyzedNews[]> {
   if (newsList.length === 0) return []
+  if (!client) {
+    console.warn('[newsAnalyzer] ANTHROPIC_API_KEY 미설정 — AI 분석 스킵')
+    return []
+  }
 
   const newsText = newsList
     .map((n, i) => `[${i}] ${n.title}`)

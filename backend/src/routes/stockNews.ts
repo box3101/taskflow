@@ -154,6 +154,9 @@ router.post('/analyze', async (req, res) => {
     }
     res.json({ success: true })
   } catch (err: any) {
+    if (err?.message?.includes('authentication') || err?.message === 'AI_UNAVAILABLE') {
+      return res.status(503).json({ error: 'AI 분석 기능은 현재 사용할 수 없습니다. (API 키 미설정)' })
+    }
     console.error('[stock-news] analyze 에러:', err?.message || err)
     res.status(500).json({ error: '뉴스 분석 실패', detail: err?.message || String(err) })
   }
@@ -291,6 +294,9 @@ router.get('/outlook', async (req, res) => {
     outlookCache = { data: outlook, fetchedAt: Date.now() }
     res.json(outlook)
   } catch (err: any) {
+    if (err?.message === 'AI_UNAVAILABLE') {
+      return res.status(503).json({ error: 'AI 분석 기능은 현재 사용할 수 없습니다. (API 키 미설정)' })
+    }
     console.error('[stock-news] outlook 에러:', err?.message || err)
     res.status(500).json({ error: '전망 생성 실패' })
   }
