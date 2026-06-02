@@ -23,20 +23,13 @@ router.post('/', async (req, res) => {
       return
     }
 
-    // memo 유효성: 문자열이면 트림, 아니면 생략
-    const memoValue = typeof memo === 'string' ? memo.trim().slice(0, 200) || null : undefined
-
-    const updateData: Record<string, unknown> = { mood }
-    const createData: Record<string, unknown> = { userId, date, mood }
-    if (memoValue !== undefined) {
-      updateData.memo = memoValue
-      createData.memo = memoValue
-    }
+    // memo 유효성: 문자열이면 트림, 아니면 null
+    const memoValue = typeof memo === 'string' ? memo.trim().slice(0, 200) || null : null
 
     const result = await prisma.mood.upsert({
       where: { userId_date: { userId, date } },
-      update: updateData,
-      create: createData,
+      update: { mood, memo: memoValue },
+      create: { userId, date, mood, memo: memoValue },
     })
     res.json({ data: result })
   } catch (err) {
