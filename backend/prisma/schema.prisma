@@ -26,6 +26,8 @@ model User {
   moods          Mood[]
   workouts       Workout[]
   meals          Meal[]
+  stockGuardSetting StockGuardSetting?
+  kakaoToken        KakaoToken?
 
   @@map("users")
 }
@@ -232,6 +234,7 @@ model Mood {
   id        String   @id @default(uuid())
   date      String   // 'YYYY-MM-DD'
   mood      Int      // 1-5
+  memo      String?  // 한줄 메모 (선택사항)
   userId    Int      @map("user_id")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now()) @map("created_at")
@@ -271,4 +274,33 @@ model Meal {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("meals")
+}
+
+// 주식 Guard 설정
+model StockGuardSetting {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique @map("user_id")
+  enabled   Boolean  @default(true)
+  windows   Json     @default("[{\"open\":\"09:05\",\"close\":\"13:00\"},{\"open\":\"13:00\",\"close\":\"15:35\"},{\"open\":\"15:35\",\"close\":\"16:00\"}]")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("stock_guard_settings")
+}
+
+// 카카오 OAuth 토큰
+model KakaoToken {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique @map("user_id")
+  accessToken  String   @map("access_token") @db.Text
+  refreshToken String   @map("refresh_token") @db.Text
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("kakao_tokens")
 }
