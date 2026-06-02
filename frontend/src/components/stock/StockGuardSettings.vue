@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { UiToggle, UiButton, UiIcon, UiLoading } from '@anthropic-ai/ispark-ui'
-import { useToast } from '@anthropic-ai/ispark-ui'
+import { UiToggle, UiButton, UiIcon, UiLoading } from '@leechanyong/ispark-ui'
+import { useToast } from '@leechanyong/ispark-ui'
 import {
   fetchGuardSettings, updateGuardSettings, unlinkKakao,
   type GuardSettings, type GuardWindow,

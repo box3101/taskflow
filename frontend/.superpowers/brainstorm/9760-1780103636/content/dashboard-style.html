@@ -1,0 +1,145 @@
+<h2>대시보드 위젯 스타일</h2>
+<p class="subtitle">어떤 느낌의 대시보드가 좋을까요?</p>
+
+<div class="cards">
+  <!-- Option A: 카드 요약형 -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding: 20px; background: #f8f9fc;">
+        <!-- 상단 stat cards -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+          <div style="background: white; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <div style="font-size: 11px; color: #888; margin-bottom: 4px;">진행 중 프로젝트</div>
+            <div style="font-size: 28px; font-weight: 700; color: #3c69db;">5</div>
+          </div>
+          <div style="background: white; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <div style="font-size: 11px; color: #888; margin-bottom: 4px;">오늘 할일</div>
+            <div style="font-size: 28px; font-weight: 700; color: #f59e0b;">3</div>
+          </div>
+          <div style="background: white; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <div style="font-size: 11px; color: #888; margin-bottom: 4px;">완료율</div>
+            <div style="font-size: 28px; font-weight: 700; color: #22c55e;">72%</div>
+          </div>
+        </div>
+        <!-- 하단 리스트 -->
+        <div style="background: white; border-radius: 10px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+          <div style="font-size: 12px; font-weight: 600; margin-bottom: 10px;">마감 임박</div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
+            <div style="width: 6px; height: 6px; border-radius: 50%; background: #ef4444;"></div>
+            <span style="font-size: 11px; flex: 1;">API 리팩토링</span>
+            <span style="font-size: 10px; color: #ef4444;">D-1</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0;">
+            <div style="width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;"></div>
+            <span style="font-size: 11px; flex: 1;">UI 테스트 작성</span>
+            <span style="font-size: 10px; color: #f59e0b;">D-3</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. 카드 요약형</h3>
+      <p>상단에 핵심 숫자 카드, 하단에 리스트. 깔끔하고 정보 밀도 적당.</p>
+    </div>
+  </div>
+
+  <!-- Option B: 리스트 중심형 -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding: 20px; background: #f8f9fc;">
+        <!-- 프로젝트 섹션 -->
+        <div style="background: white; border-radius: 10px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="font-size: 13px; font-weight: 600;">프로젝트</span>
+            <span style="font-size: 11px; color: #3c69db;">전체보기 →</span>
+          </div>
+          <div style="padding: 8px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between;">
+            <span style="font-size: 12px;">TaskFlow 개발</span>
+            <div style="width: 60px; height: 6px; border-radius: 3px; background: #e5e7eb; overflow: hidden;">
+              <div style="width: 70%; height: 100%; background: #3c69db; border-radius: 3px;"></div>
+            </div>
+          </div>
+          <div style="padding: 8px 0; display: flex; justify-content: space-between;">
+            <span style="font-size: 12px;">ispark-ui 라이브러리</span>
+            <div style="width: 60px; height: 6px; border-radius: 3px; background: #e5e7eb; overflow: hidden;">
+              <div style="width: 45%; height: 100%; background: #3c69db; border-radius: 3px;"></div>
+            </div>
+          </div>
+        </div>
+        <!-- 할일 섹션 -->
+        <div style="background: white; border-radius: 10px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="font-size: 13px; font-weight: 600;">오늘 할일</span>
+            <span style="font-size: 11px; color: #888;">2/5 완료</span>
+          </div>
+          <div style="padding: 6px 0; display: flex; align-items: center; gap: 8px;">
+            <div style="width: 16px; height: 16px; border: 2px solid #d1d5db; border-radius: 4px;"></div>
+            <span style="font-size: 12px;">코드 리뷰 진행</span>
+          </div>
+          <div style="padding: 6px 0; display: flex; align-items: center; gap: 8px;">
+            <div style="width: 16px; height: 16px; border: 2px solid #d1d5db; border-radius: 4px;"></div>
+            <span style="font-size: 12px;">주간 보고 작성</span>
+          </div>
+          <div style="padding: 6px 0; display: flex; align-items: center; gap: 8px;">
+            <div style="width: 16px; height: 16px; background: #3c69db; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+              <span style="color: white; font-size: 10px;">✓</span>
+            </div>
+            <span style="font-size: 12px; color: #aaa; text-decoration: line-through;">스탠드업 미팅</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. 리스트 중심형</h3>
+      <p>섹션별 리스트로 구성. 실제 항목을 바로 확인/조작 가능. 실용적.</p>
+    </div>
+  </div>
+
+  <!-- Option C: 하이브리드 -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding: 20px; background: #f8f9fc;">
+        <!-- 인사말 + 요약 -->
+        <div style="margin-bottom: 14px;">
+          <div style="font-size: 15px; font-weight: 600; color: #1a1a1a;">좋은 아침이에요 👋</div>
+          <div style="font-size: 11px; color: #888; margin-top: 2px;">오늘 할일 3개, 마감 임박 2개</div>
+        </div>
+        <!-- 미니 stat -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+          <div style="background: white; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px;">
+            <div style="width: 36px; height: 36px; border-radius: 8px; background: #eff3ff; display: flex; align-items: center; justify-content: center; font-size: 16px;">📁</div>
+            <div>
+              <div style="font-size: 10px; color: #888;">프로젝트</div>
+              <div style="font-size: 18px; font-weight: 700;">5</div>
+            </div>
+          </div>
+          <div style="background: white; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px;">
+            <div style="width: 36px; height: 36px; border-radius: 8px; background: #fef3c7; display: flex; align-items: center; justify-content: center; font-size: 16px;">✅</div>
+            <div>
+              <div style="font-size: 10px; color: #888;">오늘 할일</div>
+              <div style="font-size: 18px; font-weight: 700;">3</div>
+            </div>
+          </div>
+        </div>
+        <!-- 최근 활동 -->
+        <div style="background: white; border-radius: 10px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+          <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">오늘 할일</div>
+          <div style="padding: 5px 0; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f5f5f5;">
+            <div style="width: 14px; height: 14px; border: 2px solid #d1d5db; border-radius: 3px;"></div>
+            <span style="font-size: 11px; flex: 1;">코드 리뷰 진행</span>
+            <span style="font-size: 9px; padding: 2px 6px; background: #fef3c7; color: #d97706; border-radius: 4px;">오늘</span>
+          </div>
+          <div style="padding: 5px 0; display: flex; align-items: center; gap: 8px;">
+            <div style="width: 14px; height: 14px; border: 2px solid #d1d5db; border-radius: 3px;"></div>
+            <span style="font-size: 11px; flex: 1;">API 문서 업데이트</span>
+            <span style="font-size: 9px; padding: 2px 6px; background: #fee2e2; color: #ef4444; border-radius: 4px;">D-1</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. 하이브리드형</h3>
+      <p>인사말 + 요약 숫자 + 핵심 리스트. 개인화된 느낌과 실용성 겸비.</p>
+    </div>
+  </div>
+</div>

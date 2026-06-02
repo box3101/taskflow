@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { useToast } from '@anthropic-ai/ispark-ui'
+import { useToast } from '@leechanyong/ispark-ui'
 import StockDashboard from '../components/stock/StockDashboard.vue'
 import StockGuardOverlay from '../components/stock/StockGuardOverlay.vue'
 import { fetchGuardStatus, type GuardStatus } from '../api/stockApi'

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { UiIcon } from '@anthropic-ai/ispark-ui'
+import { UiIcon } from '@leechanyong/ispark-ui'
 import type { GuardStatus } from '../../api/stockApi'
 
 const props = defineProps<{

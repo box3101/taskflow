@@ -59,7 +59,7 @@ router.get('/guard/status', authenticate, async (req, res) => {
       return
     }
 
-    const windows: TimeWindow[] = (setting.windows as TimeWindow[]) || DEFAULT_WINDOWS
+    const windows: TimeWindow[] = (setting.windows as unknown as TimeWindow[]) || DEFAULT_WINDOWS
     const nowMin = nowKSTMinutes()
     const day = nowKSTDay()
 

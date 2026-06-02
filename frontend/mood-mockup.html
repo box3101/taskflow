@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>기분 트래커 리디자인 목업</title>
+<link rel="stylesheet" as="style" crossorigin
+  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Pretendard Variable", Pretendard, -apple-system, sans-serif;
+    background: #f4f5f7;
+    padding: 40px;
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  h2.variant-label {
+    width: 100%;
+    text-align: center;
+    font-size: 13px;
+    color: #9ca3af;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: -16px;
+  }
+
+  /* ── 공통 카드 ── */
+  .mood-card {
+    background: #fff;
+    border: 1px solid #e6e8ec;
+    border-radius: 12px;
+    width: 320px;
+    overflow: hidden;
+  }
+  .mood-header {
+    padding: 16px 20px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .mood-header h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a1f2b;
+  }
+  .mood-header .re-select {
+    font-size: 12px;
+    color: #9ca3af;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .mood-header .re-select:hover { color: #d97757; }
+
+  /* ── 선택 영역 ── */
+  .mood-selector {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 20px 16px;
+  }
+  .mood-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px;
+    border: none;
+    background: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+    min-width: 52px;
+  }
+  .mood-btn:hover { background: #f4f5f7; }
+  .mood-btn.is-selected { background: #fff3ed; }
+  .mood-btn .emoji { font-size: 28px; line-height: 1; }
+  .mood-btn .label { font-size: 11px; color: #9ca3af; font-weight: 500; }
+  .mood-btn.is-selected .label { color: #d97757; font-weight: 600; }
+
+  /* ── 선택 완료 상태 ── */
+  .mood-selected {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px 16px;
+  }
+  .mood-selected .emoji { font-size: 32px; }
+  .mood-selected .text { flex: 1; }
+  .mood-selected .text .label { font-size: 14px; font-weight: 600; color: #1a1f2b; }
+  .mood-selected .text .date { font-size: 12px; color: #9ca3af; }
+
+  /* ── 메모 ── */
+  .mood-memo {
+    padding: 0 20px 16px;
+  }
+  .mood-memo textarea {
+    width: 100%;
+    height: 48px;
+    border: 1px solid #e6e8ec;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    color: #374151;
+    resize: none;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .mood-memo textarea:focus { border-color: #d97757; }
+  .mood-memo textarea::placeholder { color: #c5cbd6; }
+  .mood-memo-saved {
+    padding: 0 20px 16px;
+  }
+  .mood-memo-saved p {
+    font-size: 12px;
+    color: #6b7280;
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 8px 12px;
+    line-height: 1.5;
+  }
+
+  /* ── 월 통계 바 ── */
+  .mood-stats {
+    padding: 0 20px 16px;
+    border-top: 1px solid #f0f1f3;
+    padding-top: 14px;
+  }
+  .mood-stats-label {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  .mood-bar {
+    display: flex;
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .mood-bar span {
+    display: block;
+    transition: width 0.3s;
+  }
+  .bar-worst { background: #fca5a5; }
+  .bar-bad { background: #fdba74; }
+  .bar-ok { background: #d1d5db; }
+  .bar-good { background: #86efac; }
+  .bar-great { background: #4ade80; }
+
+  .mood-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
+  .mood-legend span {
+    font-size: 11px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .mood-legend .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  /* ── Variant C: Inline ── */
+  .mood-inline {
+    background: #fff;
+    border: 1px solid #e6e8ec;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 680px;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .mood-inline h3 { font-size: 14px; font-weight: 600; color: #1a1f2b; white-space: nowrap; }
+  .mood-inline .mood-selector { padding: 0; gap: 4px; }
+  .mood-inline .mood-btn { min-width: 44px; padding: 6px; }
+  .mood-inline .mood-btn .emoji { font-size: 22px; }
+  .mood-inline .mood-stats { border-top: 0; padding: 0; flex: 1; min-width: 0; }
+  .mood-inline .mood-stats-label { display: none; }
+  .mood-inline .mood-bar { margin-bottom: 4px; }
+  .mood-inline .mood-legend { gap: 4px 8px; }
+  .mood-inline .mood-legend span { font-size: 10px; }
+
+  .divider { width: 100%; border-top: 2px dashed #e0e3e8; margin: 16px 0; }
+</style>
+</head>
+<body>
+
+<!-- ═══════ VARIANT A: 컴팩트 카드 (선택 전) ═══════ -->
+<h2 class="variant-label">A — 컴팩트 카드 (선택 전)</h2>
+<div class="mood-card">
+  <div class="mood-header">
+    <h3>오늘 하루 어땠나요?</h3>
+  </div>
+  <div class="mood-selector">
+    <button class="mood-btn"><span class="emoji">😫</span><span class="label">최악</span></button>
+    <button class="mood-btn"><span class="emoji">😞</span><span class="label">별로</span></button>
+    <button class="mood-btn is-selected"><span class="emoji">😐</span><span class="label">보통</span></button>
+    <button class="mood-btn"><span class="emoji">🙂</span><span class="label">좋음</span></button>
+    <button class="mood-btn"><span class="emoji">😄</span><span class="label">최고</span></button>
+  </div>
+  <div class="mood-memo">
+    <textarea placeholder="오늘 하루를 한마디로... (선택사항)"></textarea>
+  </div>
+  <div class="mood-stats">
+    <div class="mood-stats-label">6월 기분 통계</div>
+    <div class="mood-bar">
+      <span class="bar-great" style="width: 40%"></span>
+      <span class="bar-good" style="width: 25%"></span>
+      <span class="bar-ok" style="width: 20%"></span>
+      <span class="bar-bad" style="width: 10%"></span>
+      <span class="bar-worst" style="width: 5%"></span>
+    </div>
+    <div class="mood-legend">
+      <span><i class="dot" style="background:#4ade80"></i> 최고 8일</span>
+      <span><i class="dot" style="background:#86efac"></i> 좋음 5일</span>
+      <span><i class="dot" style="background:#d1d5db"></i> 보통 4일</span>
+      <span><i class="dot" style="background:#fdba74"></i> 별로 2일</span>
+      <span><i class="dot" style="background:#fca5a5"></i> 최악 1일</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ VARIANT A: 컴팩트 카드 (선택 후) ═══════ -->
+<h2 class="variant-label">A — 컴팩트 카드 (선택 후 + 메모)</h2>
+<div class="mood-card">
+  <div class="mood-header">
+    <h3>오늘의 기분</h3>
+    <a class="re-select">다시 선택</a>
+  </div>
+  <div class="mood-selected">
+    <span class="emoji">🙂</span>
+    <div class="text">
+      <div class="label">좋음</div>
+      <div class="date">2026년 6월 2일</div>
+    </div>
+  </div>
+  <div class="mood-memo-saved">
+    <p>프로젝트 마일스톤 완료! 기분 좋은 하루 😊</p>
+  </div>
+  <div class="mood-stats">
+    <div class="mood-stats-label">6월 기분 통계</div>
+    <div class="mood-bar">
+      <span class="bar-great" style="width: 40%"></span>
+      <span class="bar-good" style="width: 25%"></span>
+      <span class="bar-ok" style="width: 20%"></span>
+      <span class="bar-bad" style="width: 10%"></span>
+      <span class="bar-worst" style="width: 5%"></span>
+    </div>
+    <div class="mood-legend">
+      <span><i class="dot" style="background:#4ade80"></i> 최고 8일</span>
+      <span><i class="dot" style="background:#86efac"></i> 좋음 5일</span>
+      <span><i class="dot" style="background:#d1d5db"></i> 보통 4일</span>
+      <span><i class="dot" style="background:#fdba74"></i> 별로 2일</span>
+      <span><i class="dot" style="background:#fca5a5"></i> 최악 1일</span>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════ VARIANT B: 여유있는 카드 ═══════ -->
+<h2 class="variant-label">B — 여유있는 카드 (큰 이모지)</h2>
+<div class="mood-card" style="width: 360px;">
+  <div class="mood-header" style="padding: 20px 24px 14px;">
+    <h3 style="font-size: 16px;">오늘 하루 어땠나요?</h3>
+  </div>
+  <div class="mood-selector" style="padding: 0 24px 20px; gap: 6px;">
+    <button class="mood-btn" style="min-width: 56px; padding: 10px;"><span class="emoji" style="font-size: 34px;">😫</span><span class="label" style="font-size: 12px;">최악</span></button>
+    <button class="mood-btn" style="min-width: 56px; padding: 10px;"><span class="emoji" style="font-size: 34px;">😞</span><span class="label" style="font-size: 12px;">별로</span></button>
+    <button class="mood-btn" style="min-width: 56px; padding: 10px;"><span class="emoji" style="font-size: 34px;">😐</span><span class="label" style="font-size: 12px;">보통</span></button>
+    <button class="mood-btn is-selected" style="min-width: 56px; padding: 10px;"><span class="emoji" style="font-size: 34px;">🙂</span><span class="label" style="font-size: 12px;">좋음</span></button>
+    <button class="mood-btn" style="min-width: 56px; padding: 10px;"><span class="emoji" style="font-size: 34px;">😄</span><span class="label" style="font-size: 12px;">최고</span></button>
+  </div>
+  <div class="mood-memo" style="padding: 0 24px 20px;">
+    <textarea placeholder="오늘 하루를 한마디로... (선택사항)" style="height: 56px;"></textarea>
+  </div>
+  <div class="mood-stats" style="padding: 0 24px 20px; padding-top: 16px;">
+    <div class="mood-stats-label">6월 기분 통계</div>
+    <div class="mood-bar" style="height: 10px; border-radius: 5px;">
+      <span class="bar-great" style="width: 40%"></span>
+      <span class="bar-good" style="width: 25%"></span>
+      <span class="bar-ok" style="width: 20%"></span>
+      <span class="bar-bad" style="width: 10%"></span>
+      <span class="bar-worst" style="width: 5%"></span>
+    </div>
+    <div class="mood-legend">
+      <span><i class="dot" style="background:#4ade80"></i> 최고 8일</span>
+      <span><i class="dot" style="background:#86efac"></i> 좋음 5일</span>
+      <span><i class="dot" style="background:#d1d5db"></i> 보통 4일</span>
+      <span><i class="dot" style="background:#fdba74"></i> 별로 2일</span>
+      <span><i class="dot" style="background:#fca5a5"></i> 최악 1일</span>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════ VARIANT C: 인라인 스트립 ═══════ -->
+<h2 class="variant-label">C — 인라인 스트립 (가로 레이아웃)</h2>
+<div class="mood-inline">
+  <h3>오늘 하루</h3>
+  <div class="mood-selector">
+    <button class="mood-btn"><span class="emoji">😫</span><span class="label">최악</span></button>
+    <button class="mood-btn"><span class="emoji">😞</span><span class="label">별로</span></button>
+    <button class="mood-btn"><span class="emoji">😐</span><span class="label">보통</span></button>
+    <button class="mood-btn"><span class="emoji">🙂</span><span class="label">좋음</span></button>
+    <button class="mood-btn is-selected"><span class="emoji">😄</span><span class="label">최고</span></button>
+  </div>
+  <div class="mood-stats">
+    <div class="mood-bar">
+      <span class="bar-great" style="width: 40%"></span>
+      <span class="bar-good" style="width: 25%"></span>
+      <span class="bar-ok" style="width: 20%"></span>
+      <span class="bar-bad" style="width: 10%"></span>
+      <span class="bar-worst" style="width: 5%"></span>
+    </div>
+    <div class="mood-legend">
+      <span><i class="dot" style="background:#4ade80"></i> 8</span>
+      <span><i class="dot" style="background:#86efac"></i> 5</span>
+      <span><i class="dot" style="background:#d1d5db"></i> 4</span>
+      <span><i class="dot" style="background:#fdba74"></i> 2</span>
+      <span><i class="dot" style="background:#fca5a5"></i> 1</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

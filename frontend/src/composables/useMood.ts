@@ -5,6 +5,7 @@ export interface MoodEntry {
   id: string
   date: string
   mood: 1 | 2 | 3 | 4 | 5
+  memo?: string | null
 }
 
 export const MOOD_EMOJIS: Record<number, string> = {
@@ -13,6 +14,14 @@ export const MOOD_EMOJIS: Record<number, string> = {
   3: '😐',
   2: '😞',
   1: '😫',
+}
+
+export const MOOD_LABELS: Record<number, string> = {
+  5: '최고',
+  4: '좋음',
+  3: '보통',
+  2: '별로',
+  1: '최악',
 }
 
 export function useMood() {
@@ -33,6 +42,17 @@ export function useMood() {
     return stats
   })
 
+  // 전체 기록 일수
+  const totalDays = computed(() => moods.value.length)
+
+  // 최근 기록 (오늘 제외, 최신순 5개)
+  const recentMoods = computed(() =>
+    [...moods.value]
+      .filter(m => m.date !== today)
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 5)
+  )
+
   async function fetchMonth(month?: string) {
     loading.value = true
     try {
@@ -48,9 +68,11 @@ export function useMood() {
     }
   }
 
-  async function saveMood(mood: 1 | 2 | 3 | 4 | 5) {
+  async function saveMood(mood: 1 | 2 | 3 | 4 | 5, memo?: string) {
     try {
-      const { data } = await api.post('/moods', { date: today, mood })
+      const body: Record<string, unknown> = { date: today, mood }
+      if (memo && memo.trim()) body.memo = memo.trim()
+      const { data } = await api.post('/moods', body)
       const idx = moods.value.findIndex(m => m.date === today)
       if (idx >= 0) {
         moods.value[idx] = data.data
@@ -62,5 +84,5 @@ export function useMood() {
     }
   }
 
-  return { moods, loading, todayMood, monthStats, currentMonth, fetchMonth, saveMood }
+  return { moods, loading, todayMood, recentMoods, monthStats, totalDays, currentMonth, fetchMonth, saveMood }
 }

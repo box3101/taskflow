@@ -1,0 +1,98 @@
+<h2>디자인 섹션 3: ispark-ui 컴포넌트 매핑</h2>
+<p class="subtitle">대시보드 각 영역에서 사용할 ispark-ui 컴포넌트와 아이콘</p>
+
+<div class="section">
+  <h3>컴포넌트 사용 계획</h3>
+  <div style="display: grid; gap: 12px;">
+
+    <div style="background: #f8f9fc; border-radius: 10px; padding: 16px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 10px;">📊 StatCard.vue</div>
+      <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 6px 0; color: #6b7280; width: 120px;">아이콘</td>
+          <td style="padding: 6px 0;"><code>&lt;UiIcon name="folder" /&gt;</code> (프로젝트)<br><code>&lt;UiIcon name="circle-check" /&gt;</code> (할일)</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #6b7280;">기타</td>
+          <td style="padding: 6px 0;">순수 HTML/CSS (숫자, 라벨)</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="background: #f8f9fc; border-radius: 10px; padding: 16px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 10px;">✅ TodoQuickList.vue</div>
+      <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 6px 0; color: #6b7280; width: 120px;">체크박스</td>
+          <td style="padding: 6px 0;"><code>&lt;UiCheckbox /&gt;</code> — 완료 토글</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 6px 0; color: #6b7280;">D-day 뱃지</td>
+          <td style="padding: 6px 0;"><code>&lt;UiBadge variant="danger"&gt;D-1&lt;/UiBadge&gt;</code><br><code>&lt;UiBadge variant="warning"&gt;D-3&lt;/UiBadge&gt;</code></td>
+        </tr>
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 6px 0; color: #6b7280;">빠른 추가</td>
+          <td style="padding: 6px 0;"><code>&lt;UiInput placeholder="할일 빠른 추가..." /&gt;</code></td>
+        </tr>
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 6px 0; color: #6b7280;">추가 버튼</td>
+          <td style="padding: 6px 0;"><code>&lt;UiIcon name="plus" /&gt;</code> — 헤더 "추가" 링크</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #6b7280;">로딩</td>
+          <td style="padding: 6px 0;"><code>&lt;UiLoading overlay /&gt;</code></td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="background: #f8f9fc; border-radius: 10px; padding: 16px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 10px;">📁 ProjectSummary.vue</div>
+      <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 6px 0; color: #6b7280; width: 120px;">상태 뱃지</td>
+          <td style="padding: 6px 0;"><code>&lt;UiBadge variant="success"&gt;진행중&lt;/UiBadge&gt;</code><br><code>&lt;UiBadge variant="warning"&gt;보류&lt;/UiBadge&gt;</code><br><code>&lt;UiBadge variant="info"&gt;완료&lt;/UiBadge&gt;</code></td>
+        </tr>
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 6px 0; color: #6b7280;">아이콘</td>
+          <td style="padding: 6px 0;"><code>&lt;UiIcon name="users" /&gt;</code> (멤버)<br><code>&lt;UiIcon name="circle-dot" /&gt;</code> (이슈)<br><code>&lt;UiIcon name="arrow-right" /&gt;</code> (전체보기)</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #6b7280;">빈 상태</td>
+          <td style="padding: 6px 0;"><code>&lt;UiEmpty /&gt;</code> — 프로젝트 없을 때</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="background: #f8f9fc; border-radius: 10px; padding: 16px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 10px;">🏠 DashboardHome.vue (전체)</div>
+      <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 6px 0; color: #6b7280; width: 120px;">전체 로딩</td>
+          <td style="padding: 6px 0;"><code>&lt;UiLoading overlay /&gt;</code> — 초기 데이터 로딩</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 6px 0; color: #6b7280;">토스트</td>
+          <td style="padding: 6px 0;"><code>openToast()</code> — 할일 추가/완료 시</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #6b7280;">확인 다이얼로그</td>
+          <td style="padding: 6px 0;">사용 안 함 (대시보드에서 삭제 없음)</td>
+        </tr>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3>사용되는 UiIcon 목록</h3>
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px;">
+    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; font-size: 12px; font-family: monospace;">folder</div>
+    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; font-size: 12px; font-family: monospace;">circle-check</div>
+    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; font-size: 12px; font-family: monospace;">plus</div>
+    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; font-size: 12px; font-family: monospace;">users</div>
+    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; font-size: 12px; font-family: monospace;">circle-dot</div>
+    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; font-size: 12px; font-family: monospace;">arrow-right</div>
+  </div>
+  <div style="margin-top: 8px; font-size: 12px; color: #6b7280;">모두 Lucide 기반, kebab-case</div>
+</div>

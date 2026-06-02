@@ -9,7 +9,7 @@ router.use(authenticate)
 router.post('/', async (req, res) => {
   try {
     const userId = req.user!.id
-    const { date, mood } = req.body
+    const { date, mood, memo } = req.body
 
     // 유효성 검사: date
     if (!date || typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -23,10 +23,20 @@ router.post('/', async (req, res) => {
       return
     }
 
+    // memo 유효성: 문자열이면 트림, 아니면 생략
+    const memoValue = typeof memo === 'string' ? memo.trim().slice(0, 200) || null : undefined
+
+    const updateData: Record<string, unknown> = { mood }
+    const createData: Record<string, unknown> = { userId, date, mood }
+    if (memoValue !== undefined) {
+      updateData.memo = memoValue
+      createData.memo = memoValue
+    }
+
     const result = await prisma.mood.upsert({
       where: { userId_date: { userId, date } },
-      update: { mood },
-      create: { userId, date, mood },
+      update: updateData,
+      create: createData,
     })
     res.json({ data: result })
   } catch (err) {
@@ -50,7 +60,7 @@ router.get('/', async (req, res) => {
     const moods = await prisma.mood.findMany({
       where: { userId, date: { startsWith: month } },
       orderBy: { date: 'asc' },
-      select: { id: true, date: true, mood: true },
+      select: { id: true, date: true, mood: true, memo: true },
     })
     res.json({ data: moods })
   } catch (err) {

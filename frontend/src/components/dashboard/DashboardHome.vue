@@ -146,11 +146,13 @@ function onNavigateTodos() {
         </h1>
       </div>
 
-      <!-- 명언 + 기분 + 날씨 -->
+      <!-- 명언 + 기분/날씨 (2열 grid = StatCard와 폭 동일) -->
       <div class="dashboard__quote-weather">
         <DailyQuote class="dashboard__quote" />
-        <MoodWidget />
-        <WeatherOutfit />
+        <div class="dashboard__mood-weather">
+          <MoodWidget />
+          <WeatherOutfit />
+        </div>
       </div>
 
       <!-- 요약 카드 -->
@@ -217,14 +219,21 @@ function onNavigateTodos() {
 }
 
 .dashboard__quote-weather {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
   align-items: stretch;
 }
 
 .dashboard__quote {
-  flex: 1;
   min-width: 0;
+}
+
+/* 기분+날씨를 오른쪽 1fr 안에서 나란히 */
+.dashboard__mood-weather {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
 }
 
 .dashboard__stats {
