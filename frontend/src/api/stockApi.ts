@@ -221,3 +221,46 @@ export async function fetchMarketOutlook(code: string, name: string): Promise<Ma
   const { data } = await api.get('/stock-news/outlook', { params: { code, name } })
   return data
 }
+
+// ── Stock Guard ──
+
+export interface GuardWindow {
+  open: string
+  close: string
+}
+
+export interface GuardStatus {
+  enabled: boolean
+  accessible: boolean
+  currentWindow: number | null
+  nextOpenTime: string | null
+  nextOpenDay?: string
+  windows: GuardWindow[]
+}
+
+export interface GuardSettings {
+  enabled: boolean
+  windows: GuardWindow[]
+  kakaoLinked: boolean
+  kakaoExpiresAt: string | null
+}
+
+export async function fetchGuardStatus(): Promise<GuardStatus> {
+  const { data } = await api.get('/stock/guard/status')
+  return data
+}
+
+export async function fetchGuardSettings(): Promise<GuardSettings> {
+  const { data } = await api.get('/stock/guard/settings')
+  return data
+}
+
+export async function updateGuardSettings(
+  payload: { enabled?: boolean; windows?: GuardWindow[] }
+): Promise<void> {
+  await api.patch('/stock/guard/settings', payload)
+}
+
+export async function unlinkKakao(): Promise<void> {
+  await api.delete('/stock/guard/kakao')
+}
