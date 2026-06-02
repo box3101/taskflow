@@ -16,6 +16,7 @@ import calendarRouter from './routes/calendar'
 import moodRouter from './routes/moods'
 import mealRouter from './routes/meals'
 import workoutRouter from './routes/workouts'
+import { startStockGuardCron } from './services/stockGuardCron'
 
 const app = express()
 
@@ -57,4 +58,5 @@ app.get('{*path}', (_req, res) => {
 const PORT = process.env.PORT || 4000
 app.listen(PORT, () => {
   console.log(`서버 실행: http://localhost:${PORT}`)
+  startStockGuardCron()
 })
