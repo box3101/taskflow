@@ -150,7 +150,7 @@ function onNavigateTodos() {
       <div class="dashboard__quote-weather">
         <DailyQuote class="dashboard__quote" />
         <div class="dashboard__mood-weather">
-          <MoodWidget class="mood-widget-wrap" />
+          <MoodWidget />
           <WeatherOutfit />
         </div>
       </div>
@@ -279,8 +279,11 @@ function onNavigateTodos() {
     display: none;
   }
 
-  .dashboard__quote,
-  .mood-widget-wrap {
+  .dashboard__quote {
+    display: none;
+  }
+
+  .dashboard__mood-weather :deep(.mood-widget) {
     display: none;
   }
 }
