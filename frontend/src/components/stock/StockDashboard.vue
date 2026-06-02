@@ -8,6 +8,7 @@ import ThemeOverview from './ThemeOverview.vue'
 import SmartScore from './SmartScore.vue'
 import StockCalendar from './StockCalendar.vue'
 import TomorrowOutlook from './TomorrowOutlook.vue'
+import StockGuardSettings from './StockGuardSettings.vue'
 
 const {
   holdings, prices, quotes, themes, themeQuotes,
@@ -39,6 +40,9 @@ onUnmounted(() => {
 
 <template>
   <div class="stock-dashboard">
+    <!-- Stock Guard 설정 -->
+    <StockGuardSettings />
+
     <!-- 내일 장 전망 (최상단) -->
     <TomorrowOutlook v-if="firstHolding.code" :code="firstHolding.code" :name="firstHolding.name" />
 
