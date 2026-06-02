@@ -150,7 +150,7 @@ function onNavigateTodos() {
       <div class="dashboard__quote-weather">
         <DailyQuote class="dashboard__quote" />
         <div class="dashboard__mood-weather">
-          <MoodWidget />
+          <MoodWidget class="mood-widget-wrap" />
           <WeatherOutfit />
         </div>
       </div>
@@ -267,7 +267,21 @@ function onNavigateTodos() {
   }
 
   .dashboard__quote-weather {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard__mood-weather {
     flex-direction: column;
+  }
+
+  .dashboard__greeting-sub,
+  .dashboard__greeting {
+    display: none;
+  }
+
+  .dashboard__quote,
+  .mood-widget-wrap {
+    display: none;
   }
 }
 </style>

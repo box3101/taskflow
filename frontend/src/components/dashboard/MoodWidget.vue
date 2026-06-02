@@ -42,7 +42,28 @@ async function onSelect(mood: 1 | 2 | 3 | 4 | 5) {
 }
 
 function toggleMemo() {
-  showMemo.value = !showMemo.value
+  if (showMemo.value && !editingMemo.value) {
+    // view 모드에서 토글 → 닫기
+    showMemo.value = false
+  } else if (showMemo.value && editingMemo.value) {
+    // edit 모드에서 토글 → 닫기
+    showMemo.value = false
+    editingMemo.value = false
+  } else {
+    // 닫힌 상태 → 열기 (edit 모드)
+    showMemo.value = true
+    editingMemo.value = true
+  }
+}
+
+async function saveMemo() {
+  if (!todayMood.value) return
+  editingMemo.value = false
+  try {
+    await saveMood(todayMood.value.mood, memo.value)
+  } catch {
+    openToast({ message: '메모 저장에 실패했습니다.', type: 'warning' })
+  }
 }
 
 onMounted(async () => {
@@ -77,13 +98,17 @@ onMounted(async () => {
       </button>
     </div>
     <div v-if="showMemo" class="mood-widget__memo">
+      <!-- view 모드: 텍스트 클릭 → edit -->
+      <p v-if="!editingMemo && memo" class="mood-widget__memo-view" @click="editingMemo = true">{{ memo }}</p>
+      <!-- edit 모드: input -->
       <input
+        v-else
         v-model="memo"
         type="text"
         placeholder="오늘 하루를 한마디로..."
         maxlength="200"
-        @blur="todayMood && onSelect(todayMood.mood)"
-        @keyup.enter="todayMood && onSelect(todayMood.mood)"
+        @blur="saveMemo"
+        @keyup.enter="saveMemo"
       />
     </div>
   </div>
@@ -204,6 +229,18 @@ onMounted(async () => {
 }
 .mood-widget__memo input:focus { border-color: var(--color-primary, #3c69db); }
 .mood-widget__memo input::placeholder { color: #c5cbd6; }
+.mood-widget__memo-view {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+  padding: 0 2px;
+  cursor: pointer;
+  line-height: 32px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mood-widget__memo-view:hover { color: #374151; }
 
 /* ═══ Drawer ═══ */
 .mood-drawer { padding: 8px 0; }
