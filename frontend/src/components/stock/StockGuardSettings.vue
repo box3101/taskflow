@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { UiToggle, UiButton, UiIcon, UiLoading } from '@leechanyong/ispark-ui'
-import { useToast } from '@leechanyong/ispark-ui'
+import { openToast } from '@leechanyong/ispark-ui'
 import {
   fetchGuardSettings, updateGuardSettings, unlinkKakao,
   type GuardSettings, type GuardWindow,
 } from '../../api/stockApi'
 
-const toast = useToast()
 const loading = ref(true)
 const saving = ref(false)
 const settings = ref<GuardSettings>({
@@ -34,9 +33,9 @@ async function toggleEnabled() {
     const newEnabled = !settings.value.enabled
     await updateGuardSettings({ enabled: newEnabled })
     settings.value.enabled = newEnabled
-    toast.success(newEnabled ? 'Stock Guard 활성화' : 'Stock Guard 비활성화')
+    openToast({ message: newEnabled ? 'Stock Guard 활성화' : 'Stock Guard 비활성화', type: 'success' })
   } catch {
-    toast.error('설정 변경에 실패했습니다.')
+    openToast({ message: '설정 변경에 실패했습니다.', type: 'error' })
   } finally {
     saving.value = false
   }
@@ -47,9 +46,9 @@ async function saveWindows() {
   try {
     await updateGuardSettings({ windows: editWindows.value })
     settings.value.windows = [...editWindows.value]
-    toast.success('시간 설정이 저장되었습니다.')
+    openToast({ message: '시간 설정이 저장되었습니다.', type: 'success' })
   } catch {
-    toast.error('시간 설정 저장에 실패했습니다.')
+    openToast({ message: '시간 설정 저장에 실패했습니다.', type: 'error' })
   } finally {
     saving.value = false
   }
@@ -66,9 +65,9 @@ async function handleUnlinkKakao() {
   try {
     await unlinkKakao()
     settings.value.kakaoLinked = false
-    toast.success('카카오톡 연동이 해제되었습니다.')
+    openToast({ message: '카카오톡 연동이 해제되었습니다.', type: 'success' })
   } catch {
-    toast.error('카카오톡 연동 해제에 실패했습니다.')
+    openToast({ message: '카카오톡 연동 해제에 실패했습니다.', type: 'error' })
   } finally {
     saving.value = false
   }
