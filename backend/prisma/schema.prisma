@@ -20,12 +20,13 @@ model User {
   assigned       Issue[]         @relation("assignee")
   todos          Todo[]
   aiTools        AiTool[]
-  skillProgresses SkillProgress[]
   dailyMottos    DailyMotto[]
   calendarEvents CalendarEvent[]
   moods          Mood[]
   workouts       Workout[]
   meals          Meal[]
+  memos             Memo[]
+  techNotes         TechNote[]
   stockGuardSetting StockGuardSetting?
   kakaoToken        KakaoToken?
 
@@ -131,42 +132,6 @@ model AiTool {
   author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@map("ai_tools")
-}
-
-// 역량확장 레벨
-model SkillLevel {
-  id          Int      @id @default(autoincrement())
-  order       Int      @unique
-  title       String
-  description String
-  icon        String   @default("📚")
-  content     String   @db.Text
-  challenge   String?  @db.Text  // 퀴즈/챌린지 JSON
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  progresses SkillProgress[]
-
-  @@map("skill_levels")
-}
-
-// 역량확장 진행률
-model SkillProgress {
-  id          Int       @id @default(autoincrement())
-  userId      Int       @map("user_id")
-  levelId     Int       @map("level_id")
-  status      String    @default("locked") // locked | in_progress | completed
-  score       Int?
-  note        String?   @db.Text
-  completedAt DateTime? @map("completed_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-
-  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  level SkillLevel @relation(fields: [levelId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, levelId])
-  @@map("skill_progresses")
 }
 
 // 오늘의 각오
@@ -290,6 +255,23 @@ model StockGuardSetting {
   @@map("stock_guard_settings")
 }
 
+// 메모
+model Memo {
+  id        String    @id @default(uuid())
+  title     String    @db.VarChar(100)
+  content   String    @db.Text
+  color     String    @default("yellow") @db.VarChar(20) // yellow|pink|blue|green|purple
+  pinned    Boolean   @default(false)
+  order     Int       @default(0)
+  userId    Int       @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("memos")
+}
+
 // 카카오 OAuth 토큰
 model KakaoToken {
   id           Int      @id @default(autoincrement())
@@ -303,4 +285,21 @@ model KakaoToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("kakao_tokens")
+}
+
+// 기술 학습 노트
+model TechNote {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  title     String   @db.VarChar(200)
+  category  String   @db.VarChar(20)
+  tags      String[]
+  summary   String   @db.VarChar(500)
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tech_notes")
 }

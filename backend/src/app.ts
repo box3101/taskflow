@@ -10,11 +10,13 @@ import stockRouter from './routes/stock'
 import stockGuardRouter from './routes/stockGuard'
 import stockNewsRouter from './routes/stockNews'
 import aiToolRouter from './routes/aiTools'
+import techNoteRouter from './routes/techNotes'
 import skillUpRouter from './routes/skillUp'
 import dailyMottoRouter from './routes/dailyMotto'
 import calendarRouter from './routes/calendar'
 import moodRouter from './routes/moods'
 import mealRouter from './routes/meals'
+import memoRouter from './routes/memos'
 import workoutRouter from './routes/workouts'
 import { startStockGuardCron } from './services/stockGuardCron'
 
@@ -33,12 +35,14 @@ app.use('/stock', stockRouter)
 app.use('/stock', stockGuardRouter)
 app.use('/stock-news', stockNewsRouter)
 app.use('/ai-tools', aiToolRouter)
+app.use('/tech-notes', techNoteRouter)
 app.use('/skill-up', skillUpRouter)
 app.use('/daily-motto', dailyMottoRouter)
 app.use('/calendar', calendarRouter)
 app.use('/moods', moodRouter)
 app.use('/meals', mealRouter)
 app.use('/workouts', workoutRouter)
+app.use('/memos', memoRouter)
 
 // 헬스체크
 app.get('/health', (_req, res) => {
