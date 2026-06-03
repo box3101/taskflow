@@ -31,10 +31,6 @@ onMounted(async () => {
 
 <template>
   <div v-if="!loading">
-    <StockGuardOverlay
-      v-if="guardStatus?.enabled && !guardStatus?.accessible"
-      :status="guardStatus!"
-    />
-    <StockDashboard v-else />
+    <StockDashboard />
   </div>
 </template>

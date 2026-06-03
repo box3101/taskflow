@@ -2,11 +2,13 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
-  UiIcon, UiButton, UiDropdownMenu, UiConfirm, UiToast,
+  UiIcon, UiButton, UiDropdownMenu, UiConfirm, UiToast, openToast,
 } from '@leechanyong/ispark-ui'
 import type { DropdownMenuItemDef } from '@leechanyong/ispark-ui'
 import { useAuthStore } from '../stores/auth'
 import { useTheme } from '../composables/useTheme'
+import MemoForm from '../components/memo/MemoForm.vue'
+import { useMemo, type MemoEntry } from '../composables/useMemo'
 
 const router = useRouter()
 const route = useRoute()
@@ -55,6 +57,23 @@ const userMenuItems: DropdownMenuItemDef[] = [
 
 function onUserMenuSelect(value: string) {
   if (value === 'logout') { auth.logout(); router.push('/login') }
+}
+
+// 글로벌 메모 퀵 추가
+const { addMemo } = useMemo()
+const quickMemoOpen = ref(false)
+
+// /memos 페이지에서는 글로벌 FAB 숨김 (페이지 자체 FAB 사용)
+const isMemosPage = computed(() => route.path === '/memos')
+
+async function handleQuickMemoSaved(memo: MemoEntry) {
+  try {
+    await addMemo({ title: memo.title, content: memo.content, color: memo.color })
+    openToast({ message: '메모가 추가되었습니다.', type: 'success' })
+    quickMemoOpen.value = false
+  } catch {
+    openToast({ message: '저장에 실패했습니다.', type: 'error' })
+  }
 }
 </script>
 
@@ -156,6 +175,23 @@ function onUserMenuSelect(value: string) {
     </nav>
     <!-- 더보기 백드롭 -->
     <div v-if="moreOpen" class="more-backdrop" @click="moreOpen = false" />
+
+    <!-- 글로벌 메모 FAB -->
+    <button
+      v-if="!isMemosPage"
+      class="global-memo-fab"
+      @click="quickMemoOpen = true"
+      aria-label="빠른 메모"
+    >
+      <UiIcon name="pencil" :size="22" />
+    </button>
+
+    <!-- 글로벌 메모 폼 -->
+    <MemoForm
+      :open="quickMemoOpen"
+      @update:open="quickMemoOpen = $event"
+      @saved="handleQuickMemoSaved"
+    />
 
     <UiConfirm />
     <UiToast />
@@ -290,6 +326,33 @@ function onUserMenuSelect(value: string) {
     padding: 6px 12px; font-size: 10px;
   }
   .main { padding: 16px 12px; }
+}
+
+.global-memo-fab {
+  position: fixed;
+  right: 20px;
+  bottom: 76px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: #4f6af6;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(79, 106, 246, 0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+  z-index: 50;
+
+  &:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 20px rgba(79, 106, 246, 0.5);
+  }
+  &:active {
+    transform: scale(0.95);
+  }
 }
 
 // 다크모드
