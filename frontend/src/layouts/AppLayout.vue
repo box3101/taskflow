@@ -21,6 +21,7 @@ const menuItems = [
   { label: 'AI Tools', value: 'ai-tools', icon: 'bot', path: '/ai-tools', pinned: false },
   { label: '프로젝트', value: 'projects', icon: 'folder', path: '/projects', pinned: true },
   { label: '할일', value: 'todos', icon: 'check-square', path: '/todos', pinned: true },
+  { label: '메모', value: 'memos', icon: 'sticky-note', path: '/memos', pinned: false },
   { label: '건강', value: 'health', icon: 'heart-pulse', path: '/health', pinned: false },
   { label: '주식', value: 'stock', icon: 'trending-up', path: '/stock', pinned: false },
 ]

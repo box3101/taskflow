@@ -5,8 +5,6 @@ import prisma from './prisma'
 async function main() {
   // 기존 데이터 정리
   await prisma.aiTool.deleteMany()
-  await prisma.skillProgress.deleteMany()
-  await prisma.skillLevel.deleteMany()
   await prisma.todo.deleteMany()
   await prisma.issue.deleteMany()
   await prisma.member.deleteMany()
@@ -152,10 +150,6 @@ async function main() {
       data: { userId: chanyong.id, ...todo },
     })
   }
-
-  // ── 역량확장 레벨 ──
-  await prisma.skillProgress.deleteMany()
-  await prisma.skillLevel.deleteMany()
 
   const skillLevels = [
     {
@@ -592,10 +586,6 @@ JWT_SECRET=my-secret-key
       }),
     },
   ]
-
-  for (const level of skillLevels) {
-    await prisma.skillLevel.create({ data: level })
-  }
 
   // ── AI Tools 시드 데이터 ──
   const aiTools = [
