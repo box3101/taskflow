@@ -45,6 +45,11 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    proxy: {
+      '/uploads': 'http://localhost:4000',
+    },
+  },
   resolve: {
     preserveSymlinks: true,
   },
