@@ -43,7 +43,7 @@ function fromCalendarDate(val: DateValue | undefined): string | null {
 }
 
 function getFileUrl(filePath: string) {
-  return `http://localhost:4000/uploads/${filePath}`
+  return `/uploads/${filePath}`
 }
 
 watch(() => [props.open, props.todoId], async ([open, id]) => {

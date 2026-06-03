@@ -357,7 +357,7 @@ async function deleteFile(file: FileItem) {
 }
 
 function getFileUrl(filePath: string) {
-  return `http://localhost:4000/uploads/${filePath}`
+  return `/uploads/${filePath}`
 }
 
 function onTodoSubTabChange(val: string) {
