@@ -6,7 +6,6 @@ const SCHEDULE_WINDOWS = [
   { cron: '5 9 * * 1-5', round: 1, open: '09:05', close: '13:00' },
   { cron: '0 13 * * 1-5', round: 2, open: '13:00', close: '15:35' },
   { cron: '35 15 * * 1-5', round: 3, open: '15:35', close: '16:00' },
-  { cron: '37 21 * * 1-5', round: 4, open: '21:37', close: '21:45' },
 ]
 
 function buildMessage(round: number, total: number, closeTime: string): string {
