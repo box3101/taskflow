@@ -6,6 +6,7 @@ const SCHEDULE_WINDOWS = [
   { cron: '5 9 * * 1-5', round: 1, open: '09:05', close: '13:00' },
   { cron: '0 13 * * 1-5', round: 2, open: '13:00', close: '15:35' },
   { cron: '35 15 * * 1-5', round: 3, open: '15:35', close: '16:00' },
+  { cron: '37 21 * * 1-5', round: 4, open: '21:37', close: '21:45' },
 ]
 
 function buildMessage(round: number, total: number, closeTime: string): string {
@@ -20,17 +21,13 @@ export function startStockGuardCron() {
       console.log(`[stock-guard-cron] ${window.round}회차 알림 발송 시작`)
 
       try {
-        const settings = await prisma.stockGuardSetting.findMany({
-          where: { enabled: true },
-          include: { user: { include: { kakaoToken: true } } },
+        const usersWithKakao = await prisma.kakaoToken.findMany({
+          include: { user: true },
         })
 
-        for (const setting of settings) {
-          const kakaoToken = (setting.user as any).kakaoToken
-          if (!kakaoToken) continue
-
+        for (const kakaoToken of usersWithKakao) {
           const message = buildMessage(window.round, SCHEDULE_WINDOWS.length, window.close)
-          await sendKakaoMessage(setting.userId, message, `${taskflowUrl}/stock`)
+          await sendKakaoMessage(kakaoToken.userId, message, `${taskflowUrl}/stock`)
         }
 
         console.log(`[stock-guard-cron] ${window.round}회차 알림 발송 완료`)

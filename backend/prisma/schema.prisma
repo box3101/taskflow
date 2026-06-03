@@ -27,7 +27,6 @@ model User {
   meals          Meal[]
   memos             Memo[]
   techNotes         TechNote[]
-  stockGuardSetting StockGuardSetting?
   kakaoToken        KakaoToken?
 
   @@map("users")
@@ -241,19 +240,7 @@ model Meal {
   @@map("meals")
 }
 
-// 주식 Guard 설정
-model StockGuardSetting {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @unique @map("user_id")
-  enabled   Boolean  @default(true)
-  windows   Json     @default("[{\"open\":\"09:05\",\"close\":\"13:00\"},{\"open\":\"13:00\",\"close\":\"15:35\"},{\"open\":\"15:35\",\"close\":\"16:00\"}]")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("stock_guard_settings")
-}
 
 // 메모
 model Memo {
