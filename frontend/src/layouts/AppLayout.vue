@@ -63,8 +63,8 @@ function onUserMenuSelect(value: string) {
 const { addMemo } = useMemo()
 const quickMemoOpen = ref(false)
 
-// /memos 페이지에서는 글로벌 FAB 숨김 (페이지 자체 FAB 사용)
-const isMemosPage = computed(() => route.path === '/memos')
+// 홈(/)에서만 글로벌 메모 FAB 표시
+const isHomePage = computed(() => route.path === '/')
 
 async function handleQuickMemoSaved(memo: MemoEntry) {
   try {
@@ -178,7 +178,7 @@ async function handleQuickMemoSaved(memo: MemoEntry) {
 
     <!-- 글로벌 메모 FAB -->
     <button
-      v-if="!isMemosPage"
+      v-if="isHomePage"
       class="global-memo-fab"
       @click="quickMemoOpen = true"
       aria-label="빠른 메모"
