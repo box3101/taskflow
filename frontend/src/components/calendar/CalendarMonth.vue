@@ -191,6 +191,7 @@ const eventsByDate = computed(() => {
 .calendar-month {
   overflow: hidden;
   user-select: none;
+  width: 100%;
 }
 .calendar-month__header {
   display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; margin-bottom: 4px;

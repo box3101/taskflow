@@ -207,7 +207,7 @@ async function onMealDeleted() {
 .health-page { max-width: 1100px; margin: 0 auto; position: relative; }
 
 .health-page__body { display: flex; gap: 24px; align-items: flex-start; }
-.health-page__grid { flex: 1; min-width: 0; }
+.health-page__grid { flex: 1; min-width: 0; width: 100%; }
 
 .health-page__calendar-header {
   display: flex; align-items: center; justify-content: center;
