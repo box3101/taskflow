@@ -5,26 +5,6 @@
     width="480px"
     @update:open="(v: boolean) => emit('update:open', v)"
   >
-    <!-- 최근 기록에서 가져오기 -->
-    <div v-if="!workout && recentWorkouts.length > 0" class="workout-form__recent">
-      <div class="workout-form__recent-title">최근 기록에서 가져오기</div>
-      <div class="workout-form__recent-list">
-        <button
-          v-for="r in recentWorkouts"
-          :key="r.id"
-          class="workout-form__recent-item"
-          @click="fillFromRecent(r)"
-        >
-          <span class="workout-form__recent-name">{{ r.name }}</span>
-          <span class="workout-form__recent-detail">
-            <template v-if="r.weight">{{ r.weight }}kg</template>
-            <template v-if="r.sets && r.reps">{{ r.sets }}x{{ r.reps }}</template>
-            <template v-if="r.duration">{{ r.duration }}분</template>
-          </span>
-        </button>
-      </div>
-    </div>
-
     <div class="workout-form__fields">
       <div class="workout-form__field">
         <label>운동명 <span class="required">*</span></label>
