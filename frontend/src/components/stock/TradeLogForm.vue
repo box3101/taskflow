@@ -140,15 +140,10 @@ function handleSave() {
         </div>
       </div>
 
-      <div v-if="form.status === 'profit' || form.status === 'stopped'" class="trade-form__row">
-        <div class="trade-form__field">
-          <label>매도가</label>
-          <UiInput v-model="form.sellPrice" number-only placeholder="280000" />
-        </div>
-        <div class="trade-form__field">
-          <label>실제 손익</label>
-          <UiInput v-model="form.realPnl" number-only allow-negative placeholder="+37308 또는 -29136" />
-        </div>
+      <div v-if="form.status === 'profit' || form.status === 'stopped'" class="trade-form__field">
+        <label>매도가</label>
+        <UiInput v-model="form.sellPrice" number-only placeholder="280000" />
+        <span class="trade-form__hint">제세금(0.2%) 자동 반영</span>
       </div>
 
       <div class="trade-form__field">
@@ -206,6 +201,11 @@ function handleSave() {
     font-weight: 600;
     color: #6b7280;
   }
+}
+.trade-form__hint {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 2px;
 }
 .trade-form__actions {
   display: flex;

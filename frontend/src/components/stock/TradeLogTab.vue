@@ -86,11 +86,22 @@ function openEdit(log: TradeLog) {
   formOpen.value = true
 }
 
-function getPnl(log: TradeLog): { pct: number; amount: number } | null {
+const TAX_RATE = 0.002 // 증권거래세 0.18% + 농특세 0.02%
+
+function calcRealPnl(log: TradeLog): number {
+  if (!log.sellPrice || !log.buyPrice) return 0
+  if (log.realPnl !== null && log.realPnl !== undefined) return log.realPnl
+  const gross = (log.sellPrice - log.buyPrice) * log.quantity
+  const tax = Math.floor(log.sellPrice * log.quantity * TAX_RATE)
+  return gross - tax
+}
+
+function getPnl(log: TradeLog): { pct: number; amount: number; tax: number } | null {
   if (!log.sellPrice || !log.buyPrice) return null
   const pct = ((log.sellPrice - log.buyPrice) / log.buyPrice) * 100
-  const amount = log.realPnl ?? (log.sellPrice - log.buyPrice) * log.quantity
-  return { pct, amount }
+  const tax = Math.floor(log.sellPrice * log.quantity * TAX_RATE)
+  const amount = log.realPnl ?? ((log.sellPrice - log.buyPrice) * log.quantity - tax)
+  return { pct, amount, tax }
 }
 
 async function handleSaved(data: Partial<TradeLog>) {
@@ -137,10 +148,7 @@ const stats = computed(() => {
   const wins = closed.filter(l => l.sellPrice! > l.buyPrice)
   const losses = closed.filter(l => l.sellPrice! <= l.buyPrice)
 
-  const totalPnl = closed.reduce((sum, l) => {
-    if (l.realPnl !== null && l.realPnl !== undefined) return sum + l.realPnl
-    return sum + (l.sellPrice! - l.buyPrice) * l.quantity
-  }, 0)
+  const totalPnl = closed.reduce((sum, l) => sum + calcRealPnl(l), 0)
   const winRate = closed.length > 0 ? (wins.length / closed.length) * 100 : 0
   const avgWin = wins.length > 0
     ? wins.reduce((sum, l) => sum + ((l.sellPrice! - l.buyPrice) / l.buyPrice) * 100, 0) / wins.length
@@ -237,9 +245,9 @@ const stats = computed(() => {
               <span
                 v-if="getPnl(log)"
                 class="trade-log__pnl"
-                :class="{ 'trade-log__pnl--plus': getPnl(log)!.pct > 0, 'trade-log__pnl--minus': getPnl(log)!.pct < 0 }"
+                :class="{ 'trade-log__pnl--plus': getPnl(log)!.amount > 0, 'trade-log__pnl--minus': getPnl(log)!.amount < 0 }"
               >
-                {{ getPnl(log)!.pct > 0 ? '+' : '' }}{{ getPnl(log)!.pct.toFixed(1) }}%
+                {{ getPnl(log)!.amount > 0 ? '+' : '' }}{{ getPnl(log)!.amount.toLocaleString() }}원
               </span>
               <span class="trade-log__status" :style="{ color: STATUS_COLORS[log.status] }">
                 {{ STATUS_LABELS[log.status] }}
