@@ -1,20 +1,36 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { openToast } from '@leechanyong/ispark-ui'
+import { UiTab, openToast } from '@leechanyong/ispark-ui'
+import type { TabItem } from '@leechanyong/ispark-ui'
 import StockDashboard from '../components/stock/StockDashboard.vue'
+import TradeLogTab from '../components/stock/TradeLogTab.vue'
 
 const route = useRoute()
+const activeTab = ref('dashboard')
+
+const tabs: TabItem[] = [
+  { value: 'dashboard', label: '대시보드' },
+  { value: 'journal', label: '매매일지' },
+]
 
 onMounted(() => {
-  // 카카오 연동 완료 시 토스트
   if (route.query.kakao === 'linked') {
     openToast({ message: '카카오톡 연동이 완료되었습니다!', type: 'success' })
     window.history.replaceState({}, '', '/stock')
+  }
+  if (route.query.tab === 'journal') {
+    activeTab.value = 'journal'
   }
 })
 </script>
 
 <template>
-  <StockDashboard />
+  <div>
+    <UiTab v-model="activeTab" :tabs="tabs" align="left" />
+    <div style="margin-top: 16px;">
+      <StockDashboard v-if="activeTab === 'dashboard'" />
+      <TradeLogTab v-if="activeTab === 'journal'" />
+    </div>
+  </div>
 </template>

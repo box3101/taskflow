@@ -26,6 +26,7 @@ model User {
   workouts       Workout[]
   meals          Meal[]
   memos             Memo[]
+  tradeLogs         TradeLog[]
   techNotes         TechNote[]
   kakaoToken        KakaoToken?
 
@@ -272,6 +273,28 @@ model KakaoToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("kakao_tokens")
+}
+
+// 매매일지
+model TradeLog {
+  id        String   @id @default(uuid())
+  userId    Int      @map("user_id")
+  stockName String   @map("stock_name") @db.VarChar(50)
+  stockCode String   @map("stock_code") @db.VarChar(10)
+  buyPrice  Int      @map("buy_price")         // 매수가
+  targetPrice Int?   @map("target_price")       // 목표가
+  stopLoss  Int?     @map("stop_loss")          // 손절가
+  sellPrice Int?     @map("sell_price")          // 매도가 (청산 시)
+  quantity  Int      @default(1)                 // 수량
+  status    String   @default("holding") @db.VarChar(20) // holding|profit|stopped|watching
+  buyDate   String   @map("buy_date")           // YYYY-MM-DD
+  sellDate  String?  @map("sell_date")          // 청산일
+  memo      String?  @db.Text
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("trade_logs")
 }
 
 // 기술 학습 노트

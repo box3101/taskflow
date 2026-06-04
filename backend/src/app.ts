@@ -16,6 +16,7 @@ import calendarRouter from './routes/calendar'
 import moodRouter from './routes/moods'
 import mealRouter from './routes/meals'
 import memoRouter from './routes/memos'
+import tradeLogRouter from './routes/tradeLogs'
 import workoutRouter from './routes/workouts'
 import { startStockGuardCron } from './services/stockGuardCron'
 
@@ -41,6 +42,7 @@ app.use('/moods', moodRouter)
 app.use('/meals', mealRouter)
 app.use('/workouts', workoutRouter)
 app.use('/memos', memoRouter)
+app.use('/trade-logs', tradeLogRouter)
 
 // 헬스체크
 app.get('/health', (_req, res) => {
