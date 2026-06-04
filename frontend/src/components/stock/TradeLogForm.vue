@@ -107,22 +107,22 @@ function handleSave() {
       <div class="trade-form__row">
         <div class="trade-form__field">
           <label>매수가 *</label>
-          <UiInput v-model="form.buyPrice" type="number" placeholder="235000" />
+          <UiInput v-model="form.buyPrice" number-only placeholder="235000" />
         </div>
         <div class="trade-form__field">
           <label>수량</label>
-          <UiInput v-model="form.quantity" type="number" placeholder="10" />
+          <UiInput v-model="form.quantity" number-only placeholder="10" />
         </div>
       </div>
 
       <div class="trade-form__row">
         <div class="trade-form__field">
           <label>목표가</label>
-          <UiInput v-model="form.targetPrice" type="number" placeholder="280000" />
+          <UiInput v-model="form.targetPrice" number-only placeholder="280000" />
         </div>
         <div class="trade-form__field">
           <label>손절가</label>
-          <UiInput v-model="form.stopLoss" type="number" placeholder="220000" />
+          <UiInput v-model="form.stopLoss" number-only placeholder="220000" />
         </div>
       </div>
 
@@ -140,7 +140,7 @@ function handleSave() {
       <div v-if="form.status === 'profit' || form.status === 'stopped'" class="trade-form__row">
         <div class="trade-form__field">
           <label>매도가</label>
-          <UiInput v-model="form.sellPrice" type="number" placeholder="280000" />
+          <UiInput v-model="form.sellPrice" number-only placeholder="280000" />
         </div>
         <div class="trade-form__field" />
       </div>
