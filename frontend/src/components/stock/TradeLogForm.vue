@@ -27,6 +27,7 @@ const form = ref({
   sellDate: '',
   status: 'holding',
   memo: '',
+  realPnl: '',
   entryReason: '',
   exitReason: '',
 })
@@ -48,6 +49,7 @@ watch(() => props.open, (open) => {
         sellDate: props.log.sellDate || '',
         status: props.log.status,
         memo: props.log.memo || '',
+        realPnl: props.log.realPnl ? String(props.log.realPnl) : '',
         entryReason: props.log.entryReason || '',
         exitReason: props.log.exitReason || '',
       }
@@ -57,7 +59,7 @@ watch(() => props.open, (open) => {
       form.value = {
         stockName: '', stockCode: '', buyPrice: '', targetPrice: '', stopLoss: '',
         sellPrice: '', quantity: '1', buyDate: today, sellDate: '', status: 'holding', memo: '',
-        entryReason: '', exitReason: '',
+        realPnl: '', entryReason: '', exitReason: '',
       }
     }
   }
@@ -80,6 +82,7 @@ function handleSave() {
     sellDate: form.value.sellDate || null,
     status: form.value.status as TradeLog['status'],
     memo: form.value.memo.trim() || null,
+    realPnl: form.value.realPnl ? Number(form.value.realPnl) : null,
     entryReason: form.value.entryReason.trim() || null,
     exitReason: form.value.exitReason.trim() || null,
   })
@@ -142,7 +145,10 @@ function handleSave() {
           <label>매도가</label>
           <UiInput v-model="form.sellPrice" number-only placeholder="280000" />
         </div>
-        <div class="trade-form__field" />
+        <div class="trade-form__field">
+          <label>실제 손익</label>
+          <UiInput v-model="form.realPnl" number-only allow-negative placeholder="+37308 또는 -29136" />
+        </div>
       </div>
 
       <div class="trade-form__field">

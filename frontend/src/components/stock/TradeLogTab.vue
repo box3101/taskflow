@@ -89,7 +89,7 @@ function openEdit(log: TradeLog) {
 function getPnl(log: TradeLog): { pct: number; amount: number } | null {
   if (!log.sellPrice || !log.buyPrice) return null
   const pct = ((log.sellPrice - log.buyPrice) / log.buyPrice) * 100
-  const amount = (log.sellPrice - log.buyPrice) * log.quantity
+  const amount = log.realPnl ?? (log.sellPrice - log.buyPrice) * log.quantity
   return { pct, amount }
 }
 
@@ -137,7 +137,10 @@ const stats = computed(() => {
   const wins = closed.filter(l => l.sellPrice! > l.buyPrice)
   const losses = closed.filter(l => l.sellPrice! <= l.buyPrice)
 
-  const totalPnl = closed.reduce((sum, l) => sum + (l.sellPrice! - l.buyPrice) * l.quantity, 0)
+  const totalPnl = closed.reduce((sum, l) => {
+    if (l.realPnl !== null && l.realPnl !== undefined) return sum + l.realPnl
+    return sum + (l.sellPrice! - l.buyPrice) * l.quantity
+  }, 0)
   const winRate = closed.length > 0 ? (wins.length / closed.length) * 100 : 0
   const avgWin = wins.length > 0
     ? wins.reduce((sum, l) => sum + ((l.sellPrice! - l.buyPrice) / l.buyPrice) * 100, 0) / wins.length

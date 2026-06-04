@@ -52,6 +52,7 @@ router.post('/', async (req, res) => {
         buyDate,
         status: status && VALID_STATUS.includes(status) ? status : 'holding',
         memo: memo?.trim() || null,
+        realPnl: req.body.realPnl !== undefined && req.body.realPnl !== '' ? Number(req.body.realPnl) : null,
         entryReason: entryReason?.trim() || null,
         exitReason: exitReason?.trim() || null,
       },
@@ -89,6 +90,7 @@ router.put('/:id', async (req, res) => {
     if (sellDate !== undefined) updateData.sellDate = sellDate || null
     if (status !== undefined && VALID_STATUS.includes(status)) updateData.status = status
     if (memo !== undefined) updateData.memo = memo?.trim() || null
+    if (req.body.realPnl !== undefined) updateData.realPnl = req.body.realPnl !== '' ? Number(req.body.realPnl) : null
     if (req.body.entryReason !== undefined) updateData.entryReason = req.body.entryReason?.trim() || null
     if (req.body.exitReason !== undefined) updateData.exitReason = req.body.exitReason?.trim() || null
 
