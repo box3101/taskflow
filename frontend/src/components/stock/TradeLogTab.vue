@@ -37,12 +37,11 @@ function openEdit(log: TradeLog) {
   formOpen.value = true
 }
 
-// 수익률 계산
+// 수익률 계산 (매도가 있을 때만)
 function getPnl(log: TradeLog): { pct: number; amount: number } | null {
-  const currentPrice = log.sellPrice || log.buyPrice
-  if (!log.buyPrice) return null
-  const pct = ((currentPrice - log.buyPrice) / log.buyPrice) * 100
-  const amount = (currentPrice - log.buyPrice) * log.quantity
+  if (!log.sellPrice || !log.buyPrice) return null
+  const pct = ((log.sellPrice - log.buyPrice) / log.buyPrice) * 100
+  const amount = (log.sellPrice - log.buyPrice) * log.quantity
   return { pct, amount }
 }
 
@@ -118,6 +117,7 @@ function formatPrice(n: number): string {
       >
         <div class="trade-log__item-top">
           <span class="trade-log__name">{{ log.stockName }}</span>
+          <span class="trade-log__spacer" />
           <span
             v-if="getPnl(log)"
             class="trade-log__pnl"
@@ -125,17 +125,23 @@ function formatPrice(n: number): string {
           >
             {{ getPnl(log)!.pct > 0 ? '+' : '' }}{{ getPnl(log)!.pct.toFixed(1) }}%
           </span>
-          <UiBadge
-            :label="STATUS_LABELS[log.status]"
-            :style="{ background: STATUS_COLORS[log.status] + '20', color: STATUS_COLORS[log.status] }"
-            size="sm"
-          />
+          <span
+            class="trade-log__status"
+            :style="{ color: STATUS_COLORS[log.status] }"
+          >
+            {{ STATUS_LABELS[log.status] }}
+          </span>
+        </div>
+        <div class="trade-log__item-mid">
+          <span class="trade-log__price">{{ formatPrice(log.buyPrice) }}</span>
+          <span v-if="log.sellPrice" class="trade-log__arrow">→</span>
+          <span v-if="log.sellPrice" class="trade-log__price">{{ formatPrice(log.sellPrice) }}</span>
+          <span class="trade-log__qty">{{ log.quantity }}주</span>
+          <span v-if="log.targetPrice" class="trade-log__target">목표 {{ formatPrice(log.targetPrice) }}</span>
         </div>
         <div class="trade-log__item-bottom">
-          <span>매수 {{ formatPrice(log.buyPrice) }}{{ log.sellPrice ? ' → 매도 ' + formatPrice(log.sellPrice) : '' }}  {{ log.quantity }}주</span>
-        </div>
-        <div class="trade-log__item-date">
-          {{ log.buyDate }}{{ log.memo ? ' · ' + log.memo.slice(0, 30) : '' }}
+          <span class="trade-log__date">{{ log.buyDate }}</span>
+          <span v-if="log.memo" class="trade-log__memo">{{ log.memo.slice(0, 40) }}</span>
         </div>
       </div>
     </div>
@@ -204,31 +210,70 @@ function formatPrice(n: number): string {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .trade-log__name {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   color: #1a1f2b;
 }
 
+.trade-log__spacer { flex: 1; }
+
 .trade-log__pnl {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   &--plus { color: #ef4444; }
   &--minus { color: #3b82f6; }
 }
 
-.trade-log__item-bottom {
-  font-size: 13px;
-  color: #6b7280;
+.trade-log__status {
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.trade-log__item-date {
+.trade-log__item-mid {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.trade-log__price {
+  font-weight: 600;
+}
+
+.trade-log__arrow {
+  color: #9ca3af;
+}
+
+.trade-log__qty {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.trade-log__target {
+  color: #22c55e;
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.trade-log__item-bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 11px;
   color: #9ca3af;
-  margin-top: 4px;
+}
+
+.trade-log__memo {
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .trade-log__fab {
