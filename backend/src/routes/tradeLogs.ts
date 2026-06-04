@@ -33,7 +33,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const userId = req.user!.id
-    const { stockName, stockCode, buyPrice, targetPrice, stopLoss, quantity, buyDate, status, memo } = req.body
+    const { stockName, stockCode, buyPrice, targetPrice, stopLoss, quantity, buyDate, status, memo, entryReason, exitReason } = req.body
 
     if (!stockName || !buyPrice || !buyDate) {
       res.status(400).json({ message: '종목명, 매수가, 매수일은 필수입니다.' })
@@ -52,6 +52,8 @@ router.post('/', async (req, res) => {
         buyDate,
         status: status && VALID_STATUS.includes(status) ? status : 'holding',
         memo: memo?.trim() || null,
+        entryReason: entryReason?.trim() || null,
+        exitReason: exitReason?.trim() || null,
       },
     })
     res.status(201).json({ data: log })
@@ -87,6 +89,8 @@ router.put('/:id', async (req, res) => {
     if (sellDate !== undefined) updateData.sellDate = sellDate || null
     if (status !== undefined && VALID_STATUS.includes(status)) updateData.status = status
     if (memo !== undefined) updateData.memo = memo?.trim() || null
+    if (req.body.entryReason !== undefined) updateData.entryReason = req.body.entryReason?.trim() || null
+    if (req.body.exitReason !== undefined) updateData.exitReason = req.body.exitReason?.trim() || null
 
     const log = await prisma.tradeLog.update({ where: { id }, data: updateData })
     res.json({ data: log })

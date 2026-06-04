@@ -27,6 +27,8 @@ const form = ref({
   sellDate: '',
   status: 'holding',
   memo: '',
+  entryReason: '',
+  exitReason: '',
 })
 
 const statusOptions: SelectOption[] = Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))
@@ -46,6 +48,8 @@ watch(() => props.open, (open) => {
         sellDate: props.log.sellDate || '',
         status: props.log.status,
         memo: props.log.memo || '',
+        entryReason: props.log.entryReason || '',
+        exitReason: props.log.exitReason || '',
       }
     } else {
       const now = new Date()
@@ -53,6 +57,7 @@ watch(() => props.open, (open) => {
       form.value = {
         stockName: '', stockCode: '', buyPrice: '', targetPrice: '', stopLoss: '',
         sellPrice: '', quantity: '1', buyDate: today, sellDate: '', status: 'holding', memo: '',
+        entryReason: '', exitReason: '',
       }
     }
   }
@@ -75,6 +80,8 @@ function handleSave() {
     sellDate: form.value.sellDate || null,
     status: form.value.status as TradeLog['status'],
     memo: form.value.memo.trim() || null,
+    entryReason: form.value.entryReason.trim() || null,
+    exitReason: form.value.exitReason.trim() || null,
   })
 }
 </script>
@@ -86,9 +93,15 @@ function handleSave() {
     @update:open="emit('update:open', $event)"
   >
     <div class="trade-form">
-      <div class="trade-form__field">
-        <label>종목명 *</label>
-        <UiInput v-model="form.stockName" placeholder="SK하이닉스" />
+      <div class="trade-form__row">
+        <div class="trade-form__field">
+          <label>종목명 *</label>
+          <UiInput v-model="form.stockName" placeholder="SK하이닉스" />
+        </div>
+        <div class="trade-form__field">
+          <label>상태</label>
+          <UiSelect v-model="form.status" :options="statusOptions" />
+        </div>
       </div>
 
       <div class="trade-form__row">
@@ -119,8 +132,8 @@ function handleSave() {
           <UiInput v-model="form.buyDate" type="date" />
         </div>
         <div class="trade-form__field">
-          <label>상태</label>
-          <UiSelect v-model="form.status" :options="statusOptions" />
+          <label>매도일</label>
+          <UiInput v-model="form.sellDate" type="date" />
         </div>
       </div>
 
@@ -129,15 +142,22 @@ function handleSave() {
           <label>매도가</label>
           <UiInput v-model="form.sellPrice" type="number" placeholder="280000" />
         </div>
-        <div class="trade-form__field">
-          <label>매도일</label>
-          <UiInput v-model="form.sellDate" type="date" />
-        </div>
+        <div class="trade-form__field" />
+      </div>
+
+      <div class="trade-form__field">
+        <label>진입 사유</label>
+        <UiInput v-model="form.entryReason" placeholder="돌파 매매, HBM 실적 기대 등" />
+      </div>
+
+      <div v-if="form.status === 'profit' || form.status === 'stopped'" class="trade-form__field">
+        <label>청산 사유</label>
+        <UiInput v-model="form.exitReason" placeholder="목표 도달, 손절선 이탈 등" />
       </div>
 
       <div class="trade-form__field">
         <label>메모</label>
-        <UiTextarea v-model="form.memo" placeholder="매수 근거, 모닝딥 분석 등..." :rows="3" />
+        <UiTextarea v-model="form.memo" placeholder="추가 메모..." :rows="2" />
       </div>
 
       <div class="trade-form__actions">

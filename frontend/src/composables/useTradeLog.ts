@@ -14,6 +14,8 @@ export interface TradeLog {
   buyDate: string
   sellDate: string | null
   memo: string | null
+  entryReason: string | null
+  exitReason: string | null
   createdAt: string
   updatedAt: string
 }

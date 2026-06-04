@@ -7,11 +7,11 @@ import StockDashboard from '../components/stock/StockDashboard.vue'
 import TradeLogTab from '../components/stock/TradeLogTab.vue'
 
 const route = useRoute()
-const activeTab = ref('dashboard')
+const activeTab = ref('journal')
 
 const tabs: TabItem[] = [
-  { value: 'dashboard', label: '대시보드' },
   { value: 'journal', label: '매매일지' },
+  { value: 'dashboard', label: '대시보드' },
 ]
 
 onMounted(() => {

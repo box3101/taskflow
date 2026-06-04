@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { UiButton, UiIcon, UiEmpty, UiLoading, UiBadge, openToast, openConfirm } from '@leechanyong/ispark-ui'
 import TradeLogForm from './TradeLogForm.vue'
 import { useTradeLog, STATUS_LABELS, STATUS_COLORS, type TradeLog } from '../../composables/useTradeLog'
@@ -80,10 +80,60 @@ async function handleDelete(id: string) {
 function formatPrice(n: number): string {
   return n.toLocaleString() + '원'
 }
+
+// 성과 요약 계산
+const stats = computed(() => {
+  const all = logs.value
+  const closed = all.filter(l => l.sellPrice && (l.status === 'profit' || l.status === 'stopped'))
+  const holding = all.filter(l => l.status === 'holding')
+  const wins = closed.filter(l => l.sellPrice! > l.buyPrice)
+  const losses = closed.filter(l => l.sellPrice! <= l.buyPrice)
+
+  const totalPnl = closed.reduce((sum, l) => sum + (l.sellPrice! - l.buyPrice) * l.quantity, 0)
+  const winRate = closed.length > 0 ? (wins.length / closed.length) * 100 : 0
+  const avgWin = wins.length > 0
+    ? wins.reduce((sum, l) => sum + ((l.sellPrice! - l.buyPrice) / l.buyPrice) * 100, 0) / wins.length
+    : 0
+  const avgLoss = losses.length > 0
+    ? losses.reduce((sum, l) => sum + ((l.sellPrice! - l.buyPrice) / l.buyPrice) * 100, 0) / losses.length
+    : 0
+
+  return { totalPnl, winRate, avgWin, avgLoss, holdingCount: holding.length, closedCount: closed.length, totalCount: all.length }
+})
 </script>
 
 <template>
   <div class="trade-log">
+    <!-- 성과 요약 -->
+    <div v-if="stats.totalCount > 0" class="trade-log__stats">
+      <div class="trade-log__stat">
+        <span class="trade-log__stat-value" :class="{ 'text-plus': stats.totalPnl > 0, 'text-minus': stats.totalPnl < 0 }">
+          {{ stats.totalPnl > 0 ? '+' : '' }}{{ stats.totalPnl.toLocaleString() }}원
+        </span>
+        <span class="trade-log__stat-label">총 손익</span>
+      </div>
+      <div class="trade-log__stat">
+        <span class="trade-log__stat-value">{{ stats.winRate.toFixed(0) }}%</span>
+        <span class="trade-log__stat-label">승률</span>
+      </div>
+      <div class="trade-log__stat">
+        <span class="trade-log__stat-value text-plus">{{ stats.avgWin > 0 ? '+' : '' }}{{ stats.avgWin.toFixed(1) }}%</span>
+        <span class="trade-log__stat-label">평균 수익</span>
+      </div>
+      <div class="trade-log__stat">
+        <span class="trade-log__stat-value text-minus">{{ stats.avgLoss.toFixed(1) }}%</span>
+        <span class="trade-log__stat-label">평균 손실</span>
+      </div>
+      <div class="trade-log__stat">
+        <span class="trade-log__stat-value">{{ stats.holdingCount }}</span>
+        <span class="trade-log__stat-label">보유중</span>
+      </div>
+      <div class="trade-log__stat">
+        <span class="trade-log__stat-value">{{ stats.closedCount }}</span>
+        <span class="trade-log__stat-label">완료</span>
+      </div>
+    </div>
+
     <!-- 필터 탭 -->
     <div class="trade-log__filters">
       <button
@@ -163,6 +213,44 @@ function formatPrice(n: number): string {
 </template>
 
 <style scoped lang="scss">
+.trade-log__stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.trade-log__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.trade-log__stat-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1f2b;
+}
+
+.trade-log__stat-label {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.text-plus { color: #ef4444; }
+.text-minus { color: #3b82f6; }
+
+@media (max-width: 768px) {
+  .trade-log__stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 .trade-log__filters {
   display: flex;
   gap: 6px;
@@ -299,6 +387,8 @@ function formatPrice(n: number): string {
 }
 
 :global([data-theme="dark"]) {
+  .trade-log__stats { background: #1f2937; }
+  .trade-log__stat-value { color: #f3f4f6; }
   .trade-log__item { background: #1f2937; }
   .trade-log__item:hover { background: #374151; }
   .trade-log__name { color: #f3f4f6; }
