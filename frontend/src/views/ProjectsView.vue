@@ -7,6 +7,7 @@ import {
   openToast, openConfirm,
 } from '@leechanyong/ispark-ui'
 import type { DropdownMenuItemDef, TableColumn, SelectOption } from '@leechanyong/ispark-ui'
+import draggable from 'vuedraggable'
 import api from '../api/client'
 
 const router = useRouter()
@@ -105,6 +106,15 @@ function onRowClick(row: any) {
   router.push(`/projects/${row.id}`)
 }
 
+async function onDragEnd() {
+  const items = projects.value.map((p, i) => ({ id: p.id, order: i }))
+  try {
+    await api.put('/projects/reorder', { items })
+  } catch {
+    openToast({ message: '순서 저장에 실패했습니다.', type: 'error' })
+  }
+}
+
 onMounted(async () => {
   try {
     const { data } = await api.get('/projects')
@@ -119,38 +129,47 @@ onMounted(async () => {
   <div class="projects-page">
     <UiLoading v-if="projectLoading" overlay />
     <UiEmpty v-else-if="projects.length === 0" title="프로젝트가 없습니다." />
-    <UiTable
-      v-else
-      :columns="projectColumns"
-      :data="projects"
-      clickable
-      @row-click="onRowClick"
-    >
-      <template #cell-status="{ row }">
-        <UiBadge
-          :variant="row.status === 'active' ? 'success' : row.status === 'done' ? 'primary' : 'default'"
-          size="sm"
-        >{{ row.status === 'active' ? '진행중' : row.status === 'done' ? '완료' : '보류' }}</UiBadge>
-      </template>
-      <template #cell-_count.members="{ row }">
-        {{ row._count?.members ?? 0 }}명
-      </template>
-      <template #cell-_count.issues="{ row }">
-        {{ row._count?.issues ?? 0 }}건
-      </template>
-      <template #cell-actions="{ row }">
-        <div @click.stop>
-          <UiDropdownMenu
-            :items="projectActionItems"
-            @select="(val: string) => onProjectAction(row, val)"
-          >
-            <template #trigger>
-              <button class="project-action-btn">⋮</button>
-            </template>
-          </UiDropdownMenu>
-        </div>
-      </template>
-    </UiTable>
+    <div v-else class="project-list">
+      <div class="project-list__header">
+        <span class="project-list__col project-list__col--name">프로젝트명</span>
+        <span class="project-list__col project-list__col--status">상태</span>
+        <span class="project-list__col project-list__col--count">멤버</span>
+        <span class="project-list__col project-list__col--count">이슈</span>
+        <span class="project-list__col project-list__col--action" />
+      </div>
+      <draggable
+        v-model="projects"
+        item-key="id"
+        handle=".drag-handle"
+        ghost-class="drag-ghost"
+        @end="onDragEnd"
+      >
+        <template #item="{ element: row }">
+          <div class="project-list__row" @click="onRowClick(row)">
+            <span class="drag-handle" @click.stop>⠿</span>
+            <span class="project-list__col project-list__col--name">{{ row.name }}</span>
+            <span class="project-list__col project-list__col--status">
+              <UiBadge
+                :variant="row.status === 'active' ? 'success' : row.status === 'done' ? 'primary' : 'default'"
+                size="sm"
+              >{{ row.status === 'active' ? '진행중' : row.status === 'done' ? '완료' : '보류' }}</UiBadge>
+            </span>
+            <span class="project-list__col project-list__col--count">{{ row._count?.members ?? 0 }}명</span>
+            <span class="project-list__col project-list__col--count">{{ row._count?.issues ?? 0 }}건</span>
+            <span class="project-list__col project-list__col--action" @click.stop>
+              <UiDropdownMenu
+                :items="projectActionItems"
+                @select="(val: string) => onProjectAction(row, val)"
+              >
+                <template #trigger>
+                  <button class="project-action-btn">⋮</button>
+                </template>
+              </UiDropdownMenu>
+            </span>
+          </div>
+        </template>
+      </draggable>
+    </div>
 
     <!-- FAB: 프로젝트 추가 -->
     <button class="fab" aria-label="프로젝트 추가" @click="openCreateProject">
@@ -178,6 +197,51 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .projects-page { position: relative; }
+
+.project-list__header {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px 10px 44px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.project-list__row {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background 0.1s;
+  &:hover { background: #f9fafb; }
+}
+
+.project-list__col--name { flex: 1; font-size: 14px; font-weight: 500; color: #1a1f2b; }
+.project-list__col--status { width: 100px; text-align: center; }
+.project-list__col--count { width: 80px; text-align: center; font-size: 13px; color: #6b7280; }
+.project-list__col--action { width: 48px; text-align: center; }
+
+.drag-handle {
+  cursor: grab;
+  color: #d1d5db;
+  font-size: 16px;
+  margin-right: 12px;
+  user-select: none;
+  &:hover { color: #9ca3af; }
+  &:active { cursor: grabbing; }
+}
+
+.drag-ghost {
+  opacity: 0.4;
+  background: #eef2ff;
+}
+
+@media (max-width: 640px) {
+  .project-list__col--count { display: none; }
+  .project-list__header { padding-left: 36px; }
+}
 
 .fab {
   position: fixed; bottom: 76px; right: 24px; z-index: 50;

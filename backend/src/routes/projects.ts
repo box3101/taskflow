@@ -16,13 +16,28 @@ router.get('/', async (req, res) => {
       prisma.project.findMany({
         skip,
         take: size,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
         include: { _count: { select: { members: true, issues: true } } },
       }),
       prisma.project.count(),
     ])
 
     res.json({ data, total, page, size })
+  } catch {
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
+  }
+})
+
+// 프로젝트 순서 변경
+router.put('/reorder', async (req, res) => {
+  try {
+    const { items } = req.body as { items: { id: number; order: number }[] }
+    await Promise.all(
+      items.map(item =>
+        prisma.project.update({ where: { id: item.id }, data: { order: item.order } })
+      )
+    )
+    res.json({ ok: true })
   } catch {
     res.status(500).json({ message: '서버 오류가 발생했습니다.' })
   }
