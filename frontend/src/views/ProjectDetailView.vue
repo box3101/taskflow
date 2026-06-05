@@ -495,10 +495,9 @@ onMounted(async () => {
             >
               <template #cell-category="{ row }: any">
                 <UiBadge
-                  :label="row.category === 'bug' ? '오류' : row.category === 'question' ? '확인' : '개선'"
                   :variant="row.category === 'bug' ? 'danger' : row.category === 'question' ? 'warning' : 'default'"
                   size="sm"
-                />
+                >{{ row.category === 'bug' ? '오류' : row.category === 'question' ? '확인' : '개선' }}</UiBadge>
               </template>
               <template #cell-title="{ row }: any">
                 <div v-if="editingTitleId === row.id" class="issue-title-cell is-editing">
