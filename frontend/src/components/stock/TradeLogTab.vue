@@ -90,7 +90,6 @@ const TAX_RATE = 0.002 // 증권거래세 0.18% + 농특세 0.02%
 
 function calcRealPnl(log: TradeLog): number {
   if (!log.sellPrice || !log.buyPrice) return 0
-  if (log.realPnl !== null && log.realPnl !== undefined) return log.realPnl
   const gross = (log.sellPrice - log.buyPrice) * log.quantity
   const tax = Math.floor(log.sellPrice * log.quantity * TAX_RATE)
   return gross - tax
@@ -98,9 +97,9 @@ function calcRealPnl(log: TradeLog): number {
 
 function getPnl(log: TradeLog): { pct: number; amount: number; tax: number } | null {
   if (!log.sellPrice || !log.buyPrice) return null
-  const pct = ((log.sellPrice - log.buyPrice) / log.buyPrice) * 100
   const tax = Math.floor(log.sellPrice * log.quantity * TAX_RATE)
-  const amount = log.realPnl ?? ((log.sellPrice - log.buyPrice) * log.quantity - tax)
+  const amount = (log.sellPrice - log.buyPrice) * log.quantity - tax
+  const pct = amount / (log.buyPrice * log.quantity) * 100
   return { pct, amount, tax }
 }
 
