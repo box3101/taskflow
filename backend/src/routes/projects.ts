@@ -182,6 +182,7 @@ router.post('/:id/issues', async (req, res) => {
         title,
         priority: priority || 'mid',
         urgency: urgency || 'normal',
+        category: req.body.category || 'improvement',
         requestedAt: requestedAt ? new Date(requestedAt) : null,
         dueAt: dueAt ? new Date(dueAt) : null,
         assigneeId: assigneeId || null,

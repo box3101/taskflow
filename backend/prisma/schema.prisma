@@ -72,6 +72,7 @@ model Issue {
   status      String   @default("todo") // todo | doing | done
   priority    String   @default("mid")  // high | mid | low
   urgency     String   @default("normal") // urgent | high | normal | low
+  category    String   @default("improvement") @db.VarChar(20) // bug | improvement | question
   requestedAt DateTime? @map("requested_at")
   dueAt       DateTime? @map("due_at")
   order       Int      @default(0)
