@@ -212,10 +212,12 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   padding: 14px 16px;
+  background: #fff;
   border-bottom: 1px solid #f3f4f6;
   cursor: pointer;
   transition: background 0.1s;
   &:hover { background: #f9fafb; }
+  &:hover .drag-handle { opacity: 1; }
 }
 
 .project-list__col--name { flex: 1; font-size: 14px; font-weight: 500; color: #1a1f2b; }
@@ -229,8 +231,10 @@ onMounted(async () => {
   font-size: 16px;
   margin-right: 12px;
   user-select: none;
+  opacity: 0;
+  transition: opacity 0.15s;
   &:hover { color: #9ca3af; }
-  &:active { cursor: grabbing; }
+  &:active { cursor: grabbing; opacity: 1; }
 }
 
 .drag-ghost {
