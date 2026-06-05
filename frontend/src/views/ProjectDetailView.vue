@@ -223,12 +223,21 @@ const panelIssue = ref<any>(null)
 const panelForm = ref({ description: '' })
 const panelSaving = ref(false)
 const panelDeleting = ref(false)
+const panelEditingDesc = ref(false)
+
+function formatDesc(text: string): string {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/^(현상|수정|재현|담당의견):/gm, '<strong style="color:#4f6af6">$1:</strong>')
+    .replace(/\n/g, '<br>')
+}
 
 function openPanel(issue: any) {
   panelIssue.value = issue
   panelForm.value = {
     description: issue.description || '',
   }
+  panelEditingDesc.value = false
   panelOpen.value = true
 }
 
@@ -722,9 +731,19 @@ onMounted(async () => {
         <hr class="panel-divider" />
 
         <!-- 설명 -->
-        <form class="drawer-form" @submit.prevent="onPanelSave">
-          <UiTextarea v-model="panelForm.description" label="설명" placeholder="이슈에 대한 메모를 작성하세요..." :rows="6" />
-        </form>
+        <div class="panel-desc-section">
+          <div class="panel-desc-header">
+            <span class="panel-desc-label">설명</span>
+            <button class="panel-desc-edit-btn" @click="panelEditingDesc = !panelEditingDesc">
+              {{ panelEditingDesc ? '미리보기' : '편집' }}
+            </button>
+          </div>
+          <div v-if="!panelEditingDesc && panelForm.description" class="panel-desc-view" v-html="formatDesc(panelForm.description)" />
+          <div v-else-if="!panelEditingDesc && !panelForm.description" class="panel-desc-empty">설명이 없습니다.</div>
+          <form v-else class="drawer-form" @submit.prevent="onPanelSave">
+            <UiTextarea v-model="panelForm.description" placeholder="이슈에 대한 메모를 작성하세요..." :rows="8" />
+          </form>
+        </div>
       </div>
       <template #footer>
         <div class="drawer-footer-between">
@@ -916,6 +935,40 @@ onMounted(async () => {
   border: none;
   border-top: 1px solid #e5e7eb;
   margin: 16px 0;
+}
+.panel-desc-section {
+  margin-top: 4px;
+}
+.panel-desc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.panel-desc-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+.panel-desc-edit-btn {
+  font-size: 12px;
+  color: #4f6af6;
+  background: none;
+  border: none;
+  cursor: pointer;
+  &:hover { text-decoration: underline; }
+}
+.panel-desc-view {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #374151;
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.panel-desc-empty {
+  font-size: 13px;
+  color: #9ca3af;
 }
 
 .cell-datepicker {
