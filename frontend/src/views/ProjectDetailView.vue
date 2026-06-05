@@ -59,12 +59,16 @@ const categoryFilterItems = [
   { label: '확인', value: 'question' },
 ]
 
+const dueFilterItems = [
+  { label: '마감 있음', value: 'set' },
+  { label: '미정', value: 'unset' },
+  { label: '마감 초과', value: 'overdue' },
+]
+
 const checkedStatuses = ref<string[]>([])
 const checkedPriorities = ref<string[]>([])
-const checkedCategories = ref<string[]>([])
 const showStatusDropdown = ref(false)
 const showPriorityDropdown = ref(false)
-const showCategoryDropdown = ref(false)
 
 function toggleFilter(arr: string[], val: string) {
   const idx = arr.indexOf(val)
@@ -82,7 +86,6 @@ const filteredIssues = computed(() => {
   return issues.value.filter(i => {
     if (checkedStatuses.value.length > 0 && !checkedStatuses.value.includes(i.status)) return false
     if (checkedPriorities.value.length > 0 && !checkedPriorities.value.includes(i.priority)) return false
-    if (checkedCategories.value.length > 0 && !checkedCategories.value.includes((i as any).category || 'improvement')) return false
     return true
   })
 })
@@ -102,7 +105,6 @@ function onClickOutside(e: MouseEvent) {
   if (!t.closest('.multi-filter')) {
     showStatusDropdown.value = false
     showPriorityDropdown.value = false
-    showCategoryDropdown.value = false
   }
 }
 onMounted(() => document.addEventListener('click', onClickOutside))
@@ -421,7 +423,7 @@ onMounted(async () => {
             <!-- 멀티 필터 바 -->
             <div class="filter-bar">
               <div class="multi-filter" @click.stop>
-                <button class="multi-filter-btn" @click="showStatusDropdown = !showStatusDropdown; showPriorityDropdown = false; showCategoryDropdown = false">
+                <button class="multi-filter-btn" @click="showStatusDropdown = !showStatusDropdown; showPriorityDropdown = false">
                   <span class="multi-filter-label">상태</span>
                   <span class="multi-filter-value">{{ filterLabel(checkedStatuses, statusFilterItems) }}</span>
                   <span class="multi-filter-arrow" :class="{ 'is-open': showStatusDropdown }">▾</span>
@@ -445,7 +447,7 @@ onMounted(async () => {
               </div>
 
               <div class="multi-filter" @click.stop>
-                <button class="multi-filter-btn" @click="showPriorityDropdown = !showPriorityDropdown; showStatusDropdown = false; showCategoryDropdown = false">
+                <button class="multi-filter-btn" @click="showPriorityDropdown = !showPriorityDropdown; showStatusDropdown = false">
                   <span class="multi-filter-label">우선순위</span>
                   <span class="multi-filter-value">{{ filterLabel(checkedPriorities, priorityFilterItems) }}</span>
                   <span class="multi-filter-arrow" :class="{ 'is-open': showPriorityDropdown }">▾</span>
@@ -464,30 +466,6 @@ onMounted(async () => {
                     />
                     <span>{{ item.label }}</span>
                     <span v-if="checkedPriorities.includes(item.value)" class="multi-filter-check">✓</span>
-                  </label>
-                </div>
-              </div>
-
-              <div class="multi-filter" @click.stop>
-                <button class="multi-filter-btn" @click="showCategoryDropdown = !showCategoryDropdown; showStatusDropdown = false; showPriorityDropdown = false">
-                  <span class="multi-filter-label">구분</span>
-                  <span class="multi-filter-value">{{ filterLabel(checkedCategories, categoryFilterItems) }}</span>
-                  <span class="multi-filter-arrow" :class="{ 'is-open': showCategoryDropdown }">▾</span>
-                </button>
-                <div v-if="showCategoryDropdown" class="multi-filter-dropdown">
-                  <label
-                    v-for="item in categoryFilterItems"
-                    :key="item.value"
-                    class="multi-filter-option"
-                    :class="{ 'is-checked': checkedCategories.includes(item.value) }"
-                  >
-                    <input
-                      type="checkbox"
-                      :checked="checkedCategories.includes(item.value)"
-                      @change="toggleFilter(checkedCategories, item.value)"
-                    />
-                    <span>{{ item.label }}</span>
-                    <span v-if="checkedCategories.includes(item.value)" class="multi-filter-check">✓</span>
                   </label>
                 </div>
               </div>
@@ -566,6 +544,7 @@ onMounted(async () => {
                   <UiDatePicker
                     :model-value="toCalendarDateOrUndef(row.requestedAt)"
                     size="xs"
+                    placeholder="미정"
                     @update:model-value="(v: DateValue | undefined) => onInlineChange(row, 'requestedAt', fromDateValue(v) || '')"
                   />
                 </div>
@@ -575,6 +554,7 @@ onMounted(async () => {
                   <UiDatePicker
                     :model-value="toCalendarDateOrUndef(row.dueAt)"
                     size="xs"
+                    placeholder="미정"
                     @update:model-value="(v: DateValue | undefined) => onInlineChange(row, 'dueAt', fromDateValue(v) || '')"
                   />
                 </div>
