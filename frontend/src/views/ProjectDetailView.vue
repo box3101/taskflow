@@ -138,13 +138,12 @@ onMounted(() => document.addEventListener('click', onClickOutside))
 
 // ── 이슈 테이블 ──
 const issueColumns: TableColumn[] = [
-  { key: 'category', label: '구분', width: '80px', align: 'center', sortable: true },
-  { key: 'title', label: '제목', align: 'left', sortable: true, sortType: 'string' },
   { key: 'status', label: '상태', width: '90px', align: 'center', sortable: true },
+  { key: 'title', label: '제목', align: 'left', sortable: true, sortType: 'string' },
   { key: 'priority', label: '우선순위', width: '100px', align: 'center', sortable: true },
-  { key: 'requestedAt', label: '요청일', width: '150px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
   { key: 'dueAt', label: '마감일', width: '150px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
   { key: 'assignee', label: '담당자', width: '100px', align: 'center', hideBelow: 768 },
+  { key: 'requestedAt', label: '요청일', width: '150px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
 ]
 
 // 상태/우선순위 드롭다운 메뉴 아이템
@@ -949,7 +948,10 @@ onMounted(async () => {
 // ── 멀티 필터 ──
 .filter-assignee {
   width: 140px;
+  min-width: 140px;
+  max-width: 140px;
   flex-shrink: 0;
+  flex-grow: 0;
 }
 .filter-bar {
   display: flex;
