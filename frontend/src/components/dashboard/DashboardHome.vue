@@ -8,7 +8,7 @@ import type { Todo } from '../../types/todo'
 import DailyQuote from './DailyQuote.vue'
 import StatCard from './StatCard.vue'
 import TodoQuickList from './TodoQuickList.vue'
-import IssueDeadlineWidget from './IssueDeadlineWidget.vue'
+import ProjectSummary from './ProjectSummary.vue'
 import WeatherOutfit from './WeatherOutfit.vue'
 import MoodWidget from './MoodWidget.vue'
 import CalendarWidget from '../calendar/CalendarWidget.vue'
@@ -174,7 +174,11 @@ function onNavigateTodos() {
 
       <!-- 프로젝트 + 할일 + 일정 (PC: 3열, 모바일: 세로) -->
       <div class="dashboard__content">
-        <IssueDeadlineWidget />
+        <ProjectSummary
+          :projects="activeProjects"
+          @select="onSelectProject"
+          @navigate-all="onNavigateProjects"
+        />
         <TodoQuickList
           :todos="todayTodos"
           @add="onAddTodo"
