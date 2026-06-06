@@ -139,6 +139,7 @@ onMounted(() => document.addEventListener('click', onClickOutside))
 // ── 이슈 테이블 ──
 const issueColumns: TableColumn[] = [
   { key: 'status', label: '상태', width: '90px', align: 'center', sortable: true },
+  { key: 'category', label: '구분', width: '70px', align: 'center', sortable: true },
   { key: 'title', label: '제목', align: 'left', sortable: true, sortType: 'string' },
   { key: 'priority', label: '우선순위', width: '100px', align: 'center', sortable: true },
   { key: 'dueAt', label: '마감일', width: '150px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
@@ -598,6 +599,12 @@ onMounted(async () => {
               :data="(displayedIssues as any)"
               size="sm"
             >
+              <template #cell-category="{ row }: any">
+                <UiBadge
+                  :variant="row.category === 'bug' ? 'danger' : row.category === 'question' ? 'warning' : 'default'"
+                  size="sm"
+                >{{ row.category === 'bug' ? '오류' : row.category === 'question' ? '확인' : '개선' }}</UiBadge>
+              </template>
               <template #cell-title="{ row }: any">
                 <div v-if="editingTitleId === row.id" class="issue-title-cell is-editing">
                   <input
@@ -611,11 +618,6 @@ onMounted(async () => {
                   <button class="issue-title-cancel" @mousedown.prevent="editingTitleId = null" title="취소">✕</button>
                 </div>
                 <div v-else class="issue-title-cell">
-                    <UiBadge
-                      :variant="row.category === 'bug' ? 'danger' : row.category === 'question' ? 'warning' : 'default'"
-                      size="sm"
-                      class="issue-category-badge"
-                    >{{ row.category === 'bug' ? '오류' : row.category === 'question' ? '확인' : '개선' }}</UiBadge>
                     <span class="issue-title" @click="openPanel(row)" @dblclick.stop="startTitleEdit(row)">{{ row.title }}</span>
                     <button class="issue-title-edit" @click.stop="startTitleEdit(row)" title="제목 수정">
                       <i class="icon-edit size-12" />
