@@ -90,6 +90,7 @@ function goToIssue(issue: any) {
   padding: 20px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   min-height: 160px;
+  overflow: hidden;
 }
 .widget-header {
   display: flex;
