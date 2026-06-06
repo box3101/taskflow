@@ -618,17 +618,20 @@ onMounted(async () => {
         <template v-else>
           <!-- 이슈 -->
           <div class="tab-content">
-            <!-- 검색 + 필터 바 -->
-            <div class="filter-bar">
+            <!-- 검색 -->
+            <div class="search-bar">
               <UiInput
                 v-model="searchQuery"
                 placeholder="제목, 설명, 관리번호 검색..."
                 size="sm"
                 clearable
-                class="filter-search"
               >
                 <template #icon-left><UiIcon name="search" :size="14" /></template>
               </UiInput>
+            </div>
+
+            <!-- 필터 바 -->
+            <div class="filter-bar">
               <div class="multi-filter" @click.stop>
                 <button class="multi-filter-btn" @click="showStatusDropdown = !showStatusDropdown; showPriorityDropdown = false; showAssigneeDropdown = false">
                   <span class="multi-filter-label">상태</span>
@@ -1047,10 +1050,8 @@ onMounted(async () => {
 }
 
 // ── 멀티 필터 ──
-.filter-search {
-  width: 220px;
-  min-width: 180px;
-  max-width: 220px;
+.search-bar {
+  margin-bottom: 12px;
 }
 .filter-module {
   width: 130px;
