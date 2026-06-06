@@ -776,7 +776,7 @@ onMounted(async () => {
     <!-- 완료 코멘트 모달 -->
     <UiModal :open="doneModalOpen" title="완료 처리" @update:open="doneModalOpen = $event">
       <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">완료 내용을 간단히 기록해주세요.</p>
-      <UiTextarea v-model="doneComment" placeholder="수정 완료, PR #123 반영 등..." :rows="3" />
+      <UiTextarea v-model="doneComment" placeholder="예: 로그인 오류 수정, 재현 확인 완료, 6/6 배포 예정" :rows="3" />
       <template #footer>
         <div style="display: flex; gap: 8px; justify-content: flex-end;">
           <UiButton variant="secondary" size="sm" @click="doneModalOpen = false">취소</UiButton>
