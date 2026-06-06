@@ -389,6 +389,21 @@ const panelForm = ref({ description: '' })
 const panelSaving = ref(false)
 const panelDeleting = ref(false)
 const panelEditingDesc = ref(false)
+const panelEditingExtId = ref(false)
+const panelExtIdText = ref('')
+
+async function saveExtId() {
+  if (!panelIssue.value) return
+  try {
+    const { data } = await api.put(`/issues/${panelIssue.value.id}`, { externalId: panelExtIdText.value.trim() || null })
+    const idx = issues.value.findIndex(i => i.id === data.id)
+    if (idx > -1) issues.value[idx] = data
+    panelIssue.value = data
+    panelEditingExtId.value = false
+  } catch {
+    openToast({ message: '관리번호 수정에 실패했습니다.', type: 'error' })
+  }
+}
 
 function formatDesc(text: string): string {
   return text
@@ -403,6 +418,7 @@ function openPanel(issue: any) {
     description: issue.description || '',
   }
   panelEditingDesc.value = false
+  panelEditingExtId.value = false
   panelOpen.value = true
   loadComments(issue.id)
 }
@@ -856,6 +872,27 @@ onMounted(async () => {
               />
             </div>
           </div>
+          <div class="panel-prop">
+            <span class="panel-prop-label">관리번호</span>
+            <span
+              v-if="!panelEditingExtId"
+              class="panel-prop-value panel-prop-clickable"
+              @click="panelEditingExtId = true; panelExtIdText = panelIssue.externalId || ''"
+            >{{ panelIssue.externalId ? '#' + panelIssue.externalId : '없음' }}</span>
+            <div v-else style="display:flex;gap:4px;align-items:center;">
+              <input
+                v-model="panelExtIdText"
+                class="issue-title-input"
+                placeholder="예: 2146"
+                style="width:80px;"
+                @keydown.enter="saveExtId"
+                @keydown.escape="panelEditingExtId = false"
+                @vue:mounted="($event: any) => $event.el.focus()"
+              />
+              <button class="issue-title-save" @mousedown.prevent="saveExtId">✓</button>
+              <button class="issue-title-cancel" @mousedown.prevent="panelEditingExtId = false">✕</button>
+            </div>
+          </div>
         </div>
 
         <!-- 구분선 -->
@@ -1185,6 +1222,10 @@ onMounted(async () => {
   font-size: 11px;
   color: #9ca3af;
   flex-shrink: 0;
+}
+.panel-prop-clickable {
+  cursor: pointer;
+  &:hover { color: #4f6af6; }
 }
 .issue-category-badge {
   flex-shrink: 0;
