@@ -67,12 +67,12 @@ const dueFilterItems = [
 
 const checkedStatuses = ref<string[]>([])
 const checkedPriorities = ref<string[]>([])
-const checkedAssignees = ref<string[]>([])
+const filterAssignee = ref('')
 const showStatusDropdown = ref(false)
 const showPriorityDropdown = ref(false)
-const showAssigneeDropdown = ref(false)
 
-const assigneeFilterItems = computed(() => [
+const assigneeFilterOptions = computed<SelectOption[]>(() => [
+  { label: '전체', value: '' },
   { label: '미배정', value: 'none' },
   ...members.value.map((m: any) => ({ label: m.user.name, value: String(m.user.id) })),
 ])
@@ -93,9 +93,9 @@ const filteredIssues = computed(() => {
   return issues.value.filter((i: any) => {
     if (checkedStatuses.value.length > 0 && !checkedStatuses.value.includes(i.status)) return false
     if (checkedPriorities.value.length > 0 && !checkedPriorities.value.includes(i.priority)) return false
-    if (checkedAssignees.value.length > 0) {
+    if (filterAssignee.value) {
       const assigneeVal = i.assigneeId ? String(i.assigneeId) : 'none'
-      if (!checkedAssignees.value.includes(assigneeVal)) return false
+      if (assigneeVal !== filterAssignee.value) return false
     }
     return true
   })
@@ -572,29 +572,7 @@ onMounted(async () => {
                 </div>
               </div>
 
-              <div class="multi-filter" @click.stop>
-                <button class="multi-filter-btn" @click="showAssigneeDropdown = !showAssigneeDropdown; showStatusDropdown = false; showPriorityDropdown = false">
-                  <span class="multi-filter-label">담당자</span>
-                  <span class="multi-filter-value">{{ filterLabel(checkedAssignees, assigneeFilterItems) }}</span>
-                  <span class="multi-filter-arrow" :class="{ 'is-open': showAssigneeDropdown }">▾</span>
-                </button>
-                <div v-if="showAssigneeDropdown" class="multi-filter-dropdown">
-                  <label
-                    v-for="item in assigneeFilterItems"
-                    :key="item.value"
-                    class="multi-filter-option"
-                    :class="{ 'is-checked': checkedAssignees.includes(item.value) }"
-                  >
-                    <input
-                      type="checkbox"
-                      :checked="checkedAssignees.includes(item.value)"
-                      @change="toggleFilter(checkedAssignees, item.value)"
-                    />
-                    <span>{{ item.label }}</span>
-                    <span v-if="checkedAssignees.includes(item.value)" class="multi-filter-check">✓</span>
-                  </label>
-                </div>
-              </div>
+              <UiSelect v-model="filterAssignee" :options="assigneeFilterOptions" size="sm" placeholder="담당자" class="filter-assignee" />
 
               <span class="filter-count">{{ filteredIssues.length }}건{{ filteredIssues.length !== issues.length ? ` / 전체 ${issues.length}건` : '' }}</span>
             </div>
@@ -953,6 +931,9 @@ onMounted(async () => {
 }
 
 // ── 멀티 필터 ──
+.filter-assignee {
+  width: 140px;
+}
 .filter-bar {
   display: flex;
   align-items: center;
