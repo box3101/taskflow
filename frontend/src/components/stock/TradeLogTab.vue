@@ -176,7 +176,7 @@ const strategyStats = computed(() => {
   }
 
   return Object.entries(groups)
-    .map(([key, v]) => ({
+    .map(([key, v]) => {
       const invested = closed.filter(l => (l.strategy || 'unclassified') === key)
         .reduce((sum, l) => sum + l.buyPrice * l.quantity, 0)
       const pnlPct = invested > 0 ? (v.pnl / invested) * 100 : 0
