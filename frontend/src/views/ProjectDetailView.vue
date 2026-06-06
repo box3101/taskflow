@@ -67,8 +67,15 @@ const dueFilterItems = [
 
 const checkedStatuses = ref<string[]>([])
 const checkedPriorities = ref<string[]>([])
+const checkedAssignees = ref<string[]>([])
 const showStatusDropdown = ref(false)
 const showPriorityDropdown = ref(false)
+const showAssigneeDropdown = ref(false)
+
+const assigneeFilterItems = computed(() => [
+  { label: '미배정', value: 'none' },
+  ...members.value.map((m: any) => ({ label: m.user.name, value: String(m.user.id) })),
+])
 
 function toggleFilter(arr: string[], val: string) {
   const idx = arr.indexOf(val)
@@ -83,9 +90,13 @@ function filterLabel(checked: string[], items: { label: string; value: string }[
 }
 
 const filteredIssues = computed(() => {
-  return issues.value.filter(i => {
+  return issues.value.filter((i: any) => {
     if (checkedStatuses.value.length > 0 && !checkedStatuses.value.includes(i.status)) return false
     if (checkedPriorities.value.length > 0 && !checkedPriorities.value.includes(i.priority)) return false
+    if (checkedAssignees.value.length > 0) {
+      const assigneeVal = i.assigneeId ? String(i.assigneeId) : 'none'
+      if (!checkedAssignees.value.includes(assigneeVal)) return false
+    }
     return true
   })
 })
@@ -514,7 +525,7 @@ onMounted(async () => {
             <!-- 멀티 필터 바 -->
             <div class="filter-bar">
               <div class="multi-filter" @click.stop>
-                <button class="multi-filter-btn" @click="showStatusDropdown = !showStatusDropdown; showPriorityDropdown = false">
+                <button class="multi-filter-btn" @click="showStatusDropdown = !showStatusDropdown; showPriorityDropdown = false; showAssigneeDropdown = false">
                   <span class="multi-filter-label">상태</span>
                   <span class="multi-filter-value">{{ filterLabel(checkedStatuses, statusFilterItems) }}</span>
                   <span class="multi-filter-arrow" :class="{ 'is-open': showStatusDropdown }">▾</span>
@@ -538,7 +549,7 @@ onMounted(async () => {
               </div>
 
               <div class="multi-filter" @click.stop>
-                <button class="multi-filter-btn" @click="showPriorityDropdown = !showPriorityDropdown; showStatusDropdown = false">
+                <button class="multi-filter-btn" @click="showPriorityDropdown = !showPriorityDropdown; showStatusDropdown = false; showAssigneeDropdown = false">
                   <span class="multi-filter-label">우선순위</span>
                   <span class="multi-filter-value">{{ filterLabel(checkedPriorities, priorityFilterItems) }}</span>
                   <span class="multi-filter-arrow" :class="{ 'is-open': showPriorityDropdown }">▾</span>
@@ -557,6 +568,30 @@ onMounted(async () => {
                     />
                     <span>{{ item.label }}</span>
                     <span v-if="checkedPriorities.includes(item.value)" class="multi-filter-check">✓</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="multi-filter" @click.stop>
+                <button class="multi-filter-btn" @click="showAssigneeDropdown = !showAssigneeDropdown; showStatusDropdown = false; showPriorityDropdown = false">
+                  <span class="multi-filter-label">담당자</span>
+                  <span class="multi-filter-value">{{ filterLabel(checkedAssignees, assigneeFilterItems) }}</span>
+                  <span class="multi-filter-arrow" :class="{ 'is-open': showAssigneeDropdown }">▾</span>
+                </button>
+                <div v-if="showAssigneeDropdown" class="multi-filter-dropdown">
+                  <label
+                    v-for="item in assigneeFilterItems"
+                    :key="item.value"
+                    class="multi-filter-option"
+                    :class="{ 'is-checked': checkedAssignees.includes(item.value) }"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="checkedAssignees.includes(item.value)"
+                      @change="toggleFilter(checkedAssignees, item.value)"
+                    />
+                    <span>{{ item.label }}</span>
+                    <span v-if="checkedAssignees.includes(item.value)" class="multi-filter-check">✓</span>
                   </label>
                 </div>
               </div>
