@@ -182,7 +182,7 @@ const issueColumns: TableColumn[] = [
   { key: 'category', label: '구분', width: '60px', align: 'center', sortable: true, hideBelow: 640 },
   { key: 'title', label: '제목', align: 'left', sortable: true, sortType: 'string' },
   { key: 'priority', label: '우선순위', width: '80px', align: 'center', sortable: true, hideBelow: 640 },
-  { key: 'dueAt', label: '마감일', width: '130px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
+  { key: 'dueAt', label: '마감일', width: '160px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
   { key: 'assignee', label: '담당자', width: '80px', align: 'center', hideBelow: 768 },
 ]
 
