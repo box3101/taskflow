@@ -24,6 +24,7 @@ export interface TradeLog {
 
 export const STRATEGY_LABELS: Record<string, string> = {
   morning_dip: '모닝딥',
+  dip_scalp: '급락단타',
   breakout: '돌파',
   pullback: '눌림목',
   earnings_news: '실적/뉴스',
