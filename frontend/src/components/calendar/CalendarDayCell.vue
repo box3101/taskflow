@@ -55,10 +55,6 @@ const maxHints = 3
   border-radius: 8px; cursor: pointer; transition: background 0.15s;
   overflow: hidden; min-width: 0;
   &:hover { background: #f9fafb; }
-  &--today .day-cell__number {
-    background: #3b82f6; color: #fff; border-radius: 50%;
-    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
-  }
   &--selected { background: #eff6ff; }
   &--other {
     opacity: 0.4;
@@ -67,6 +63,11 @@ const maxHints = 3
   &--saturday .day-cell__number { color: #3b82f6; }
   &--other.day-cell--sunday .day-cell__number,
   &--other.day-cell--saturday .day-cell__number { color: inherit; }
+  // today는 마지막에 → 토요일/일요일 색상보다 우선
+  &--today .day-cell__number {
+    background: #3b82f6; color: #fff !important; border-radius: 50%;
+    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  }
 }
 .day-cell__number { font-size: 13px; font-weight: 500; color: #374151; line-height: 1; }
 .day-cell__hints {

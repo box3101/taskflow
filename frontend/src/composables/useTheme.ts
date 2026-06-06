@@ -26,8 +26,6 @@ export function useTheme() {
       const saved = localStorage.getItem(STORAGE_KEY) as Theme | null
       if (saved === 'dark' || saved === 'light') {
         theme.value = saved
-      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        theme.value = 'dark'
       }
     } catch {}
     applyTheme(theme.value)
