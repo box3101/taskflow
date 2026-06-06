@@ -778,16 +778,6 @@ onMounted(async () => {
             </UiDropdownMenu>
           </div>
           <div class="panel-prop">
-            <span class="panel-prop-label">요청일</span>
-            <div class="panel-prop-date">
-              <UiDatePicker
-                :model-value="toCalendarDateOrUndef(panelIssue.requestedAt)"
-                size="sm"
-                @update:model-value="(v: any) => onInlineChange(panelIssue, 'requestedAt', fromDateValue(v) || '')"
-              />
-            </div>
-          </div>
-          <div class="panel-prop">
             <span class="panel-prop-label">마감일</span>
             <div class="panel-prop-date">
               <UiDatePicker
@@ -796,10 +786,6 @@ onMounted(async () => {
                 @update:model-value="(v: any) => onInlineChange(panelIssue, 'dueAt', fromDateValue(v) || '')"
               />
             </div>
-          </div>
-          <div class="panel-prop">
-            <span class="panel-prop-label">생성일</span>
-            <span class="panel-prop-value">{{ new Date(panelIssue.createdAt).toLocaleDateString('ko-KR') }}</span>
           </div>
         </div>
 
