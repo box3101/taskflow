@@ -306,6 +306,10 @@ const commentSaving = ref(false)
 const editingCommentId = ref<number | null>(null)
 const editingCommentContent = ref('')
 const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+const isProjectOwner = computed(() => {
+  if (!project.value?.members) return false
+  return project.value.members.some((m: any) => m.user.id === currentUser.id && m.role === 'owner')
+})
 
 function timeAgo(dateStr: string): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
@@ -737,7 +741,7 @@ onMounted(async () => {
       <div class="settings-section">
         <div class="settings-header">
           <h4 class="settings-label">멤버 ({{ project?.members?.length || 0 }}명)</h4>
-          <UiButton variant="outline" size="sm" @click="showAddMemberModal = true">+ 멤버 추가</UiButton>
+          <UiButton v-if="isProjectOwner" variant="outline" size="sm" @click="showAddMemberModal = true">+ 멤버 추가</UiButton>
         </div>
         <ul v-if="project?.members?.length" class="member-list">
           <li v-for="m in project.members" :key="m.id" class="member-item">
