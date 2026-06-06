@@ -246,8 +246,8 @@ function timeAgo(dateStr: string): string {
 
 async function loadComments(issueId: number) {
   try {
-    const { data } = await api.get(`/issues/${issueId}/comments`)
-    comments.value = data
+    const res = await api.get(`/issues/${issueId}/comments`)
+    comments.value = res.data.data
   } catch {
     comments.value = []
   }
