@@ -1,9 +1,23 @@
 import { Router } from 'express'
+import multer from 'multer'
+import path from 'path'
+import fs from 'fs'
 import prisma from '../prisma'
 import { authenticate } from '../middleware/auth'
 
 const router = Router()
 router.use(authenticate)
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: path.join(__dirname, '../../uploads'),
+    filename: (_req, file, cb) => {
+      const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`
+      cb(null, `${unique}${path.extname(file.originalname)}`)
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+})
 
 // 이슈 순서 일괄 업데이트 (드래그 앤 드롭)
 router.put('/reorder', async (req, res) => {
@@ -157,6 +171,62 @@ router.delete('/:id/comments/:commentId', async (req, res) => {
       return
     }
     await prisma.issueComment.delete({ where: { id: commentId } })
+    res.json({ success: true })
+  } catch {
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
+  }
+})
+
+// 이슈 파일 목록
+router.get('/:id/files', async (req, res) => {
+  try {
+    const files = await prisma.issueFile.findMany({
+      where: { issueId: Number(req.params.id) },
+      orderBy: { createdAt: 'desc' },
+    })
+    res.json({ data: files })
+  } catch {
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
+  }
+})
+
+// 이슈 파일 업로드
+router.post('/:id/files', upload.single('file'), async (req, res) => {
+  try {
+    const issueId = Number(req.params.id)
+    const file = req.file
+    if (!file) {
+      res.status(400).json({ message: '파일을 선택해주세요.' })
+      return
+    }
+    const issueFile = await prisma.issueFile.create({
+      data: {
+        issueId,
+        filename: Buffer.from(file.originalname, 'latin1').toString('utf8'),
+        path: file.filename,
+        mimetype: file.mimetype,
+        size: file.size,
+      },
+    })
+    res.status(201).json({ data: issueFile })
+  } catch {
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
+  }
+})
+
+// 이슈 파일 삭제
+router.delete('/:id/files/:fileId', async (req, res) => {
+  try {
+    const fileId = Number(req.params.fileId)
+    const file = await prisma.issueFile.findUnique({ where: { id: fileId } })
+    if (!file) {
+      res.status(404).json({ message: '파일을 찾을 수 없습니다.' })
+      return
+    }
+    // 디스크 삭제
+    const filePath = path.resolve(path.join(__dirname, '../../uploads', file.path))
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
+    await prisma.issueFile.delete({ where: { id: fileId } })
     res.json({ success: true })
   } catch {
     res.status(500).json({ message: '서버 오류가 발생했습니다.' })

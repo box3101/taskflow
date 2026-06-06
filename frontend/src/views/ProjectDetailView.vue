@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { UiTab, UiTable, UiBadge, UiLoading, UiEmpty, UiButton, UiIcon, UiDrawer, UiDropdownMenu, UiDatePicker, UiModal, UiInput, UiSelect, UiTextarea, UiToast, UiConfirm, openToast, openConfirm } from '@leechanyong/ispark-ui'
+import { UiTab, UiTable, UiBadge, UiLoading, UiEmpty, UiButton, UiIcon, UiDrawer, UiDropdownMenu, UiDatePicker, UiModal, UiInput, UiSelect, UiTextarea, UiFileList, UiFileUpload, UiToast, UiConfirm, openToast, openConfirm } from '@leechanyong/ispark-ui'
 import type { TabItem, SelectOption, TableColumn, DropdownMenuItemDef } from '@leechanyong/ispark-ui'
 import { CalendarDate, type DateValue } from '@internationalized/date'
 import api from '../api/client'
@@ -419,6 +419,51 @@ const panelForm = ref({ description: '' })
 const panelSaving = ref(false)
 const panelDeleting = ref(false)
 const panelEditingDesc = ref(false)
+
+// 이슈 첨부파일
+const panelFiles = ref<any[]>([])
+const issueFileUploading = ref(false)
+
+async function loadIssueFiles(issueId: number) {
+  try {
+    const res = await api.get(`/issues/${issueId}/files`)
+    panelFiles.value = res.data.data
+  } catch {
+    panelFiles.value = []
+  }
+}
+
+function getIssueFileUrl(file: any) {
+  return `/uploads/${file.path}`
+}
+
+async function onIssueFileSelect(files: File[]) {
+  if (!panelIssue.value || !files.length) return
+  issueFileUploading.value = true
+  try {
+    for (const file of files) {
+      const formData = new FormData()
+      formData.append('file', file)
+      await api.post(`/issues/${panelIssue.value.id}/files`, formData)
+    }
+    await loadIssueFiles(panelIssue.value.id)
+  } catch {
+    openToast({ message: '파일 업로드에 실패했습니다.', type: 'error' })
+  } finally {
+    issueFileUploading.value = false
+  }
+}
+
+async function deleteIssueFile(file: any) {
+  if (!panelIssue.value) return
+  try {
+    await api.delete(`/issues/${panelIssue.value.id}/files/${file.id}`)
+    await loadIssueFiles(panelIssue.value.id)
+    openToast({ message: '파일이 삭제되었습니다.', type: 'success' })
+  } catch {
+    openToast({ message: '파일 삭제에 실패했습니다.', type: 'error' })
+  }
+}
 const panelEditingExtId = ref(false)
 const panelExtIdText = ref('')
 
@@ -451,6 +496,7 @@ function openPanel(issue: any) {
   panelEditingExtId.value = false
   panelOpen.value = true
   loadComments(issue.id)
+  loadIssueFiles(issue.id)
 }
 
 function closePanel() {
@@ -460,6 +506,7 @@ function closePanel() {
   commentContent.value = ''
   editingCommentId.value = null
   editingCommentContent.value = ''
+  panelFiles.value = []
 }
 
 async function onPanelSave() {
@@ -986,6 +1033,18 @@ onMounted(async () => {
         <!-- 구분선 -->
         <hr class="panel-divider" />
 
+        <!-- 첨부파일 -->
+        <div class="panel-files">
+          <div class="panel-files__header">
+            <span class="panel-files__label"><UiIcon name="paperclip" :size="16" /> 첨부파일 ({{ panelFiles.length }})</span>
+          </div>
+          <UiFileList v-if="panelFiles.length" :files="panelFiles" :get-url="getIssueFileUrl" @delete="deleteIssueFile" />
+          <UiFileUpload :loading="issueFileUploading" @upload="onIssueFileSelect" />
+        </div>
+
+        <!-- 구분선 -->
+        <hr class="panel-divider" />
+
         <!-- 댓글 -->
         <div class="panel-comments">
           <div class="panel-comments__header">
@@ -1338,6 +1397,17 @@ onMounted(async () => {
   font-size: 11px;
   color: #9ca3af;
   flex-shrink: 0;
+}
+.panel-files__header {
+  margin-bottom: 8px;
+}
+.panel-files__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
 }
 .panel-prop-clickable {
   cursor: pointer;
