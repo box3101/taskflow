@@ -457,11 +457,11 @@ async function onPanelDelete() {
 
 // ── 이슈 생성 (간단히 사이드 패널 재활용) ──
 const createDrawerOpen = ref(false)
-const createForm = ref({ title: '', priority: 'mid', assigneeId: '', module: '개인성과', category: 'improvement' })
+const createForm = ref({ title: '', priority: 'mid', assigneeId: '', module: '개인성과', category: 'improvement', externalId: '' })
 const creatingLoading = ref(false)
 
 function startCreate() {
-  createForm.value = { title: '', priority: 'mid', assigneeId: '', module: '개인성과', category: 'improvement' }
+  createForm.value = { title: '', priority: 'mid', assigneeId: '', module: '개인성과', category: 'improvement', externalId: '' }
   createDrawerOpen.value = true
 }
 
@@ -475,6 +475,7 @@ async function onCreateIssue() {
       assigneeId: createForm.value.assigneeId ? Number(createForm.value.assigneeId) : null,
       module: createForm.value.module,
       category: createForm.value.category,
+      externalId: createForm.value.externalId || null,
     })
     issues.value.unshift(data)
     openToast({ message: '이슈가 추가되었습니다.', type: 'success' })
@@ -651,6 +652,7 @@ onMounted(async () => {
                   <button class="issue-title-cancel" @mousedown.prevent="editingTitleId = null" title="취소">✕</button>
                 </div>
                 <div v-else class="issue-title-cell">
+                    <span v-if="row.externalId" class="issue-external-id">#{{ row.externalId }}</span>
                     <span class="issue-title" @click="openPanel(row)" @dblclick.stop="startTitleEdit(row)">{{ row.title }}</span>
                     <button class="issue-title-edit" @click.stop="startTitleEdit(row)" title="제목 수정">
                       <i class="icon-edit size-12" />
@@ -787,6 +789,7 @@ onMounted(async () => {
     <UiDrawer v-model:open="createDrawerOpen" title="이슈 추가" width="420px" max-width="600px">
       <form class="drawer-form" @submit.prevent="onCreateIssue">
         <UiInput v-model="createForm.title" label="제목" placeholder="이슈 제목" />
+        <UiInput v-model="createForm.externalId" label="관리번호" placeholder="엑셀 번호 (선택)" />
         <UiSelect v-model="createForm.module" label="모듈" :options="moduleSelectOptions" />
         <UiSelect v-model="createForm.category" label="구분" :options="[{ label: '오류', value: 'bug' }, { label: '개선', value: 'improvement' }, { label: '확인', value: 'question' }]" />
         <UiSelect v-model="createForm.priority" label="우선순위" :options="priorityOptions" />
@@ -1174,6 +1177,11 @@ onMounted(async () => {
 :deep(.ui-table tbody td) {
   height: auto !important;
   padding: 4px 12px !important;
+}
+.issue-external-id {
+  font-size: 11px;
+  color: #9ca3af;
+  flex-shrink: 0;
 }
 .issue-category-badge {
   flex-shrink: 0;

@@ -52,6 +52,7 @@ router.put('/:id', async (req, res) => {
     if (urgency !== undefined) data.urgency = urgency
     if (req.body.category !== undefined) data.category = req.body.category
     if (req.body.module !== undefined) data.module = req.body.module
+    if (req.body.externalId !== undefined) data.externalId = req.body.externalId || null
     if (requestedAt !== undefined) data.requestedAt = requestedAt ? new Date(requestedAt) : null
     if (dueAt !== undefined) data.dueAt = dueAt ? new Date(dueAt) : null
     if (assigneeId !== undefined) data.assigneeId = assigneeId

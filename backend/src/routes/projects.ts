@@ -203,6 +203,7 @@ router.post('/:id/issues', async (req, res) => {
         urgency: urgency || 'normal',
         category: req.body.category || 'improvement',
         module: req.body.module || '개인성과',
+        externalId: req.body.externalId || null,
         requestedAt: requestedAt ? new Date(requestedAt) : null,
         dueAt: dueAt ? new Date(dueAt) : null,
         assigneeId: assigneeId || null,
