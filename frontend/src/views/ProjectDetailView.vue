@@ -156,12 +156,12 @@ onMounted(() => document.addEventListener('click', onClickOutside))
 
 // ── 이슈 테이블 ──
 const issueColumns: TableColumn[] = [
-  { key: 'status', label: '상태', width: '90px', align: 'center', sortable: true },
-  { key: 'category', label: '구분', width: '70px', align: 'center', sortable: true },
+  { key: 'status', label: '상태', width: '70px', align: 'center', sortable: true },
+  { key: 'category', label: '구분', width: '60px', align: 'center', sortable: true, hideBelow: 640 },
   { key: 'title', label: '제목', align: 'left', sortable: true, sortType: 'string' },
-  { key: 'priority', label: '우선순위', width: '100px', align: 'center', sortable: true },
-  { key: 'dueAt', label: '마감일', width: '150px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
-  { key: 'assignee', label: '담당자', width: '100px', align: 'center', hideBelow: 768 },
+  { key: 'priority', label: '우선순위', width: '80px', align: 'center', sortable: true, hideBelow: 640 },
+  { key: 'dueAt', label: '마감일', width: '130px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
+  { key: 'assignee', label: '담당자', width: '80px', align: 'center', hideBelow: 768 },
 ]
 
 // 상태/우선순위 드롭다운 메뉴 아이템
@@ -1052,6 +1052,10 @@ onMounted(async () => {
 // ── 멀티 필터 ──
 .search-bar {
   margin-bottom: 12px;
+  max-width: 360px;
+}
+@media (max-width: 640px) {
+  .search-bar { max-width: 100%; }
 }
 .filter-module {
   width: 130px;
