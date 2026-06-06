@@ -243,6 +243,8 @@ function onNavigateTodos() {
   grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
   align-items: stretch;
+  overflow: hidden;
+  > * { min-width: 0; overflow: hidden; }
 }
 
 @media (max-width: 1024px) {
