@@ -144,13 +144,14 @@ router.delete('/:id/comments/:commentId', async (req, res) => {
   try {
     const commentId = Number(req.params.commentId)
     const userId = req.user!.id
-    const userRole = req.user!.role
     const comment = await prisma.issueComment.findUnique({ where: { id: commentId } })
     if (!comment) {
       res.status(404).json({ message: '댓글을 찾을 수 없습니다.' })
       return
     }
-    if (comment.userId !== userId && userRole !== 'admin') {
+    // 본인 또는 admin
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+    if (comment.userId !== userId && user?.role !== 'admin') {
       res.status(403).json({ message: '본인의 댓글만 삭제할 수 있습니다.' })
       return
     }

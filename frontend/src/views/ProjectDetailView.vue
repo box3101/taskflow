@@ -78,11 +78,9 @@ const dueFilterItems = [
 ]
 
 const checkedStatuses = ref<string[]>([])
-const checkedPriorities = ref<string[]>([])
 const filterModule = ref('')
 const filterAssignee = ref('')
 const showStatusDropdown = ref(false)
-const showPriorityDropdown = ref(false)
 
 const assigneeFilterOptions = computed<SelectOption[]>(() => [
   { label: '전체', value: '' },
@@ -109,7 +107,6 @@ const filteredIssues = computed(() => {
   return issues.value
     .filter((i: any) => {
       if (checkedStatuses.value.length > 0 && !checkedStatuses.value.includes(i.status)) return false
-      if (checkedPriorities.value.length > 0 && !checkedPriorities.value.includes(i.priority)) return false
       if (filterModule.value && (i as any).module !== filterModule.value) return false
       if (filterAssignee.value) {
         const assigneeVal = i.assigneeId ? String(i.assigneeId) : 'none'
@@ -145,7 +142,6 @@ function onClickOutside(e: MouseEvent) {
   const t = e.target as HTMLElement
   if (!t.closest('.multi-filter')) {
     showStatusDropdown.value = false
-    showPriorityDropdown.value = false
   }
 }
 onMounted(() => document.addEventListener('click', onClickOutside))
@@ -615,30 +611,6 @@ onMounted(async () => {
                     />
                     <span>{{ item.label }}</span>
                     <span v-if="checkedStatuses.includes(item.value)" class="multi-filter-check">✓</span>
-                  </label>
-                </div>
-              </div>
-
-              <div class="multi-filter" @click.stop>
-                <button class="multi-filter-btn" @click="showPriorityDropdown = !showPriorityDropdown; showStatusDropdown = false; showAssigneeDropdown = false">
-                  <span class="multi-filter-label">우선순위</span>
-                  <span class="multi-filter-value">{{ filterLabel(checkedPriorities, priorityFilterItems) }}</span>
-                  <span class="multi-filter-arrow" :class="{ 'is-open': showPriorityDropdown }">▾</span>
-                </button>
-                <div v-if="showPriorityDropdown" class="multi-filter-dropdown">
-                  <label
-                    v-for="item in priorityFilterItems"
-                    :key="item.value"
-                    class="multi-filter-option"
-                    :class="{ 'is-checked': checkedPriorities.includes(item.value) }"
-                  >
-                    <input
-                      type="checkbox"
-                      :checked="checkedPriorities.includes(item.value)"
-                      @change="toggleFilter(checkedPriorities, item.value)"
-                    />
-                    <span>{{ item.label }}</span>
-                    <span v-if="checkedPriorities.includes(item.value)" class="multi-filter-check">✓</span>
                   </label>
                 </div>
               </div>
