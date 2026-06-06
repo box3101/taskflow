@@ -948,7 +948,8 @@ onMounted(async () => {
 
 // ── 멀티 필터 ──
 .filter-assignee {
-  :deep(.ui-select-outer) { width: 140px; }
+  width: 140px;
+  flex-shrink: 0;
 }
 .filter-bar {
   display: flex;
