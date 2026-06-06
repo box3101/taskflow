@@ -106,7 +106,7 @@ async function onDelete() {
   <UiDrawer
     :open="open"
     :title="isEdit() ? '식단 수정' : '식단 추가'"
-    @close="close"
+    @update:open="(v: boolean) => { if (!v) close() }"
   >
     <div class="meal-form">
       <div class="meal-form__field">

@@ -29,7 +29,7 @@ async function onSubmit() {
 <template>
   <div class="login-page">
     <div class="login-card">
-      <img src="/logo.svg" alt="CYLEE" class="login-logo" />
+      <img src="/logo.svg" alt="TaskFlow" class="login-logo" />
       <p class="login-desc">프로젝트 관리 시작하기</p>
 
       <form @submit.prevent="onSubmit" class="login-form">

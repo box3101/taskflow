@@ -1,7 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 36" fill="none">
-  <!-- CYLEE 타이포 로고 — 라이트 배경용 -->
-  <text x="0" y="26" font-family="'Pretendard Variable', Pretendard, -apple-system, sans-serif" font-size="24" font-weight="800" letter-spacing="0.06em">
-    <tspan fill="#1a1f2b">CY</tspan><tspan fill="#4f6af6">LEE</tspan>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 36" fill="none">
+  <text x="0" y="26" font-family="'Pretendard Variable', Pretendard, -apple-system, sans-serif" font-size="24" font-weight="800" letter-spacing="0.04em">
+    <tspan fill="#1a1f2b">Task</tspan><tspan fill="#4f6af6">Flow</tspan>
   </text>
-  <rect x="0" y="31" width="38" height="2.5" rx="1.25" fill="#4f6af6" opacity="0.5"/>
+  <rect x="0" y="31" width="48" height="2.5" rx="1.25" fill="#4f6af6" opacity="0.5"/>
 </svg>

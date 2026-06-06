@@ -84,7 +84,7 @@ async function handleQuickMemoSaved(memo: MemoEntry) {
         <button class="menu-toggle-btn" @click="menuOpen = !menuOpen">
           <UiIcon :name="menuOpen ? 'x' : 'menu'" :size="20" />
         </button>
-        <img src="/logo.svg" alt="CYLEE" class="header-logo" @click="router.push('/')" style="cursor: pointer;" />
+        <img src="/logo.svg" alt="TaskFlow" class="header-logo" @click="router.push('/')" style="cursor: pointer;" />
       </div>
       <div class="header-right">
         <UiButton variant="ghost" size="sm" icon-only :aria-label="theme === 'dark' ? '라이트 모드' : '다크 모드'" @click="toggleTheme">
