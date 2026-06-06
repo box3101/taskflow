@@ -599,12 +599,6 @@ onMounted(async () => {
               :data="(displayedIssues as any)"
               size="sm"
             >
-              <template #cell-category="{ row }: any">
-                <UiBadge
-                  :variant="row.category === 'bug' ? 'danger' : row.category === 'question' ? 'warning' : 'default'"
-                  size="sm"
-                >{{ row.category === 'bug' ? '오류' : row.category === 'question' ? '확인' : '개선' }}</UiBadge>
-              </template>
               <template #cell-title="{ row }: any">
                 <div v-if="editingTitleId === row.id" class="issue-title-cell is-editing">
                   <input
@@ -618,6 +612,11 @@ onMounted(async () => {
                   <button class="issue-title-cancel" @mousedown.prevent="editingTitleId = null" title="취소">✕</button>
                 </div>
                 <div v-else class="issue-title-cell">
+                    <UiBadge
+                      :variant="row.category === 'bug' ? 'danger' : row.category === 'question' ? 'warning' : 'default'"
+                      size="sm"
+                      class="issue-category-badge"
+                    >{{ row.category === 'bug' ? '오류' : row.category === 'question' ? '확인' : '개선' }}</UiBadge>
                     <span class="issue-title" @click="openPanel(row)" @dblclick.stop="startTitleEdit(row)">{{ row.title }}</span>
                     <button class="issue-title-edit" @click.stop="startTitleEdit(row)" title="제목 수정">
                       <i class="icon-edit size-12" />
@@ -1129,10 +1128,13 @@ onMounted(async () => {
   height: auto !important;
   padding: 4px 12px !important;
 }
+.issue-category-badge {
+  flex-shrink: 0;
+}
 .issue-title-cell {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
   &.is-editing { display: flex; width: 100%; }
   &:hover .issue-title-edit { opacity: 1; }
 }
