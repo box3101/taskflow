@@ -1191,6 +1191,9 @@ onMounted(async () => {
 
 // ── 폼 ──
 .create-form { display: flex; flex-direction: column; gap: 16px; padding: 8px 0; }
+
+// 멤버 추가 모달: Select 드롭다운이 잘리지 않도록
+:deep(.ui-modal-content) { overflow: visible; }
 .create-form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 
 // ── 개요 ──

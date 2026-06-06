@@ -12,14 +12,18 @@ router.get('/', async (req, res) => {
     const size = Number(req.query.size) || 10
     const skip = (page - 1) * size
 
+    const userId = req.user!.id
+    const where = { members: { some: { userId } } }
+
     const [data, total] = await Promise.all([
       prisma.project.findMany({
+        where,
         skip,
         take: size,
         orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
         include: { _count: { select: { members: true, issues: true } } },
       }),
-      prisma.project.count(),
+      prisma.project.count({ where }),
     ])
 
     res.json({ data, total, page, size })
