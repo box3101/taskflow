@@ -811,7 +811,7 @@ onMounted(async () => {
           <div class="panel-desc-header">
             <span class="panel-desc-label">설명</span>
             <button class="panel-desc-edit-btn" @click="panelEditingDesc = !panelEditingDesc">
-              {{ panelEditingDesc ? '미리보기' : '편집' }}
+              <UiIcon :name="panelEditingDesc ? 'eye' : 'pencil'" :size="14" />
             </button>
           </div>
           <div v-if="!panelEditingDesc && panelForm.description" class="panel-desc-view" v-html="formatDesc(panelForm.description)" />
@@ -827,7 +827,7 @@ onMounted(async () => {
         <!-- 댓글 -->
         <div class="panel-comments">
           <div class="panel-comments__header">
-            <span class="panel-comments__label">💬 댓글 ({{ comments.length }})</span>
+            <span class="panel-comments__label"><UiIcon name="message-circle" :size="16" /> 댓글 ({{ comments.length }})</span>
           </div>
 
           <!-- 댓글 목록 -->
