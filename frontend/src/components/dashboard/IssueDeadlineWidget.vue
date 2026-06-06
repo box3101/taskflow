@@ -114,6 +114,7 @@ function goToIssue(issue: any) {
   gap: 6px;
   max-height: 240px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .widget-item {
   cursor: pointer;
@@ -121,7 +122,7 @@ function goToIssue(issue: any) {
   border-bottom: 1px solid #f3f4f6;
   transition: background 0.1s;
   &:last-child { border-bottom: none; }
-  &:hover { background: #f9fafb; margin: 0 -6px; padding: 6px; border-radius: 6px; }
+  &:hover { background: #f9fafb; border-radius: 6px; }
 }
 .widget-item__top {
   display: flex;
