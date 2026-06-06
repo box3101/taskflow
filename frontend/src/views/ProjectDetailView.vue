@@ -59,6 +59,18 @@ const categoryFilterItems = [
   { label: '확인', value: 'question' },
 ]
 
+const moduleFilterItems = [
+  { label: '개인성과', value: '개인성과' },
+  { label: '업무', value: '업무' },
+  { label: '인사평가', value: '인사평가' },
+]
+
+const moduleSelectOptions: SelectOption[] = [
+  { label: '개인성과', value: '개인성과' },
+  { label: '업무', value: '업무' },
+  { label: '인사평가', value: '인사평가' },
+]
+
 const dueFilterItems = [
   { label: '마감 있음', value: 'set' },
   { label: '미정', value: 'unset' },
@@ -67,6 +79,7 @@ const dueFilterItems = [
 
 const checkedStatuses = ref<string[]>([])
 const checkedPriorities = ref<string[]>([])
+const filterModule = ref('')
 const filterAssignee = ref('')
 const showStatusDropdown = ref(false)
 const showPriorityDropdown = ref(false)
@@ -97,6 +110,7 @@ const filteredIssues = computed(() => {
     .filter((i: any) => {
       if (checkedStatuses.value.length > 0 && !checkedStatuses.value.includes(i.status)) return false
       if (checkedPriorities.value.length > 0 && !checkedPriorities.value.includes(i.priority)) return false
+      if (filterModule.value && (i as any).module !== filterModule.value) return false
       if (filterAssignee.value) {
         const assigneeVal = i.assigneeId ? String(i.assigneeId) : 'none'
         if (assigneeVal !== filterAssignee.value) return false
@@ -443,11 +457,11 @@ async function onPanelDelete() {
 
 // ── 이슈 생성 (간단히 사이드 패널 재활용) ──
 const createDrawerOpen = ref(false)
-const createForm = ref({ title: '', priority: 'mid', assigneeId: '' })
+const createForm = ref({ title: '', priority: 'mid', assigneeId: '', module: '개인성과', category: 'improvement' })
 const creatingLoading = ref(false)
 
 function startCreate() {
-  createForm.value = { title: '', priority: 'mid', assigneeId: '' }
+  createForm.value = { title: '', priority: 'mid', assigneeId: '', module: '개인성과', category: 'improvement' }
   createDrawerOpen.value = true
 }
 
@@ -459,6 +473,8 @@ async function onCreateIssue() {
       title: createForm.value.title,
       priority: createForm.value.priority,
       assigneeId: createForm.value.assigneeId ? Number(createForm.value.assigneeId) : null,
+      module: createForm.value.module,
+      category: createForm.value.category,
     })
     issues.value.unshift(data)
     openToast({ message: '이슈가 추가되었습니다.', type: 'success' })
@@ -627,6 +643,7 @@ onMounted(async () => {
                 </div>
               </div>
 
+              <UiSelect v-model="filterModule" :options="[{ label: '모듈 전체', value: '' }, ...moduleSelectOptions]" size="sm" placeholder="모듈" class="filter-module" />
               <UiSelect v-model="filterAssignee" :options="assigneeFilterOptions" size="sm" placeholder="담당자" class="filter-assignee" />
 
               <span class="filter-count">{{ filteredIssues.length }}건{{ filteredIssues.length !== issues.length ? ` / 전체 ${issues.length}건` : '' }}</span>
@@ -794,6 +811,8 @@ onMounted(async () => {
     <UiDrawer v-model:open="createDrawerOpen" title="이슈 추가" width="420px" max-width="600px">
       <form class="drawer-form" @submit.prevent="onCreateIssue">
         <UiInput v-model="createForm.title" label="제목" placeholder="이슈 제목" />
+        <UiSelect v-model="createForm.module" label="모듈" :options="moduleSelectOptions" />
+        <UiSelect v-model="createForm.category" label="구분" :options="[{ label: '오류', value: 'bug' }, { label: '개선', value: 'improvement' }, { label: '확인', value: 'question' }]" />
         <UiSelect v-model="createForm.priority" label="우선순위" :options="priorityOptions" />
         <UiSelect v-model="createForm.assigneeId" label="담당자" :options="memberOptions" />
       </form>
@@ -992,6 +1011,11 @@ onMounted(async () => {
 }
 
 // ── 멀티 필터 ──
+.filter-module {
+  width: 130px;
+  min-width: 130px;
+  max-width: 130px;
+}
 .filter-assignee {
   width: 140px;
   min-width: 140px;

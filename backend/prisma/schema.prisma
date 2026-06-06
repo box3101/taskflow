@@ -75,6 +75,7 @@ model Issue {
   priority    String   @default("mid")  // high | mid | low
   urgency     String   @default("normal") // urgent | high | normal | low
   category    String   @default("improvement") @db.VarChar(20) // bug | improvement | question
+  module      String   @default("개인성과") @db.VarChar(30)     // 개인성과 | 업무 | 인사평가
   requestedAt DateTime? @map("requested_at")
   dueAt       DateTime? @map("due_at")
   order       Int      @default(0)
