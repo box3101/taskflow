@@ -156,7 +156,10 @@ const stats = computed(() => {
     ? losses.reduce((sum, l) => sum + ((l.sellPrice! - l.buyPrice) / l.buyPrice) * 100, 0) / losses.length
     : 0
 
-  return { totalPnl, winRate, avgWin, avgLoss, holdingCount: holding.length, closedCount: closed.length, totalCount: all.length }
+  const totalInvested = closed.reduce((sum, l) => sum + l.buyPrice * l.quantity, 0)
+  const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0
+
+  return { totalPnl, totalPnlPct, winRate, avgWin, avgLoss, holdingCount: holding.length, closedCount: closed.length, totalCount: all.length }
 })
 
 // 전략별 성과
@@ -194,7 +197,7 @@ const strategyStats = computed(() => {
         <span class="trade-log__stat-value" :class="{ 'text-plus': stats.totalPnl > 0, 'text-minus': stats.totalPnl < 0 }">
           {{ stats.totalPnl > 0 ? '+' : '' }}{{ stats.totalPnl.toLocaleString() }}원
         </span>
-        <span class="trade-log__stat-label">총 손익</span>
+        <span class="trade-log__stat-label">총 손익 ({{ stats.totalPnlPct > 0 ? '+' : '' }}{{ stats.totalPnlPct.toFixed(1) }}%)</span>
       </div>
       <div class="trade-log__stat">
         <span class="trade-log__stat-value">{{ stats.winRate.toFixed(0) }}%</span>
@@ -220,16 +223,15 @@ const strategyStats = computed(() => {
 
     <!-- 전략별 성과 -->
     <div v-if="strategyStats.length > 0" class="trade-log__strategy">
-      <div class="strategy-header">전략별 성과</div>
-      <div class="strategy-list">
-        <div v-for="s in strategyStats" :key="s.key" class="strategy-item">
-          <span class="strategy-label">{{ s.label }}</span>
-          <span class="strategy-count">{{ s.count }}건</span>
-          <span class="strategy-pnl" :class="{ 'text-plus': s.pnl > 0, 'text-minus': s.pnl < 0 }">
-            {{ s.pnl > 0 ? '+' : '' }}{{ s.pnl.toLocaleString() }}원
-          </span>
-          <span class="strategy-winrate">승률 {{ s.winRate.toFixed(0) }}%</span>
-        </div>
+      <div
+        v-for="s in strategyStats"
+        :key="s.key"
+        class="strategy-card"
+        :class="{ 'strategy-card--plus': s.pnl > 0, 'strategy-card--minus': s.pnl < 0 }"
+      >
+        <span class="strategy-card__label">{{ s.label }}</span>
+        <span class="strategy-card__pnl">{{ s.pnl > 0 ? '+' : '' }}{{ s.pnl.toLocaleString() }}원</span>
+        <span class="strategy-card__sub">{{ s.count }}건 · 승률 {{ s.winRate.toFixed(0) }}%</span>
       </div>
     </div>
 
@@ -357,45 +359,38 @@ const strategyStats = computed(() => {
 
 // 전략별 성과
 .trade-log__strategy {
+  display: flex;
+  gap: 8px;
   margin-bottom: 16px;
-  padding: 14px 16px;
+  overflow-x: auto;
+}
+.strategy-card {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-.strategy-header {
-  font-size: 14px;
-  font-weight: 700;
-  color: #1a1f2b;
-  margin-bottom: 10px;
-}
-.strategy-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-.strategy-item {
-  display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 13px;
+  gap: 2px;
+  &--plus .strategy-card__pnl { color: #ef4444; }
+  &--minus .strategy-card__pnl { color: #3b82f6; }
 }
-.strategy-label {
+.strategy-card__label {
+  font-size: 12px;
   font-weight: 600;
-  min-width: 70px;
-}
-.strategy-count {
   color: #6b7280;
-  min-width: 40px;
 }
-.strategy-pnl {
+.strategy-card__pnl {
+  font-size: 15px;
   font-weight: 700;
-  min-width: 100px;
-  text-align: right;
+  color: #1a1f2b;
 }
-.strategy-winrate {
-  color: #6b7280;
-  min-width: 60px;
+.strategy-card__sub {
+  font-size: 11px;
+  color: #9ca3af;
 }
 
 // 캘린더 + 사이드 레이아웃
@@ -539,8 +534,8 @@ const strategyStats = computed(() => {
 
 :global([data-theme="dark"]) {
   .trade-log__stats { background: #1f2937; }
-  .trade-log__strategy { background: #1f2937; }
-  .strategy-header { color: #f3f4f6; }
+  .strategy-card { background: #1f2937; }
+  .strategy-card__pnl { color: #f3f4f6; }
   .trade-log__stat-value { color: #f3f4f6; }
   .trade-log__item { background: #1f2937; }
   .trade-log__item:hover { background: #374151; }
