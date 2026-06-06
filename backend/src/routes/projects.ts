@@ -21,7 +21,10 @@ router.get('/', async (req, res) => {
         skip,
         take: size,
         orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
-        include: { _count: { select: { members: true, issues: true } } },
+        include: {
+          _count: { select: { members: true, issues: true } },
+          members: { where: { userId }, select: { role: true } },
+        },
       }),
       prisma.project.count({ where }),
     ])

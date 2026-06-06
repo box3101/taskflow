@@ -158,6 +158,7 @@ onMounted(async () => {
             <span class="project-list__col project-list__col--count">{{ row._count?.issues ?? 0 }}건</span>
             <span class="project-list__col project-list__col--action" @click.stop>
               <UiDropdownMenu
+                v-if="row.members?.[0]?.role === 'owner'"
                 :items="projectActionItems"
                 @select="(val: string) => onProjectAction(row, val)"
               >
