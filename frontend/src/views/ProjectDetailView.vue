@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { UiTab, UiTable, UiBadge, UiLoading, UiEmpty, UiButton, UiDrawer, UiDropdownMenu, UiDatePicker, UiModal, UiInput, UiSelect, UiTextarea, UiToast, UiConfirm, openToast, openConfirm } from '@leechanyong/ispark-ui'
+import { UiTab, UiTable, UiBadge, UiLoading, UiEmpty, UiButton, UiIcon, UiDrawer, UiDropdownMenu, UiDatePicker, UiModal, UiInput, UiSelect, UiTextarea, UiToast, UiConfirm, openToast, openConfirm } from '@leechanyong/ispark-ui'
 import type { TabItem, SelectOption, TableColumn, DropdownMenuItemDef } from '@leechanyong/ispark-ui'
 import { CalendarDate, type DateValue } from '@internationalized/date'
 import api from '../api/client'
@@ -411,7 +411,6 @@ onMounted(async () => {
         <UiButton variant="ghost" size="sm" @click="goBack">← 목록</UiButton>
         <h1 class="header-title">{{ project?.name || '...' }}</h1>
       </div>
-      <UiButton v-if="!loading" variant="primary" size="sm" @click="startCreate">+ 이슈 추가</UiButton>
     </div>
 
     <UiLoading v-if="loading" overlay />
@@ -626,6 +625,11 @@ onMounted(async () => {
           </div>
         </template>
 
+    <!-- FAB: 이슈 추가 -->
+    <button v-if="!loading" class="fab" aria-label="이슈 추가" @click="startCreate">
+      <UiIcon name="plus" :size="22" />
+    </button>
+
     <!-- 이슈 생성 Drawer -->
     <UiDrawer v-model:open="createDrawerOpen" title="이슈 추가" width="420px" max-width="600px">
       <form class="drawer-form" @submit.prevent="onCreateIssue">
@@ -756,7 +760,7 @@ onMounted(async () => {
 <style scoped lang="scss">
 .project-detail__header {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 8px;
 }
 .header-left { display: flex; align-items: center; gap: 12px; }
 .header-title { font-size: 18px; font-weight: 700; }
@@ -1103,9 +1107,34 @@ onMounted(async () => {
   }
 }
 
+.fab {
+  position: fixed;
+  bottom: 76px;
+  right: 24px;
+  z-index: 50;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #4f6af6;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(79, 106, 246, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 16px rgba(79, 106, 246, 0.5);
+  }
+}
+
 @media (max-width: 768px) {
   .main { padding: 16px 12px; }
   .filter-bar { flex-wrap: wrap; }
+  .fab { bottom: 68px; right: 16px; width: 48px; height: 48px; }
 }
 </style>
 
