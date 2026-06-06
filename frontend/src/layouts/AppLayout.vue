@@ -87,11 +87,14 @@ async function handleQuickMemoSaved(memo: MemoEntry) {
         <img src="/logo.svg" alt="TaskFlow" class="header-logo" @click="router.push('/')" style="cursor: pointer;" />
       </div>
       <div class="header-right">
+        <!-- 다크모드 토글 (숨김) -->
+        <!--
         <UiButton variant="ghost" size="sm" icon-only :aria-label="theme === 'dark' ? '라이트 모드' : '다크 모드'" @click="toggleTheme">
           <template #icon-left>
             <UiIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="18" />
           </template>
         </UiButton>
+        -->
         <UiButton class="storybook-link" as="a" href="https://box3101.github.io/ispark-ui/" target="_blank" size="sm" variant="outline">📖 Storybook</UiButton>
         <UiDropdownMenu
           :items="userMenuItems"
