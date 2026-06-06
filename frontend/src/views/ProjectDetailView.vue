@@ -1037,9 +1037,9 @@ onMounted(async () => {
         <div class="panel-files">
           <div class="panel-files__header">
             <span class="panel-files__label"><UiIcon name="paperclip" :size="16" /> 첨부파일 ({{ panelFiles.length }})</span>
+            <UiFileUpload :loading="issueFileUploading" @upload="onIssueFileSelect" />
           </div>
           <UiFileList v-if="panelFiles.length" :files="panelFiles" :get-url="getIssueFileUrl" @delete="deleteIssueFile" />
-          <UiFileUpload :loading="issueFileUploading" @upload="onIssueFileSelect" />
         </div>
 
         <!-- 구분선 -->
@@ -1399,6 +1399,9 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 .panel-files__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 8px;
 }
 .panel-files__label {
