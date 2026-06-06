@@ -37,7 +37,7 @@ const deadlineIssues = computed(() => {
     })
     .filter(i => i.dday <= 7) // 7일 이내 + 지난 것
     .sort((a, b) => a.dday - b.dday)
-    .slice(0, 5)
+    .slice(0, 4)
 })
 
 function ddayLabel(dday: number) {
@@ -112,9 +112,6 @@ function goToIssue(issue: any) {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 240px;
-  overflow-y: auto;
-  overflow-x: hidden;
 }
 .widget-item {
   cursor: pointer;
