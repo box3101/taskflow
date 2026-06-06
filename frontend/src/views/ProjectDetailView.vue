@@ -77,6 +77,7 @@ const dueFilterItems = [
   { label: '마감 초과', value: 'overdue' },
 ]
 
+const searchQuery = ref('')
 const checkedStatuses = ref<string[]>([])
 const filterModule = ref('')
 const filterAssignee = ref('')
@@ -106,6 +107,13 @@ const PRIORITY_ORDER: Record<string, number> = { high: 0, mid: 1, low: 2 }
 const filteredIssues = computed(() => {
   return issues.value
     .filter((i: any) => {
+      if (searchQuery.value) {
+        const q = searchQuery.value.toLowerCase()
+        const title = (i.title || '').toLowerCase()
+        const desc = (i.description || '').toLowerCase()
+        const extId = ((i as any).externalId || '').toLowerCase()
+        if (!title.includes(q) && !desc.includes(q) && !extId.includes(q)) return false
+      }
       if (checkedStatuses.value.length > 0 && !checkedStatuses.value.includes(i.status)) return false
       if (filterModule.value && (i as any).module !== filterModule.value) return false
       if (filterAssignee.value) {
@@ -610,8 +618,17 @@ onMounted(async () => {
         <template v-else>
           <!-- 이슈 -->
           <div class="tab-content">
-            <!-- 멀티 필터 바 -->
+            <!-- 검색 + 필터 바 -->
             <div class="filter-bar">
+              <UiInput
+                v-model="searchQuery"
+                placeholder="제목, 설명, 관리번호 검색..."
+                size="sm"
+                clearable
+                class="filter-search"
+              >
+                <template #icon-left><UiIcon name="search" :size="14" /></template>
+              </UiInput>
               <div class="multi-filter" @click.stop>
                 <button class="multi-filter-btn" @click="showStatusDropdown = !showStatusDropdown; showPriorityDropdown = false; showAssigneeDropdown = false">
                   <span class="multi-filter-label">상태</span>
@@ -1030,6 +1047,11 @@ onMounted(async () => {
 }
 
 // ── 멀티 필터 ──
+.filter-search {
+  width: 220px;
+  min-width: 180px;
+  max-width: 220px;
+}
 .filter-module {
   width: 130px;
   min-width: 130px;
