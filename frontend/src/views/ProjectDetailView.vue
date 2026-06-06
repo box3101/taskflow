@@ -218,8 +218,44 @@ function onTitleKeydown(e: KeyboardEvent, issue: any) {
   if (e.key === 'Escape') { editingTitleId.value = null }
 }
 
+// 완료 코멘트 모달
+const doneModalOpen = ref(false)
+const doneComment = ref('')
+const doneTargetIssue = ref<any>(null)
+
+async function confirmDone() {
+  if (!doneComment.value.trim()) {
+    openToast({ message: '완료 코멘트를 입력해주세요.', type: 'warning' })
+    return
+  }
+  const issue = doneTargetIssue.value
+  if (!issue) return
+  try {
+    // 상태 변경
+    const { data } = await api.put(`/issues/${issue.id}`, { status: 'done' })
+    const idx = issues.value.findIndex(i => i.id === data.id)
+    if (idx > -1) issues.value[idx] = data
+    // 코멘트 추가
+    await api.post(`/issues/${issue.id}/comments`, { content: `✅ 완료: ${doneComment.value.trim()}` })
+    doneModalOpen.value = false
+    doneComment.value = ''
+    doneTargetIssue.value = null
+    openToast({ message: '완료 처리되었습니다.', type: 'success' })
+  } catch {
+    openToast({ message: '완료 처리에 실패했습니다.', type: 'error' })
+  }
+}
+
 // 인라인 편집: 셀에서 바로 변경
 async function onInlineChange(issue: any, field: string, val: string | number) {
+  // 완료로 변경 시 코멘트 필수
+  if (field === 'status' && val === 'done') {
+    doneTargetIssue.value = issue
+    doneComment.value = ''
+    doneModalOpen.value = true
+    return
+  }
+
   const prev = issue[field]
   const updateData: Record<string, unknown> = {}
 
@@ -736,6 +772,18 @@ onMounted(async () => {
         <p class="settings-desc">{{ project?.description || '설명 없음' }}</p>
       </div>
     </UiDrawer>
+
+    <!-- 완료 코멘트 모달 -->
+    <UiModal :open="doneModalOpen" title="완료 처리" @update:open="doneModalOpen = $event">
+      <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">완료 내용을 간단히 기록해주세요.</p>
+      <UiTextarea v-model="doneComment" placeholder="수정 완료, PR #123 반영 등..." :rows="3" />
+      <template #footer>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <UiButton variant="secondary" size="sm" @click="doneModalOpen = false">취소</UiButton>
+          <UiButton variant="primary" size="sm" @click="confirmDone">완료 처리</UiButton>
+        </div>
+      </template>
+    </UiModal>
 
     <!-- FAB: 이슈 추가 -->
     <button v-if="!loading" class="fab" aria-label="이슈 추가" @click="startCreate">
