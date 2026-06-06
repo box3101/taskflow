@@ -710,8 +710,10 @@ onMounted(async () => {
     <!-- 설정 드로어 -->
     <UiDrawer :open="settingsOpen" title="프로젝트 설정" @update:open="settingsOpen = $event">
       <div class="settings-section">
-        <h4 class="settings-label">멤버 ({{ project?.members?.length || 0 }}명)</h4>
-        <UiButton variant="outline" size="sm" @click="showAddMemberModal = true" style="margin-bottom: 12px;">+ 멤버 추가</UiButton>
+        <div class="settings-header">
+          <h4 class="settings-label">멤버 ({{ project?.members?.length || 0 }}명)</h4>
+          <UiButton variant="outline" size="sm" @click="showAddMemberModal = true">+ 멤버 추가</UiButton>
+        </div>
         <ul v-if="project?.members?.length" class="member-list">
           <li v-for="m in project.members" :key="m.id" class="member-item">
             <span class="member-avatar" :style="{ background: getAvatarColor(m.user.name) }">{{ m.user.name.charAt(0) }}</span>
@@ -914,7 +916,8 @@ onMounted(async () => {
 .tab-content { margin-top: 16px; }
 
 .settings-section { padding: 4px 0; }
-.settings-label { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px; }
+.settings-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.settings-label { font-size: 14px; font-weight: 600; color: #374151; margin: 0; }
 .settings-desc { font-size: 13px; color: #6b7280; }
 .settings-divider { border: none; border-top: 1px solid #e5e7eb; margin: 16px 0; }
 
