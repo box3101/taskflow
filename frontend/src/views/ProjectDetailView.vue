@@ -89,16 +89,32 @@ function filterLabel(checked: string[], items: { label: string; value: string }[
   return checked.map(v => items.find(i => i.value === v)?.label).join(', ')
 }
 
+const STATUS_ORDER: Record<string, number> = { doing: 0, todo: 1, done: 2 }
+const PRIORITY_ORDER: Record<string, number> = { high: 0, mid: 1, low: 2 }
+
 const filteredIssues = computed(() => {
-  return issues.value.filter((i: any) => {
-    if (checkedStatuses.value.length > 0 && !checkedStatuses.value.includes(i.status)) return false
-    if (checkedPriorities.value.length > 0 && !checkedPriorities.value.includes(i.priority)) return false
-    if (filterAssignee.value) {
-      const assigneeVal = i.assigneeId ? String(i.assigneeId) : 'none'
-      if (assigneeVal !== filterAssignee.value) return false
-    }
-    return true
-  })
+  return issues.value
+    .filter((i: any) => {
+      if (checkedStatuses.value.length > 0 && !checkedStatuses.value.includes(i.status)) return false
+      if (checkedPriorities.value.length > 0 && !checkedPriorities.value.includes(i.priority)) return false
+      if (filterAssignee.value) {
+        const assigneeVal = i.assigneeId ? String(i.assigneeId) : 'none'
+        if (assigneeVal !== filterAssignee.value) return false
+      }
+      return true
+    })
+    .sort((a: any, b: any) => {
+      // 1차: 상태 (진행중 → 할일 → 완료)
+      const s = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9)
+      if (s !== 0) return s
+      // 2차: 우선순위 (높음 → 보통 → 낮음)
+      const p = (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9)
+      if (p !== 0) return p
+      // 3차: 마감일 (가까운 순, 없으면 뒤로)
+      const da = a.dueAt ? new Date(a.dueAt).getTime() : Infinity
+      const db = b.dueAt ? new Date(b.dueAt).getTime() : Infinity
+      return da - db
+    })
 })
 
 // 더보기 (초기 20건, 이후 20건씩 추가)
@@ -932,7 +948,7 @@ onMounted(async () => {
 
 // ── 멀티 필터 ──
 .filter-assignee {
-  width: 140px;
+  :deep(.ui-select) { width: 140px; }
 }
 .filter-bar {
   display: flex;
