@@ -29,7 +29,7 @@ const startTime = ref('')
 const endTime = ref('')
 const location = ref('')
 const memo = ref('')
-const color = ref('#22c55e')
+const color = ref('#3b82f6')
 
 const timeError = computed(() => {
   if (startTime.value && endTime.value && startTime.value >= endTime.value) {
