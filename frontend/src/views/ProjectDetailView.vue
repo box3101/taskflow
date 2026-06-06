@@ -753,10 +753,13 @@ onMounted(async () => {
               <span>{{ m.user.email }}</span>
             </div>
             <div class="member-actions">
-              <div class="member-role-select">
-                <UiSelect :model-value="m.role" :options="roleOptions" size="sm" @change="(val: string | number) => onChangeRole(m, val)" />
-              </div>
-              <button class="member-delete-btn" @click="onRemoveMember(m)">&times;</button>
+              <template v-if="isProjectOwner">
+                <div class="member-role-select">
+                  <UiSelect :model-value="m.role" :options="roleOptions" size="sm" @change="(val: string | number) => onChangeRole(m, val)" />
+                </div>
+                <button class="member-delete-btn" @click="onRemoveMember(m)">&times;</button>
+              </template>
+              <span v-else class="member-role-text">{{ m.role }}</span>
             </div>
           </li>
         </ul>
