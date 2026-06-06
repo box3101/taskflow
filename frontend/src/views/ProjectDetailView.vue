@@ -143,7 +143,6 @@ const issueColumns: TableColumn[] = [
   { key: 'priority', label: '우선순위', width: '100px', align: 'center', sortable: true },
   { key: 'dueAt', label: '마감일', width: '150px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
   { key: 'assignee', label: '담당자', width: '100px', align: 'center', hideBelow: 768 },
-  { key: 'requestedAt', label: '요청일', width: '150px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
 ]
 
 // 상태/우선순위 드롭다운 메뉴 아이템
