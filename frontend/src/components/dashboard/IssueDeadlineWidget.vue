@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { UiBadge } from '@leechanyong/ispark-ui'
+import { UiBadge, UiIcon } from '@leechanyong/ispark-ui'
 import api from '../../api/client'
 
 const router = useRouter()
@@ -61,7 +61,7 @@ function goToIssue(issue: any) {
 <template>
   <div class="issue-deadline-widget">
     <div class="widget-header">
-      <strong>🔔 이슈 마감</strong>
+      <strong><UiIcon name="alarm-clock" :size="16" /> 이슈 마감</strong>
     </div>
     <div v-if="deadlineIssues.length === 0" class="widget-empty">
       마감 임박 이슈가 없습니다 👍
@@ -110,15 +110,17 @@ function goToIssue(issue: any) {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
 }
 .widget-item {
   cursor: pointer;
-  padding: 8px 0;
+  padding: 6px 0;
   border-bottom: 1px solid #f3f4f6;
   transition: background 0.1s;
   &:last-child { border-bottom: none; }
-  &:hover { background: #f9fafb; margin: 0 -8px; padding: 8px; border-radius: 8px; }
+  &:hover { background: #f9fafb; margin: 0 -6px; padding: 6px; border-radius: 6px; }
 }
 .widget-item__top {
   display: flex;
