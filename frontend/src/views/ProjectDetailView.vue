@@ -78,6 +78,10 @@ const dueFilterItems = [
 ]
 
 const searchQuery = ref('')
+const showFilters = ref(false)
+const hasActiveFilter = computed(() =>
+  checkedStatuses.value.length > 0 || filterModule.value !== '' || filterAssignee.value !== ''
+)
 const checkedStatuses = ref<string[]>([])
 const filterModule = ref('')
 const filterAssignee = ref('')
@@ -618,20 +622,30 @@ onMounted(async () => {
         <template v-else>
           <!-- 이슈 -->
           <div class="tab-content">
-            <!-- 검색 -->
+            <!-- 검색 + 필터 토글 -->
             <div class="search-bar">
               <UiInput
                 v-model="searchQuery"
-                placeholder="제목, 설명, 관리번호 검색..."
+                placeholder="검색..."
                 size="sm"
                 clearable
+                class="search-input"
               >
                 <template #icon-left><UiIcon name="search" :size="14" /></template>
               </UiInput>
+              <button
+                class="filter-toggle-btn"
+                :class="{ 'is-active': showFilters || hasActiveFilter }"
+                @click="showFilters = !showFilters"
+              >
+                <UiIcon name="sliders-horizontal" :size="16" />
+                <span v-if="hasActiveFilter" class="filter-dot" />
+              </button>
+              <span class="filter-count-inline">{{ filteredIssues.length }}건</span>
             </div>
 
-            <!-- 필터 바 -->
-            <div class="filter-bar">
+            <!-- 필터 바 (토글) -->
+            <div v-if="showFilters" class="filter-bar">
               <div class="multi-filter" @click.stop>
                 <button class="multi-filter-btn" @click="showStatusDropdown = !showStatusDropdown; showPriorityDropdown = false; showAssigneeDropdown = false">
                   <span class="multi-filter-label">상태</span>
@@ -659,7 +673,6 @@ onMounted(async () => {
               <UiSelect v-model="filterModule" :options="[{ label: '모듈 전체', value: '' }, ...moduleSelectOptions]" size="sm" placeholder="모듈" class="filter-module" />
               <UiSelect v-model="filterAssignee" :options="assigneeFilterOptions" size="sm" placeholder="담당자" class="filter-assignee" />
 
-              <span class="filter-count">{{ filteredIssues.length }}건{{ filteredIssues.length !== issues.length ? ` / 전체 ${issues.length}건` : '' }}</span>
             </div>
 
             <UiEmpty v-if="filteredIssues.length === 0" title="이슈가 없습니다." />
@@ -1051,29 +1064,67 @@ onMounted(async () => {
 
 // ── 멀티 필터 ──
 .search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 12px;
-  max-width: 360px;
+}
+.search-input {
+  max-width: 300px;
+}
+.filter-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: none;
+  color: #6b7280;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  &:hover { background: #f3f4f6; color: #374151; }
+  &.is-active { color: #4f6af6; border-color: #4f6af6; }
+}
+.filter-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+.filter-count-inline {
+  font-size: 12px;
+  color: #9ca3af;
+  white-space: nowrap;
+  margin-left: auto;
 }
 @media (max-width: 640px) {
-  .search-bar { max-width: 100%; }
+  .search-input { max-width: 100%; flex: 1; }
 }
 .filter-module {
-  width: 130px;
-  min-width: 130px;
-  max-width: 130px;
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
 }
 .filter-assignee {
-  width: 140px;
-  min-width: 140px;
-  max-width: 140px;
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
   flex-shrink: 0;
   flex-grow: 0;
 }
 .filter-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 .filter-count {
   font-size: 13px;
@@ -1460,7 +1511,6 @@ onMounted(async () => {
 
 @media (max-width: 768px) {
   .main { padding: 16px 12px; }
-  .filter-bar { flex-wrap: wrap; }
   .fab { bottom: 68px; right: 16px; width: 48px; height: 48px; }
 }
 </style>
