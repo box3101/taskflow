@@ -22,7 +22,7 @@ const loading = ref(true)
 const project = ref<any>(null)
 const issues = ref<any[]>([])
 const members = ref<any[]>([])
-const activeTab = ref('board')
+const settingsOpen = ref(false)
 
 const tabs: TabItem[] = [
   { label: '이슈', value: 'board' },
@@ -528,15 +528,19 @@ onMounted(async () => {
       <div class="header-left">
         <UiButton variant="ghost" size="sm" @click="goBack">← 목록</UiButton>
         <h1 class="header-title">{{ project?.name || '...' }}</h1>
+        <UiBadge v-if="project" :variant="project.status === 'active' ? 'success' : project.status === 'done' ? 'primary' : 'default'" size="sm">
+          {{ project.status === 'active' ? '진행중' : project.status === 'done' ? '완료' : '보류' }}
+        </UiBadge>
       </div>
+      <UiButton v-if="project" variant="ghost" size="sm" icon-only aria-label="프로젝트 설정" @click="settingsOpen = true">
+        <template #icon-left><UiIcon name="settings" :size="18" /></template>
+      </UiButton>
     </div>
 
     <UiLoading v-if="loading" overlay />
         <template v-else>
-          <UiTab v-model="activeTab" :tabs="tabs" />
-
-          <!-- 이슈 탭 -->
-          <div v-if="activeTab === 'board'" class="tab-content">
+          <!-- 이슈 -->
+          <div class="tab-content">
             <!-- 멀티 필터 바 -->
             <div class="filter-bar">
               <div class="multi-filter" @click.stop>
@@ -701,49 +705,35 @@ onMounted(async () => {
             </div>
           </div>
 
-          <!-- 멤버 탭 -->
-          <div v-if="activeTab === 'members'" class="tab-content">
-            <div class="member-header">
-              <span class="member-count">{{ project.members?.length || 0 }}명</span>
-              <UiButton variant="primary" size="sm" @click="showAddMemberModal = true">+ 멤버 추가</UiButton>
-            </div>
-            <UiEmpty v-if="!project.members?.length" title="멤버가 없습니다." />
-            <ul v-else class="member-list">
-              <li v-for="m in project.members" :key="m.id" class="member-item">
-                <span class="member-avatar" :style="{ background: getAvatarColor(m.user.name) }">{{ m.user.name.charAt(0) }}</span>
-                <div class="member-info">
-                  <strong>{{ m.user.name }}</strong>
-                  <span>{{ m.user.email }}</span>
-                </div>
-                <div class="member-actions">
-                  <div class="member-role-select">
-                    <UiSelect :model-value="m.role" :options="roleOptions" size="sm" @change="(val: string | number) => onChangeRole(m, val)" />
-                  </div>
-                  <button class="member-delete-btn" @click="onRemoveMember(m)">&times;</button>
-                </div>
-              </li>
-            </ul>
-          </div>
-
-          <!-- 개요 탭 -->
-          <div v-if="activeTab === 'overview'" class="tab-content">
-            <p class="overview-desc">{{ project.description || '설명 없음' }}</p>
-            <div class="overview-stats">
-              <div class="stat-card"><span class="stat-value">{{ issueStats.total }}</span><span class="stat-label">전체 이슈</span></div>
-              <div class="stat-card stat-card--todo"><span class="stat-value">{{ issueStats.todo }}</span><span class="stat-label">할 일</span></div>
-              <div class="stat-card stat-card--doing"><span class="stat-value">{{ issueStats.doing }}</span><span class="stat-label">진행중</span></div>
-              <div class="stat-card stat-card--done"><span class="stat-value">{{ issueStats.done }}</span><span class="stat-label">완료</span></div>
-            </div>
-            <div v-if="issueStats.total > 0" class="overview-progress">
-              <div class="progress-header"><span>진행률</span><span>{{ Math.round((issueStats.done / issueStats.total) * 100) }}%</span></div>
-              <div class="progress-bar"><div class="progress-fill" :style="{ width: `${(issueStats.done / issueStats.total) * 100}%` }" /></div>
-            </div>
-            <div class="overview-meta">
-              <span>멤버 {{ project.members?.length || 0 }}명</span><span>·</span>
-              <span>생성일 {{ new Date(project.createdAt).toLocaleDateString('ko-KR') }}</span>
-            </div>
-          </div>
         </template>
+
+    <!-- 설정 드로어 -->
+    <UiDrawer :open="settingsOpen" title="프로젝트 설정" @update:open="settingsOpen = $event">
+      <div class="settings-section">
+        <h4 class="settings-label">멤버 ({{ project?.members?.length || 0 }}명)</h4>
+        <UiButton variant="outline" size="sm" @click="showAddMemberModal = true" style="margin-bottom: 12px;">+ 멤버 추가</UiButton>
+        <ul v-if="project?.members?.length" class="member-list">
+          <li v-for="m in project.members" :key="m.id" class="member-item">
+            <span class="member-avatar" :style="{ background: getAvatarColor(m.user.name) }">{{ m.user.name.charAt(0) }}</span>
+            <div class="member-info">
+              <strong>{{ m.user.name }}</strong>
+              <span>{{ m.user.email }}</span>
+            </div>
+            <div class="member-actions">
+              <div class="member-role-select">
+                <UiSelect :model-value="m.role" :options="roleOptions" size="sm" @change="(val: string | number) => onChangeRole(m, val)" />
+              </div>
+              <button class="member-delete-btn" @click="onRemoveMember(m)">&times;</button>
+            </div>
+          </li>
+        </ul>
+      </div>
+      <hr class="settings-divider" />
+      <div class="settings-section">
+        <h4 class="settings-label">설명</h4>
+        <p class="settings-desc">{{ project?.description || '설명 없음' }}</p>
+      </div>
+    </UiDrawer>
 
     <!-- FAB: 이슈 추가 -->
     <button v-if="!loading" class="fab" aria-label="이슈 추가" @click="startCreate">
@@ -921,7 +911,12 @@ onMounted(async () => {
 }
 .header-left { display: flex; align-items: center; gap: 12px; }
 .header-title { font-size: 18px; font-weight: 700; }
-.tab-content { margin-top: 24px; }
+.tab-content { margin-top: 16px; }
+
+.settings-section { padding: 4px 0; }
+.settings-label { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px; }
+.settings-desc { font-size: 13px; color: #6b7280; }
+.settings-divider { border: none; border-top: 1px solid #e5e7eb; margin: 16px 0; }
 
 // ── Drawer 폼 ──
 .drawer-form {
