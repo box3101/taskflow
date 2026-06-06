@@ -196,8 +196,9 @@ const strategyStats = computed(() => {
       <div class="trade-log__stat">
         <span class="trade-log__stat-value" :class="{ 'text-plus': stats.totalPnl > 0, 'text-minus': stats.totalPnl < 0 }">
           {{ stats.totalPnl > 0 ? '+' : '' }}{{ stats.totalPnl.toLocaleString() }}원
+          <small style="font-size:11px;opacity:0.7;">({{ stats.totalPnlPct > 0 ? '+' : '' }}{{ stats.totalPnlPct.toFixed(1) }}%)</small>
         </span>
-        <span class="trade-log__stat-label">총 손익 ({{ stats.totalPnlPct > 0 ? '+' : '' }}{{ stats.totalPnlPct.toFixed(1) }}%)</span>
+        <span class="trade-log__stat-label">총 손익</span>
       </div>
       <div class="trade-log__stat">
         <span class="trade-log__stat-value">{{ stats.winRate.toFixed(0) }}%</span>
