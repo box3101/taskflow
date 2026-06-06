@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { UiButton, UiIcon, UiEmpty, UiLoading, openToast, openConfirm } from '@leechanyong/ispark-ui'
 import CalendarMonth from '../calendar/CalendarMonth.vue'
 import TradeLogForm from './TradeLogForm.vue'
-import { useTradeLog, STATUS_LABELS, STATUS_COLORS, type TradeLog } from '../../composables/useTradeLog'
+import { useTradeLog, STATUS_LABELS, STATUS_COLORS, STRATEGY_LABELS, type TradeLog } from '../../composables/useTradeLog'
 
 const { logs, loading, fetchLogs, addLog, updateLog, deleteLog } = useTradeLog()
 
@@ -158,6 +158,30 @@ const stats = computed(() => {
 
   return { totalPnl, winRate, avgWin, avgLoss, holdingCount: holding.length, closedCount: closed.length, totalCount: all.length }
 })
+
+// 전략별 성과
+const strategyStats = computed(() => {
+  const closed = logs.value.filter(l => l.sellPrice && (l.status === 'profit' || l.status === 'stopped'))
+  const groups: Record<string, { count: number; pnl: number; wins: number }> = {}
+
+  for (const l of closed) {
+    const key = l.strategy || 'unclassified'
+    if (!groups[key]) groups[key] = { count: 0, pnl: 0, wins: 0 }
+    groups[key].count++
+    groups[key].pnl += calcRealPnl(l)
+    if (calcRealPnl(l) > 0) groups[key].wins++
+  }
+
+  return Object.entries(groups)
+    .map(([key, v]) => ({
+      key,
+      label: STRATEGY_LABELS[key] || key,
+      count: v.count,
+      pnl: v.pnl,
+      winRate: v.count > 0 ? (v.wins / v.count) * 100 : 0,
+    }))
+    .sort((a, b) => b.pnl - a.pnl)
+})
 </script>
 
 <template>
@@ -191,6 +215,21 @@ const stats = computed(() => {
       <div class="trade-log__stat">
         <span class="trade-log__stat-value">{{ stats.closedCount }}</span>
         <span class="trade-log__stat-label">완료</span>
+      </div>
+    </div>
+
+    <!-- 전략별 성과 -->
+    <div v-if="strategyStats.length > 0" class="trade-log__strategy">
+      <div class="strategy-header">전략별 성과</div>
+      <div class="strategy-list">
+        <div v-for="s in strategyStats" :key="s.key" class="strategy-item">
+          <span class="strategy-label">{{ s.label }}</span>
+          <span class="strategy-count">{{ s.count }}건</span>
+          <span class="strategy-pnl" :class="{ 'text-plus': s.pnl > 0, 'text-minus': s.pnl < 0 }">
+            {{ s.pnl > 0 ? '+' : '' }}{{ s.pnl.toLocaleString() }}원
+          </span>
+          <span class="strategy-winrate">승률 {{ s.winRate.toFixed(0) }}%</span>
+        </div>
       </div>
     </div>
 
@@ -315,6 +354,49 @@ const stats = computed(() => {
 
 .text-plus { color: #ef4444; }
 .text-minus { color: #3b82f6; }
+
+// 전략별 성과
+.trade-log__strategy {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.strategy-header {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1f2b;
+  margin-bottom: 10px;
+}
+.strategy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.strategy-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+.strategy-label {
+  font-weight: 600;
+  min-width: 70px;
+}
+.strategy-count {
+  color: #6b7280;
+  min-width: 40px;
+}
+.strategy-pnl {
+  font-weight: 700;
+  min-width: 100px;
+  text-align: right;
+}
+.strategy-winrate {
+  color: #6b7280;
+  min-width: 60px;
+}
 
 // 캘린더 + 사이드 레이아웃
 .trade-log__body {
@@ -457,6 +539,8 @@ const stats = computed(() => {
 
 :global([data-theme="dark"]) {
   .trade-log__stats { background: #1f2937; }
+  .trade-log__strategy { background: #1f2937; }
+  .strategy-header { color: #f3f4f6; }
   .trade-log__stat-value { color: #f3f4f6; }
   .trade-log__item { background: #1f2937; }
   .trade-log__item:hover { background: #374151; }

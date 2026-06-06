@@ -313,6 +313,7 @@ model TradeLog {
   buyDate   String   @map("buy_date")           // YYYY-MM-DD
   sellDate  String?  @map("sell_date")          // 청산일
   memo      String?  @db.Text
+  strategy    String?  @db.VarChar(20)                         // morning_dip|breakout|pullback|earnings_news|impulse|unclassified
   realPnl     Int?     @map("real_pnl")                       // 실제 손익 (수수료/세금 포함)
   entryReason String? @map("entry_reason") @db.VarChar(200)  // 진입 사유
   exitReason  String? @map("exit_reason") @db.VarChar(200)   // 청산 사유

@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue'
 import { UiDrawer, UiInput, UiSelect, UiTextarea, UiButton, openToast } from '@leechanyong/ispark-ui'
 import type { SelectOption } from '@leechanyong/ispark-ui'
-import { STATUS_LABELS, type TradeLog } from '../../composables/useTradeLog'
+import { STATUS_LABELS, STRATEGY_LABELS, type TradeLog } from '../../composables/useTradeLog'
 
 const props = defineProps<{
   open: boolean
@@ -27,12 +27,17 @@ const form = ref({
   sellDate: '',
   status: 'holding',
   memo: '',
+  strategy: '',
   realPnl: '',
   entryReason: '',
   exitReason: '',
 })
 
 const statusOptions: SelectOption[] = Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))
+const strategyOptions: SelectOption[] = [
+  { value: '', label: '전략 선택' },
+  ...Object.entries(STRATEGY_LABELS).filter(([k]) => k !== 'unclassified').map(([value, label]) => ({ value, label })),
+]
 
 watch(() => props.open, (open) => {
   if (open) {
@@ -49,6 +54,7 @@ watch(() => props.open, (open) => {
         sellDate: props.log.sellDate || '',
         status: props.log.status,
         memo: props.log.memo || '',
+        strategy: props.log.strategy || '',
         realPnl: props.log.realPnl ? String(props.log.realPnl) : '',
         entryReason: props.log.entryReason || '',
         exitReason: props.log.exitReason || '',
@@ -82,6 +88,7 @@ function handleSave() {
     sellDate: form.value.sellDate || null,
     status: form.value.status as TradeLog['status'],
     memo: form.value.memo.trim() || null,
+    strategy: form.value.strategy || null,
     realPnl: form.value.realPnl ? Number(form.value.realPnl) : null,
     entryReason: form.value.entryReason.trim() || null,
     exitReason: form.value.exitReason.trim() || null,
@@ -105,6 +112,11 @@ function handleSave() {
           <label>상태</label>
           <UiSelect v-model="form.status" :options="statusOptions" />
         </div>
+      </div>
+
+      <div class="trade-form__field">
+        <label>전략</label>
+        <UiSelect v-model="form.strategy" :options="strategyOptions" />
       </div>
 
       <div class="trade-form__row">

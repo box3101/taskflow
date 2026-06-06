@@ -14,11 +14,21 @@ export interface TradeLog {
   buyDate: string
   sellDate: string | null
   memo: string | null
+  strategy: string | null
   realPnl: number | null
   entryReason: string | null
   exitReason: string | null
   createdAt: string
   updatedAt: string
+}
+
+export const STRATEGY_LABELS: Record<string, string> = {
+  morning_dip: '모닝딥',
+  breakout: '돌파',
+  pullback: '눌림목',
+  earnings_news: '실적/뉴스',
+  impulse: '즉흥',
+  unclassified: '미분류',
 }
 
 export const STATUS_LABELS: Record<string, string> = {
