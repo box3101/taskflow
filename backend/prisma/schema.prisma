@@ -41,6 +41,7 @@ model Project {
   description String?
   status      String   @default("active") // active | done | hold
   order       Int      @default(0)
+  externalUrl String?  @map("external_url") @db.Text  // 외부 링크 (구글 스프레드시트 등)
   createdAt   DateTime @default(now()) @map("created_at")
 
   members Member[]

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { UiTab, UiTable, UiBadge, UiLoading, UiEmpty, UiButton, UiIcon, UiDrawer, UiDropdownMenu, UiDatePicker, UiModal, UiInput, UiSelect, UiTextarea, UiToast, UiConfirm, openToast, openConfirm } from '@leechanyong/ispark-ui'
 import type { TabItem, SelectOption, TableColumn, DropdownMenuItemDef } from '@leechanyong/ispark-ui'
@@ -23,6 +23,24 @@ const project = ref<any>(null)
 const issues = ref<any[]>([])
 const members = ref<any[]>([])
 const settingsOpen = ref(false)
+const settingsExternalUrl = ref('')
+
+watch(() => settingsOpen.value, (open) => {
+  if (open && project.value) {
+    settingsExternalUrl.value = project.value.externalUrl || ''
+  }
+})
+
+async function saveExternalUrl() {
+  if (!project.value) return
+  try {
+    const { data } = await api.put(`/projects/${project.value.id}`, { externalUrl: settingsExternalUrl.value.trim() })
+    project.value.externalUrl = data.externalUrl
+    openToast({ message: '외부 링크가 저장되었습니다.', type: 'success' })
+  } catch {
+    openToast({ message: '저장에 실패했습니다.', type: 'error' })
+  }
+}
 
 const tabs: TabItem[] = [
   { label: '이슈', value: 'board' },
@@ -613,9 +631,15 @@ onMounted(async () => {
           {{ project.status === 'active' ? '진행중' : project.status === 'done' ? '완료' : '보류' }}
         </UiBadge>
       </div>
-      <UiButton v-if="project" variant="ghost" size="sm" icon-only aria-label="프로젝트 설정" @click="settingsOpen = true">
-        <template #icon-left><UiIcon name="settings" :size="18" /></template>
-      </UiButton>
+      <div class="header-actions">
+        <UiButton v-if="project?.externalUrl" variant="outline" size="sm" as="a" :href="project.externalUrl" target="_blank">
+          <template #icon-left><UiIcon name="external-link" :size="14" /></template>
+          원본 시트
+        </UiButton>
+        <UiButton v-if="project" variant="ghost" size="sm" icon-only aria-label="프로젝트 설정" @click="settingsOpen = true">
+          <template #icon-left><UiIcon name="settings" :size="18" /></template>
+        </UiButton>
+      </div>
     </div>
 
     <UiLoading v-if="loading" overlay />
@@ -817,6 +841,19 @@ onMounted(async () => {
       <div class="settings-section">
         <h4 class="settings-label">설명</h4>
         <p class="settings-desc">{{ project?.description || '설명 없음' }}</p>
+      </div>
+      <hr class="settings-divider" />
+      <div class="settings-section">
+        <h4 class="settings-label">외부 링크</h4>
+        <div style="display:flex;gap:8px;">
+          <UiInput
+            v-model="settingsExternalUrl"
+            placeholder="https://docs.google.com/spreadsheets/..."
+            size="sm"
+            style="flex:1;"
+          />
+          <UiButton variant="secondary" size="sm" @click="saveExternalUrl">저장</UiButton>
+        </div>
       </div>
     </UiDrawer>
 
@@ -1031,6 +1068,7 @@ onMounted(async () => {
   margin-bottom: 8px;
 }
 .header-left { display: flex; align-items: center; gap: 12px; }
+.header-actions { display: flex; align-items: center; gap: 8px; }
 .header-title { font-size: 18px; font-weight: 700; }
 .tab-content { margin-top: 16px; }
 

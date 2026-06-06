@@ -92,10 +92,15 @@ router.get('/:id', async (req, res) => {
 // 프로젝트 수정
 router.put('/:id', async (req, res) => {
   try {
-    const { name, description, status } = req.body
+    const { name, description, status, externalUrl } = req.body
+    const data: Record<string, unknown> = {}
+    if (name !== undefined) data.name = name
+    if (description !== undefined) data.description = description
+    if (status !== undefined) data.status = status
+    if (externalUrl !== undefined) data.externalUrl = externalUrl || null
     const project = await prisma.project.update({
       where: { id: Number(req.params.id) },
-      data: { name, description, status },
+      data,
     })
     res.json(project)
   } catch {
