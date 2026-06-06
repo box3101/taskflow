@@ -7,6 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'taskflow-dev-secret'
 export interface AuthUser {
   id: number
   email: string
+  role: string
 }
 
 // Request에 user 필드 추가

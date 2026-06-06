@@ -219,6 +219,93 @@ async function onInlineChange(issue: any, field: string, val: string | number) {
   }
 }
 
+// ── 댓글 ──
+interface IssueComment {
+  id: number
+  content: string
+  createdAt: string
+  updatedAt: string
+  user: { id: number; name: string }
+}
+
+const comments = ref<IssueComment[]>([])
+const commentContent = ref('')
+const commentSaving = ref(false)
+const editingCommentId = ref<number | null>(null)
+const editingCommentContent = ref('')
+const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+
+function timeAgo(dateStr: string): string {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
+  if (diff < 60) return '방금 전'
+  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`
+  if (diff < 604800) return `${Math.floor(diff / 86400)}일 전`
+  return new Date(dateStr).toLocaleDateString('ko-KR')
+}
+
+async function loadComments(issueId: number) {
+  try {
+    const { data } = await api.get(`/issues/${issueId}/comments`)
+    comments.value = data
+  } catch {
+    comments.value = []
+  }
+}
+
+async function addComment() {
+  if (!panelIssue.value || !commentContent.value.trim()) return
+  commentSaving.value = true
+  try {
+    await api.post(`/issues/${panelIssue.value.id}/comments`, { content: commentContent.value.trim() })
+    commentContent.value = ''
+    await loadComments(panelIssue.value.id)
+  } catch {
+    openToast({ message: '댓글 등록에 실패했습니다.', type: 'error' })
+  } finally {
+    commentSaving.value = false
+  }
+}
+
+function startEditComment(comment: IssueComment) {
+  editingCommentId.value = comment.id
+  editingCommentContent.value = comment.content
+}
+
+function cancelEditComment() {
+  editingCommentId.value = null
+  editingCommentContent.value = ''
+}
+
+async function saveEditComment(commentId: number) {
+  if (!panelIssue.value || !editingCommentContent.value.trim()) return
+  try {
+    await api.patch(`/issues/${panelIssue.value.id}/comments/${commentId}`, { content: editingCommentContent.value.trim() })
+    editingCommentId.value = null
+    editingCommentContent.value = ''
+    await loadComments(panelIssue.value.id)
+  } catch {
+    openToast({ message: '댓글 수정에 실패했습니다.', type: 'error' })
+  }
+}
+
+async function deleteComment(commentId: number) {
+  if (!panelIssue.value) return
+  const confirmed = await openConfirm({
+    title: '댓글 삭제',
+    message: '이 댓글을 삭제하시겠습니까?',
+    confirmText: '삭제',
+  })
+  if (!confirmed) return
+  try {
+    await api.delete(`/issues/${panelIssue.value.id}/comments/${commentId}`)
+    await loadComments(panelIssue.value.id)
+    openToast({ message: '댓글이 삭제되었습니다.', type: 'success' })
+  } catch {
+    openToast({ message: '댓글 삭제에 실패했습니다.', type: 'error' })
+  }
+}
+
 // ── 사이드 패널 ──
 const panelOpen = ref(false)
 const panelIssue = ref<any>(null)
@@ -241,11 +328,16 @@ function openPanel(issue: any) {
   }
   panelEditingDesc.value = false
   panelOpen.value = true
+  loadComments(issue.id)
 }
 
 function closePanel() {
   panelOpen.value = false
   panelIssue.value = null
+  comments.value = []
+  commentContent.value = ''
+  editingCommentId.value = null
+  editingCommentContent.value = ''
 }
 
 async function onPanelSave() {
@@ -728,6 +820,57 @@ onMounted(async () => {
             <UiTextarea v-model="panelForm.description" placeholder="이슈에 대한 메모를 작성하세요..." :rows="8" />
           </form>
         </div>
+
+        <!-- 구분선 -->
+        <hr class="panel-divider" />
+
+        <!-- 댓글 -->
+        <div class="panel-comments">
+          <div class="panel-comments__header">
+            <span class="panel-comments__label">💬 댓글 ({{ comments.length }})</span>
+          </div>
+
+          <!-- 댓글 목록 -->
+          <div v-if="comments.length" class="panel-comments__list">
+            <div v-for="c in comments" :key="c.id" class="panel-comment">
+              <!-- 수정 모드 -->
+              <template v-if="editingCommentId === c.id">
+                <div class="panel-comment__edit">
+                  <UiTextarea v-model="editingCommentContent" :rows="2" />
+                  <div class="panel-comment__edit-actions">
+                    <UiButton size="xs" variant="ghost" @click="cancelEditComment">취소</UiButton>
+                    <UiButton size="xs" @click="saveEditComment(c.id)" :disabled="!editingCommentContent.trim()">확인</UiButton>
+                  </div>
+                </div>
+              </template>
+
+              <!-- 보기 모드 -->
+              <template v-else>
+                <div class="panel-comment__header">
+                  <span class="panel-comment__author">{{ c.user.name }}</span>
+                  <span class="panel-comment__time">{{ timeAgo(c.createdAt) }}</span>
+                  <span v-if="c.updatedAt !== c.createdAt" class="panel-comment__edited">(수정됨)</span>
+                  <div class="panel-comment__actions">
+                    <button v-if="c.user.id === currentUser.id" class="panel-comment__btn" title="수정" @click="startEditComment(c)">
+                      <UiIcon name="pencil" :size="12" />
+                    </button>
+                    <button v-if="c.user.id === currentUser.id || currentUser.role === 'admin'" class="panel-comment__btn panel-comment__btn--delete" title="삭제" @click="deleteComment(c.id)">
+                      <UiIcon name="trash-2" :size="12" />
+                    </button>
+                  </div>
+                </div>
+                <p class="panel-comment__content">{{ c.content }}</p>
+              </template>
+            </div>
+          </div>
+          <div v-else class="panel-comments__empty">아직 댓글이 없습니다.</div>
+
+          <!-- 댓글 입력 -->
+          <div class="panel-comments__input">
+            <UiTextarea v-model="commentContent" :rows="2" placeholder="댓글을 입력하세요..." />
+            <UiButton size="sm" :loading="commentSaving" :disabled="!commentContent.trim()" @click="addComment">등록</UiButton>
+          </div>
+        </div>
       </div>
       <template #footer>
         <div class="drawer-footer-between">
@@ -1129,6 +1272,38 @@ onMounted(async () => {
     transform: scale(1.08);
     box-shadow: 0 6px 16px rgba(79, 106, 246, 0.5);
   }
+}
+
+// ── 댓글 ──
+.panel-comments {
+  margin-top: 8px;
+  &__header { margin-bottom: 12px; }
+  &__label { font-size: 14px; font-weight: 600; color: #1f2937; }
+  &__list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+  &__empty { font-size: 13px; color: #9ca3af; text-align: center; padding: 20px 0; margin-bottom: 16px; }
+  &__input {
+    display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+    :deep(.ui-textarea) { width: 100%; }
+  }
+}
+
+.panel-comment {
+  padding: 10px 12px; background: #f9fafb; border-radius: 8px; border: 1px solid #f3f4f6;
+  &__header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  &__author { font-size: 13px; font-weight: 600; color: #374151; }
+  &__time { font-size: 11px; color: #9ca3af; }
+  &__edited { font-size: 11px; color: #9ca3af; font-style: italic; }
+  &__actions { margin-left: auto; display: flex; gap: 4px; }
+  &__btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border: none; background: transparent;
+    border-radius: 4px; color: #9ca3af; cursor: pointer;
+    &:hover { background: #e5e7eb; color: #374151; }
+    &--delete:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+  }
+  &__content { font-size: 13px; color: #374151; line-height: 1.5; white-space: pre-wrap; margin: 0; }
+  &__edit { display: flex; flex-direction: column; gap: 6px; }
+  &__edit-actions { display: flex; gap: 4px; justify-content: flex-end; }
 }
 
 @media (max-width: 768px) {
