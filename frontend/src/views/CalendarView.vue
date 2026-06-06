@@ -37,9 +37,9 @@ const monthLabel = computed(() => `${currentYear.value}년 ${currentMonth.value}
 
 const filteredEvents = computed(() => {
   return allEvents.value.filter(ev => {
-    if (ev.type === 'todo' && !showTodo.value) return false
-    if (ev.type === 'issue' && !showIssue.value) return false
-    return true
+    if (ev.type === 'todo') return showTodo.value
+    if (ev.type === 'issue') return showIssue.value
+    return true // 캘린더 일정은 항상 표시
   })
 })
 

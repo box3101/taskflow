@@ -738,7 +738,7 @@ onMounted(async () => {
     </UiDrawer>
 
     <!-- 이슈 상세 Drawer -->
-    <UiDrawer v-model:open="panelOpen" :title="panelIssue?.title || '이슈 상세'" width="480px" max-width="700px">
+    <UiDrawer v-model:open="panelOpen" :title="panelIssue?.title || '이슈 상세'" width="480px" max-width="700px" :confirm-before-close="false">
       <div v-if="panelIssue" class="panel-detail">
         <!-- 속성 테이블 -->
         <div class="panel-props">
