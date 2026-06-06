@@ -29,7 +29,7 @@ const startTime = ref('')
 const endTime = ref('')
 const location = ref('')
 const memo = ref('')
-const color = ref('#3b82f6')
+const color = ref('#22c55e')
 
 const timeError = computed(() => {
   if (startTime.value && endTime.value && startTime.value >= endTime.value) {
@@ -61,7 +61,7 @@ watch(() => props.open, (isOpen) => {
     endTime.value = ''
     location.value = ''
     memo.value = ''
-    color.value = '#3b82f6'
+    color.value = '#22c55e'
   }
 })
 
@@ -129,14 +129,6 @@ async function onDelete() {
       <p v-if="timeError" class="event-form__time-error">{{ timeError }}</p>
       <UiInput v-model="location" label="장소" placeholder="장소를 입력하세요" />
       <UiTextarea v-model="memo" label="메모" placeholder="메모를 입력하세요" :rows="3" />
-      <div class="event-form__colors">
-        <label class="event-form__colors-label">색상</label>
-        <div class="event-form__color-options">
-          <button v-for="preset in COLOR_PRESETS" :key="preset.value"
-            class="event-form__color-btn" :class="{ 'event-form__color-btn--active': color === preset.value }"
-            :style="{ backgroundColor: preset.value }" :aria-label="preset.label" @click="color = preset.value" />
-        </div>
-      </div>
     </div>
     <template #footer>
       <div class="event-form__footer">
@@ -154,14 +146,6 @@ async function onDelete() {
 .event-form { display: flex; flex-direction: column; gap: 16px; }
 .event-form__time-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .event-form__time-error { font-size: 12px; color: #ef4444; margin-top: -8px; }
-.event-form__colors-label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px; }
-.event-form__color-options { display: flex; gap: 8px; }
-.event-form__color-btn {
-  width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent;
-  cursor: pointer; transition: border-color 0.15s, transform 0.15s;
-  &:hover { transform: scale(1.1); }
-  &--active { border-color: #374151; box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor; }
-}
 .event-form__footer { display: flex; justify-content: space-between; align-items: center; }
 .event-form__footer-right { display: flex; gap: 8px; margin-left: auto; }
 </style>
