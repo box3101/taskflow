@@ -177,12 +177,11 @@ const strategyStats = computed(() => {
 
   return Object.entries(groups)
     .map(([key, v]) => ({
-      key,
-      label: STRATEGY_LABELS[key] || key,
-      count: v.count,
-      pnl: v.pnl,
-      winRate: v.count > 0 ? (v.wins / v.count) * 100 : 0,
-    }))
+      const invested = closed.filter(l => (l.strategy || 'unclassified') === key)
+        .reduce((sum, l) => sum + l.buyPrice * l.quantity, 0)
+      const pnlPct = invested > 0 ? (v.pnl / invested) * 100 : 0
+      return { key, label: STRATEGY_LABELS[key] || key, count: v.count, pnl: v.pnl, pnlPct, winRate: v.count > 0 ? (v.wins / v.count) * 100 : 0 }
+    })
     .sort((a, b) => b.pnl - a.pnl)
 })
 </script>
@@ -231,7 +230,7 @@ const strategyStats = computed(() => {
         :class="{ 'strategy-card--plus': s.pnl > 0, 'strategy-card--minus': s.pnl < 0 }"
       >
         <span class="strategy-card__label">{{ s.label }}</span>
-        <span class="strategy-card__pnl">{{ s.pnl > 0 ? '+' : '' }}{{ s.pnl.toLocaleString() }}원</span>
+        <span class="strategy-card__pnl">{{ s.pnl > 0 ? '+' : '' }}{{ s.pnl.toLocaleString() }}원 <small style="font-size:11px;opacity:0.7;">({{ s.pnlPct > 0 ? '+' : '' }}{{ s.pnlPct.toFixed(1) }}%)</small></span>
         <span class="strategy-card__sub">{{ s.count }}건 · 승률 {{ s.winRate.toFixed(0) }}%</span>
       </div>
     </div>
