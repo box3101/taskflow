@@ -22,6 +22,7 @@ const mealTypeOptions = [
   { value: 'lunch', label: '점심' },
   { value: 'dinner', label: '저녁' },
   { value: 'snack', label: '간식' },
+  { value: 'midnight', label: '야식' },
 ]
 
 const type = ref<string>('lunch')
