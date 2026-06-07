@@ -5,7 +5,13 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
 </script>
 
 <template>
-  <div v-if="weather || loading || error" class="weather-outfit">
+  <a
+    v-if="weather || loading || error"
+    class="weather-outfit"
+    href="https://www.weather.go.kr/w/weather/forecast/short-term.do?stnId=112"
+    target="_blank"
+    rel="noopener"
+  >
     <!-- 로딩 -->
     <div v-if="loading" class="weather-outfit__placeholder">
       날씨 정보를 불러오는 중...
@@ -25,11 +31,13 @@ const { weather, outfit, loading, error, weatherEmoji } = useWeather()
       <div class="weather-outfit__row2">{{ weather.feeling }} · {{ weather.description }}</div>
       <div class="weather-outfit__row3">{{ outfit.emoji }} {{ outfit.clothes }}</div>
     </template>
-  </div>
+  </a>
 </template>
 
 <style scoped lang="scss">
 .weather-outfit {
+  text-decoration: none;
+  cursor: pointer;
   flex-shrink: 0;
   width: 220px;
   background: linear-gradient(145deg, #f8faff 0%, #eef3ff 100%);
