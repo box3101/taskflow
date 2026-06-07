@@ -105,9 +105,16 @@ const appetiteMessages = [
 const showAppetiteMsg = computed(() => {
   return auth.user?.email === 'chanyong@test.com'
 })
-const appetiteMsg = computed(() =>
-  appetiteMessages[Math.floor(Math.random() * appetiteMessages.length)]
-)
+const appetiteIdx = ref(Math.floor(Math.random() * appetiteMessages.length))
+const appetiteMsg = computed(() => appetiteMessages[appetiteIdx.value])
+
+// 10초마다 슬라이드
+let appetiteTimer: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  appetiteTimer = setInterval(() => {
+    appetiteIdx.value = (appetiteIdx.value + 1) % appetiteMessages.length
+  }, 10000)
+})
 
 // 데이터 로딩
 onMounted(async () => {
@@ -163,11 +170,13 @@ function onNavigateTodos() {
         </h1>
       </div>
 
-      <!-- 식욕 억제 문구 (밤 9시 이후, chanyong@test.com만) -->
-      <div v-if="showAppetiteMsg" class="dashboard__appetite">
-        <span class="dashboard__appetite-icon">🧘</span>
-        <span class="dashboard__appetite-text">{{ appetiteMsg }}</span>
-      </div>
+      <!-- 식욕 억제 문구 (chanyong@test.com만) -->
+      <Transition name="fade" mode="out-in">
+        <div v-if="showAppetiteMsg" :key="appetiteIdx" class="dashboard__appetite">
+          <span class="dashboard__appetite-icon">🧘</span>
+          <span class="dashboard__appetite-text">{{ appetiteMsg }}</span>
+        </div>
+      </Transition>
 
       <!-- 명언 + 기분/날씨 (2열 grid = StatCard와 폭 동일) -->
       <div class="dashboard__quote-weather">
@@ -220,6 +229,9 @@ function onNavigateTodos() {
   gap: 16px;
   position: relative;
 }
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.5s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 
 .dashboard__appetite {
   display: flex;
