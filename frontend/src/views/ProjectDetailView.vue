@@ -437,15 +437,13 @@ function getIssueFileUrl(file: any) {
   return `/uploads/${file.path}`
 }
 
-async function onIssueFileSelect(files: File[]) {
-  if (!panelIssue.value || !files.length) return
+async function onIssueFileSelect(file: File) {
+  if (!panelIssue.value || !file) return
   issueFileUploading.value = true
   try {
-    for (const file of files) {
-      const formData = new FormData()
-      formData.append('file', file)
-      await api.post(`/issues/${panelIssue.value.id}/files`, formData)
-    }
+    const formData = new FormData()
+    formData.append('file', file)
+    await api.post(`/issues/${panelIssue.value.id}/files`, formData)
     await loadIssueFiles(panelIssue.value.id)
   } catch {
     openToast({ message: '파일 업로드에 실패했습니다.', type: 'error' })
