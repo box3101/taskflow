@@ -5,8 +5,8 @@ import { authenticate } from '../middleware/auth'
 const router = Router()
 router.use(authenticate)
 
-const VALID_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'] as const
-const TYPE_ORDER: Record<string, number> = { breakfast: 0, lunch: 1, dinner: 2, snack: 3 }
+const VALID_TYPES = ['breakfast', 'lunch', 'dinner', 'snack', 'midnight'] as const
+const TYPE_ORDER: Record<string, number> = { breakfast: 0, lunch: 1, dinner: 2, snack: 3, midnight: 4 }
 
 // GET / — 날짜별 식단 조회 (?date=YYYY-MM-DD)
 router.get('/', async (req, res) => {
@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
         select: { date: true, type: true, content: true },
         orderBy: { createdAt: 'asc' },
       })
-      const LABELS: Record<string, string> = { breakfast: '아침', lunch: '점심', dinner: '저녁', snack: '간식' }
+      const LABELS: Record<string, string> = { breakfast: '아침', lunch: '점심', dinner: '저녁', snack: '간식', midnight: '야식' }
       const map = new Map<string, { firstLabel: string; count: number }>()
       for (const m of meals) {
         const entry = map.get(m.date)

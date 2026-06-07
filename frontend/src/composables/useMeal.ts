@@ -4,7 +4,7 @@ import api from '../api/client'
 export interface MealEntry {
   id: string
   date: string
-  type: 'breakfast' | 'lunch' | 'dinner' | 'snack'
+  type: 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'midnight'
   content: string
 }
 
@@ -13,6 +13,7 @@ export const MEAL_LABELS: Record<string, string> = {
   lunch: '점심',
   dinner: '저녁',
   snack: '간식',
+  midnight: '야식',
 }
 
 export const MEAL_ICONS: Record<string, string> = {
@@ -20,6 +21,7 @@ export const MEAL_ICONS: Record<string, string> = {
   lunch: '☀️',
   dinner: '🌙',
   snack: '🍪',
+  midnight: '🍜',
 }
 
 export function useMeal() {
