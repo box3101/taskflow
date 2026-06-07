@@ -92,6 +92,23 @@ const summaryText = computed(() => {
   return parts.join(', ')
 })
 
+// 식욕 억제 문구 (밤 9시 이후, chanyong만)
+const appetiteMessages = [
+  '공복이 불편한 게 아니라, 공복을 참지 못하는 마음이 불편한 거다.',
+  '하윤이 아빠는 오래 건강해야 한다.',
+  '40대에 후회할 몸을 30대에 만들지 마라.',
+  '지금 참는 한 끼가, 내일의 자존감이 된다.',
+  '배고픔은 30분이면 지나간다. 후회는 내일까지 간다.',
+  '몸이 가벼워야 마음도 가볍다.',
+  '오늘 밤 참으면, 내일 아침 거울이 웃는다.',
+]
+const showAppetiteMsg = computed(() => {
+  return auth.user?.email === 'chanyong@test.com'
+})
+const appetiteMsg = computed(() =>
+  appetiteMessages[Math.floor(Math.random() * appetiteMessages.length)]
+)
+
 // 데이터 로딩
 onMounted(async () => {
   try {
@@ -146,6 +163,12 @@ function onNavigateTodos() {
         </h1>
       </div>
 
+      <!-- 식욕 억제 문구 (밤 9시 이후, chanyong@test.com만) -->
+      <div v-if="showAppetiteMsg" class="dashboard__appetite">
+        <span class="dashboard__appetite-icon">🧘</span>
+        <span class="dashboard__appetite-text">{{ appetiteMsg }}</span>
+      </div>
+
       <!-- 명언 + 기분/날씨 (2열 grid = StatCard와 폭 동일) -->
       <div class="dashboard__quote-weather">
         <DailyQuote class="dashboard__quote" />
@@ -198,6 +221,27 @@ function onNavigateTodos() {
   position: relative;
 }
 
+.dashboard__appetite {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  border-left: 3px solid #22c55e;
+  border-radius: 10px;
+  margin-bottom: 4px;
+}
+.dashboard__appetite-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.dashboard__appetite-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  line-height: 1.5;
+  font-style: italic;
+}
 .dashboard__greeting {
   margin-bottom: 4px;
 }
