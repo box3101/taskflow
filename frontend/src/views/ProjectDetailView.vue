@@ -96,6 +96,10 @@ const dueFilterItems = [
 ]
 
 const searchQuery = ref('')
+
+function isNew(createdAt: string): boolean {
+  return Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000
+}
 const showFilters = ref(false)
 const hasActiveFilter = computed(() =>
   checkedStatuses.value.length > 0 || filterModule.value !== '' || filterAssignee.value !== ''
@@ -770,6 +774,7 @@ onMounted(async () => {
                   <button class="issue-title-cancel" @mousedown.prevent="editingTitleId = null" title="취소">✕</button>
                 </div>
                 <div v-else class="issue-title-cell">
+                    <span v-if="isNew(row.createdAt)" class="issue-new-badge">NEW</span>
                     <span v-if="row.externalId" class="issue-external-id">#{{ row.externalId }}</span>
                     <span class="issue-title" @click="openPanel(row)" @dblclick.stop="startTitleEdit(row)">{{ row.title }}</span>
                     <button class="issue-title-edit" @click.stop="startTitleEdit(row)" title="제목 수정">
@@ -1390,6 +1395,16 @@ onMounted(async () => {
 :deep(.ui-table tbody td) {
   height: auto !important;
   padding: 4px 12px !important;
+}
+.issue-new-badge {
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  background: #ef4444;
+  padding: 1px 4px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  line-height: 1.2;
 }
 .issue-external-id {
   font-size: 11px;
