@@ -433,8 +433,8 @@ async function loadIssueFiles(issueId: number) {
   }
 }
 
-function getIssueFileUrl(file: any) {
-  return `/uploads/${file.path}`
+function getIssueFileUrl(path: string) {
+  return `/uploads/${path}`
 }
 
 async function onIssueFileSelect(file: File) {
