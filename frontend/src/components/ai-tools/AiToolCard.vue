@@ -37,7 +37,7 @@ defineEmits<{ click: [] }>()
 
 <style scoped lang="scss">
 .ai-tool-card {
-  background: #fff;
+  background: #fafbfc;
   border-radius: 12px;
   padding: 20px;
   cursor: pointer;
