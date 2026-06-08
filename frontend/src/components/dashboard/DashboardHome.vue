@@ -191,13 +191,15 @@ function onNavigateTodos() {
       <div class="dashboard__stats">
         <StatCard
           icon="folder"
-          icon-bg="#eff3ff"
+          icon-bg="#eef2ff"
+          icon-color="#4f6af6"
           label="진행 중 프로젝트"
           :value="activeProjects.length"
         />
         <StatCard
           icon="circle-check"
           icon-bg="#fef3c7"
+          icon-color="#d97706"
           label="할일 완료"
           :value="completedCount"
           :sub="completionSub"
@@ -238,8 +240,7 @@ function onNavigateTodos() {
   align-items: center;
   gap: 10px;
   padding: 14px 20px;
-  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
-  border-left: 3px solid #22c55e;
+  background: #f0fdf4;
   border-radius: 10px;
   margin-bottom: 4px;
 }

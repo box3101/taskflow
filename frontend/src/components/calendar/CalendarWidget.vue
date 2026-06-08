@@ -61,7 +61,7 @@ onMounted(async () => {
     <template v-else>
       <UiEmpty v-if="todayEvents.length === 0" icon="calendar" title="오늘 일정이 없습니다" />
       <div v-else class="calendar-widget__list">
-        <div v-for="ev in todayEvents" :key="`${ev.type}-${ev.id}`" class="calendar-widget__item" :style="{ borderLeftColor: ev.color }">
+        <div v-for="ev in todayEvents" :key="`${ev.type}-${ev.id}`" class="calendar-widget__item">
           <div class="calendar-widget__item-content">
             <div class="calendar-widget__item-title">{{ ev.title }}</div>
             <div class="calendar-widget__item-time">{{ formatTime(ev) }}</div>
@@ -77,12 +77,12 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
-.calendar-widget { background: #fff; border-radius: 12px; padding: 16px; border: 1px solid #e6e8ec; position: relative; }
+.calendar-widget { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); border: 1px solid #f0f1f3; position: relative; }
 .calendar-widget__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .calendar-widget__title { font-size: 14px; font-weight: 700; color: #1f2937; display: flex; align-items: center; gap: 6px; }
-.calendar-widget__link { font-size: 12px; color: #3b82f6; background: none; border: none; cursor: pointer; &:hover { text-decoration: underline; } }
+.calendar-widget__link { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #3c69db; background: none; border: none; cursor: pointer; padding: 8px 12px; margin: -8px -12px; border-radius: 6px; &:hover { background: #f3f4f6; } }
 .calendar-widget__list { display: flex; flex-direction: column; gap: 8px; }
-.calendar-widget__item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #f9fafb; border-radius: 8px; border-left: 3px solid; }
+.calendar-widget__item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #f9fafb; border-radius: 8px; }
 .calendar-widget__item-content { flex: 1; min-width: 0; }
 .calendar-widget__item-title { font-size: 13px; font-weight: 600; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .calendar-widget__item-time { font-size: 11px; color: #6b7280; margin-top: 2px; }
