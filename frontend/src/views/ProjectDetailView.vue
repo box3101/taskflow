@@ -932,7 +932,7 @@ onMounted(async () => {
     <UiDrawer v-model:open="createDrawerOpen" title="이슈 추가" width="420px" max-width="600px">
       <form class="drawer-form" @submit.prevent="onCreateIssue">
         <UiInput v-model="createForm.title" label="제목" placeholder="이슈 제목" />
-        <UiInput v-model="createForm.externalId" label="관리번호" placeholder="엑셀 번호 (선택)" />
+        <UiInput v-model="createForm.externalId" label="관리번호" placeholder="미입력 시 자동 채번" />
         <UiSelect v-model="createForm.module" label="모듈" :options="moduleSelectOptions" />
         <UiSelect v-model="createForm.category" label="구분" :options="[{ label: '오류', value: 'bug' }, { label: '개선', value: 'improvement' }, { label: '확인', value: 'question' }]" />
         <UiSelect v-model="createForm.priority" label="우선순위" :options="priorityOptions" />

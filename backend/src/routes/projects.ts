@@ -203,6 +203,21 @@ router.post('/:id/issues', async (req, res) => {
     })
     const nextOrder = (maxOrder._max.order ?? -1) + 1
 
+    // externalId 자동 채번: 미입력 시 프로젝트 내 max + 1
+    let externalId = req.body.externalId || null
+    if (!externalId) {
+      const projectId = Number(req.params.id)
+      const allExtIds = await prisma.issue.findMany({
+        where: { projectId, externalId: { not: null } },
+        select: { externalId: true },
+      })
+      const maxNum = allExtIds.reduce((max, i) => {
+        const n = Number(i.externalId)
+        return !isNaN(n) && n > max ? n : max
+      }, 0)
+      if (maxNum > 0) externalId = String(maxNum + 1)
+    }
+
     const issue = await prisma.issue.create({
       data: {
         projectId: Number(req.params.id),
@@ -211,7 +226,7 @@ router.post('/:id/issues', async (req, res) => {
         urgency: urgency || 'normal',
         category: req.body.category || 'improvement',
         module: req.body.module || '개인성과',
-        externalId: req.body.externalId || null,
+        externalId,
         requestedAt: requestedAt ? new Date(requestedAt) : null,
         dueAt: dueAt ? new Date(dueAt) : null,
         assigneeId: assigneeId || null,
