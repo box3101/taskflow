@@ -281,6 +281,10 @@ async function confirmDone() {
     if (idx > -1) issues.value[idx] = data
     // 코멘트 추가
     await api.post(`/issues/${issue.id}/comments`, { content: `✅ 완료: ${doneComment.value.trim()}` })
+    // 패널이 열려있으면 댓글 목록 갱신
+    if (panelOpen.value && panelIssue.value?.id === issue.id) {
+      await loadComments(issue.id)
+    }
     doneModalOpen.value = false
     doneComment.value = ''
     doneTargetIssue.value = null
