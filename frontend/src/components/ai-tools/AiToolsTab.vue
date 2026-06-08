@@ -2,9 +2,9 @@
   <div class="ai-tools-tab">
     <UiLoading v-if="loading" overlay />
     <template v-else>
-      <!-- 상단 바: 카테고리 세그먼트 + 기능 칩 + 검색 + 추가 -->
+      <!-- 상단 바: 카테고리 세그먼트 + 검색 + 추가 -->
       <div class="ai-tools-tab__header">
-        <div class="ai-tools-tab__filters">
+        <div class="ai-tools-tab__top-row">
           <!-- 카테고리 세그먼트 -->
           <div class="segment">
             <button
@@ -28,30 +28,30 @@
               @click="selectedCategory = selectedCategory === 'codex' ? '' : 'codex'"
             >🤖 Codex</button>
           </div>
-          <!-- 기능 태그 칩 -->
-          <div class="filter-chips">
-            <button
-              class="filter-chip"
-              :class="{ active: !selectedTag }"
-              @click="selectedTag = ''"
-            >전체</button>
-            <button
-              v-for="tag in functionTags"
-              :key="tag"
-              class="filter-chip"
-              :class="{ active: selectedTag === tag }"
-              @click="selectedTag = selectedTag === tag ? '' : tag"
-            >{{ tag }}</button>
+          <div class="ai-tools-tab__actions">
+            <UiInput
+              v-model="searchQuery"
+              placeholder="검색...."
+              size="sm"
+              class="ai-tools-tab__search"
+            />
+            <UiButton size="sm" @click="openCreate">+ 새 도구</UiButton>
           </div>
         </div>
-        <div class="ai-tools-tab__actions">
-          <UiInput
-            v-model="searchQuery"
-            placeholder="검색..."
-            size="sm"
-            class="ai-tools-tab__search"
-          />
-          <UiButton size="sm" @click="openCreate">+ 새 도구</UiButton>
+        <!-- 기능 태그 칩 -->
+        <div v-if="functionTags.length" class="filter-chips">
+          <button
+            class="filter-chip"
+            :class="{ active: !selectedTag }"
+            @click="selectedTag = ''"
+          >전체</button>
+          <button
+            v-for="tag in functionTags"
+            :key="tag"
+            class="filter-chip"
+            :class="{ active: selectedTag === tag }"
+            @click="selectedTag = selectedTag === tag ? '' : tag"
+          >{{ tag }}</button>
         </div>
       </div>
 
@@ -211,10 +211,8 @@ defineExpose({ loadTools })
 .ai-tools-tab {
   &__header {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 16px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 12px;
     padding-bottom: 16px;
     border-bottom: 1px solid #e5e7eb;
     margin-bottom: 24px;
@@ -225,13 +223,20 @@ defineExpose({ loadTools })
     flex-direction: column;
     gap: 12px;
     min-width: 0;
-    flex: 1;
+  }
+
+  &__top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
   }
 
   &__actions {
     display: flex;
     gap: 8px;
     align-items: center;
+    flex-shrink: 0;
 
     @media (max-width: 640px) {
       width: 100%;
