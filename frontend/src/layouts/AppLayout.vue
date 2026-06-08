@@ -202,7 +202,7 @@ async function handleQuickMemoSaved(memo: MemoEntry) {
 </template>
 
 <style scoped lang="scss">
-.layout { min-height: 100vh; padding-top: 56px; padding-bottom: 56px; background: #f8f9fb; }
+.layout { min-height: 100vh; padding-top: 56px; padding-bottom: 56px; background: #fff; }
 
 .header {
   position: fixed; top: 0; left: 0; right: 0; z-index: 101;
