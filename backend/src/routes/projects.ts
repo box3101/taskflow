@@ -215,7 +215,7 @@ router.post('/:id/issues', async (req, res) => {
         const n = Number(i.externalId)
         return !isNaN(n) && n > max ? n : max
       }, 0)
-      if (maxNum > 0) externalId = String(maxNum + 1)
+      externalId = String(maxNum + 1)
     }
 
     const issue = await prisma.issue.create({
