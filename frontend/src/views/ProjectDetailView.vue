@@ -954,12 +954,16 @@ onMounted(async () => {
       <hr class="settings-divider" />
       <div class="settings-section">
         <h4 class="settings-label">날짜 컬럼</h4>
-        <UiSelect
-          :model-value="dateColumnMode"
-          :options="[{ label: '마감일', value: 'dueAt' }, { label: '수정일', value: 'updatedAt' }]"
-          size="sm"
-          @change="(v: string | number) => saveDateColumnMode(v as DateColumnMode)"
-        />
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <UiSelect
+            :model-value="dateColumnMode"
+            :options="[{ label: '마감일', value: 'dueAt' }, { label: '수정일', value: 'updatedAt' }]"
+            size="sm"
+            style="flex:1;"
+            @change="(v: string | number) => saveDateColumnMode(v as DateColumnMode)"
+          />
+          <UiButton variant="secondary" size="sm" @click="saveDateColumnMode(dateColumnMode)">저장</UiButton>
+        </div>
       </div>
     </UiDrawer>
 
