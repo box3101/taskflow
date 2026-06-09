@@ -31,37 +31,9 @@
   - 용도: 관리번호 클릭 시 구글시트 해당 행으로 이동
   - 파라미터: `?id={externalId}`
 
-## 작업 후 이슈 자동 등록
-
-코드 수정 후에는 해당 프로젝트에 **반드시** 이슈를 등록한다.
-
-| 수정 대상 | 등록 프로젝트 | 비고 |
-|-----------|--------------|------|
-| TaskFlow (이 프로젝트) | #32 | 기능 추가/수정/버그 수정 |
-| ispark-ui | #33 (ispark-ui 디자인 시스템) | [상세 규칙](docs/rules-ispark-ui.md) |
-
-### 등록 형식 (공통)
-
-- **제목**: `{대상} {변경 요약}` (예: `이슈 목록 필터 기능 추가`)
-- **description** (필수):
-  ```
-  변경: {무엇을 바꿨는지}
-  - {상세 변경사항 1}
-  - {상세 변경사항 2}
-  커밋: {short sha}
-  ```
-- **category**: `improvement` (기능 추가/개선) 또는 `bug` (버그 수정)
-- **status**: `done` (이미 완료된 작업이므로)
-- **externalId**: 자동 채번 (미입력)
-
-### 등록 방법
-
-1. 커밋 완료 후
-2. taskflow 백엔드 서버 기동 확인
-3. API로 해당 프로젝트에 이슈 POST
-
 ## 상세 규칙 (별도 파일)
 
-- [ispark-ui 수정 시 이슈 등록 상세](docs/rules-ispark-ui.md)
+- [작업 후 이슈 등록 규칙](docs/rules-issue-tracking.md) — TaskFlow #32, ispark-ui #33
+- [ispark-ui 이슈 등록 상세](docs/rules-ispark-ui.md)
 - [캐시/ref 동기화 패턴](docs/rules-stale-data.md)
 - [실수 오답노트](docs/mistakes.md)
