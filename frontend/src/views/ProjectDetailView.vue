@@ -767,7 +767,13 @@ onMounted(async () => {
                 >{{ row.category === 'bug' ? '오류' : row.category === 'question' ? '확인' : '개선' }}</UiBadge>
               </template>
               <template #cell-externalId="{ row }: any">
-                <span v-if="row.externalId" class="issue-external-id">#{{ row.externalId }}</span>
+                <a
+                  v-if="row.externalId"
+                  class="issue-external-id issue-external-id--link"
+                  :href="`https://script.google.com/macros/s/AKfycbwTDrTn456l1q5rT_fECsRLkrErRBEovRFib4WGZtSrkP4jE1YuSizei13UfDhuHVIS/exec?id=${row.externalId}`"
+                  target="_blank"
+                  @click.stop
+                >#{{ row.externalId }}</a>
                 <span v-else class="issue-external-id issue-external-id--empty">-</span>
               </template>
               <template #cell-title="{ row }: any">
@@ -1433,6 +1439,11 @@ onMounted(async () => {
   font-size: 12px;
   color: #4f6af6;
   font-weight: 600;
+  &--link {
+    text-decoration: none;
+    cursor: pointer;
+    &:hover { text-decoration: underline; }
+  }
   &--empty { color: #d1d5db; font-weight: 400; }
 }
 .panel-files__header {
