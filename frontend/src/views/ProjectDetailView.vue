@@ -1403,6 +1403,10 @@ onMounted(async () => {
 :deep(.ui-table tbody td) {
   height: auto !important;
   padding: 4px 12px !important;
+  border-bottom: 1px solid #f0f1f3;
+}
+:deep(.ui-table thead th) {
+  border-bottom: 1px solid #e5e7eb;
 }
 .issue-new-badge {
   font-size: 9px;
