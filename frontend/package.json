@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@internationalized/date": "^3.12.1",
-    "@leechanyong/ispark-ui": "github:box3101/ispark-ui",
+    "@leechanyong/ispark-ui": "^0.5.7",
     "@lucide/vue": "^1.17.0",
     "axios": "^1.16.1",
     "marked": "^18.0.4",
