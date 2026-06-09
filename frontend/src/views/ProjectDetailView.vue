@@ -252,6 +252,7 @@ async function saveTitleEdit(issue: any) {
     const { data } = await api.put(`/issues/${issue.id}`, { title })
     const idx = issues.value.findIndex(i => i.id === data.id)
     if (idx > -1) issues.value[idx] = data
+    if (panelIssue.value?.id === data.id) panelIssue.value = data
   } catch {
     issue.title = prev
     openToast({ message: '제목 수정에 실패했습니다.', type: 'error' })
@@ -280,6 +281,7 @@ async function confirmDone() {
     const { data } = await api.put(`/issues/${issue.id}`, { status: 'done' })
     const idx = issues.value.findIndex(i => i.id === data.id)
     if (idx > -1) issues.value[idx] = data
+    if (panelIssue.value?.id === data.id) panelIssue.value = data
     // 코멘트 추가
     await api.post(`/issues/${issue.id}/comments`, { content: `✅ 완료: ${doneComment.value.trim()}` })
     // 패널이 열려있으면 댓글 목록 갱신
@@ -323,6 +325,8 @@ async function onInlineChange(issue: any, field: string, val: string | number) {
     const { data } = await api.put(`/issues/${issue.id}`, updateData)
     const idx = issues.value.findIndex(i => i.id === data.id)
     if (idx > -1) issues.value[idx] = data
+    // 패널 열려있으면 동기화
+    if (panelIssue.value?.id === data.id) panelIssue.value = data
   } catch {
     // 롤백
     issue[field] = prev
