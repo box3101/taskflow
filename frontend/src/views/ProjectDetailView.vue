@@ -187,7 +187,7 @@ const issueColumns: TableColumn[] = [
   { key: 'externalId', label: '번호', width: '70px', align: 'center', sortable: true, sortType: 'number', hideBelow: 640 },
   { key: 'title', label: '제목', align: 'left', sortable: true, sortType: 'string' },
   { key: 'priority', label: '우선순위', width: '80px', align: 'center', sortable: true, hideBelow: 640 },
-  { key: 'dueAt', label: '마감일', width: '160px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
+  { key: 'dueAt', label: '마감일', width: '130px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
   { key: 'assignee', label: '담당자', width: '80px', align: 'center', hideBelow: 768 },
 ]
 
@@ -1400,9 +1400,24 @@ onMounted(async () => {
     font-weight: 600;
   }
 }
+// 테이블 스타일 오버라이드
+:deep(.ui-table thead th) {
+  background: #f8f9fa !important;
+  font-size: 12px;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb !important;
+}
 :deep(.ui-table tbody td) {
   height: auto !important;
   padding: 4px 12px !important;
+}
+:deep(.ui-table tbody tr) {
+  &:hover { background: #f9fafb; }
+}
+// 완료 행 톤다운
+:deep(.ui-table tbody tr):has(td .ui-badge--success) {
+  opacity: 0.55;
+  &:hover { opacity: 0.8; }
 }
 .issue-new-badge {
   font-size: 9px;
@@ -1416,9 +1431,9 @@ onMounted(async () => {
 }
 .issue-external-id {
   font-size: 12px;
-  color: #6b7280;
-  font-weight: 500;
-  &--empty { color: #d1d5db; }
+  color: #4f6af6;
+  font-weight: 600;
+  &--empty { color: #d1d5db; font-weight: 400; }
 }
 .panel-files__header {
   display: flex;
