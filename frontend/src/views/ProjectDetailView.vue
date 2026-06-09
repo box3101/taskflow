@@ -770,7 +770,7 @@ onMounted(async () => {
                 <a
                   v-if="row.externalId"
                   class="issue-external-id issue-external-id--link"
-                  :href="`https://script.google.com/macros/s/AKfycbwTDrTn456l1q5rT_fECsRLkrErRBEovRFib4WGZtSrkP4jE1YuSizei13UfDhuHVIS/exec?id=${row.externalId}`"
+                  :href="`https://script.google.com/macros/s/AKfycbwTDrTn456l1q5rT_fECsRLkrErRBEovRFib4WGZtSrkP4jE1YuSizei13UfDhuHVlS/exec?id=${row.externalId}`"
                   target="_blank"
                   @click.stop
                 >#{{ row.externalId }}</a>
