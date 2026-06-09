@@ -184,6 +184,7 @@ onMounted(() => document.addEventListener('click', onClickOutside))
 const issueColumns: TableColumn[] = [
   { key: 'status', label: '상태', width: '70px', align: 'center', sortable: true },
   { key: 'category', label: '구분', width: '60px', align: 'center', sortable: true, hideBelow: 640 },
+  { key: 'externalId', label: '번호', width: '70px', align: 'center', sortable: true, sortType: 'number', hideBelow: 640 },
   { key: 'title', label: '제목', align: 'left', sortable: true, sortType: 'string' },
   { key: 'priority', label: '우선순위', width: '80px', align: 'center', sortable: true, hideBelow: 640 },
   { key: 'dueAt', label: '마감일', width: '160px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
@@ -765,6 +766,10 @@ onMounted(async () => {
                   size="sm"
                 >{{ row.category === 'bug' ? '오류' : row.category === 'question' ? '확인' : '개선' }}</UiBadge>
               </template>
+              <template #cell-externalId="{ row }: any">
+                <span v-if="row.externalId" class="issue-external-id">#{{ row.externalId }}</span>
+                <span v-else class="issue-external-id issue-external-id--empty">-</span>
+              </template>
               <template #cell-title="{ row }: any">
                 <div v-if="editingTitleId === row.id" class="issue-title-cell is-editing">
                   <input
@@ -779,7 +784,6 @@ onMounted(async () => {
                 </div>
                 <div v-else class="issue-title-cell">
                     <span v-if="isNew(row.createdAt)" class="issue-new-badge">NEW</span>
-                    <span v-if="row.externalId" class="issue-external-id">#{{ row.externalId }}</span>
                     <span class="issue-title" @click="openPanel(row)" @dblclick.stop="startTitleEdit(row)">{{ row.title }}</span>
                     <button class="issue-title-edit" @click.stop="startTitleEdit(row)" title="제목 수정">
                       <i class="icon-edit size-12" />
@@ -1411,9 +1415,10 @@ onMounted(async () => {
   line-height: 1.2;
 }
 .issue-external-id {
-  font-size: 11px;
-  color: #9ca3af;
-  flex-shrink: 0;
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+  &--empty { color: #d1d5db; }
 }
 .panel-files__header {
   display: flex;
