@@ -880,7 +880,7 @@ onMounted(async () => {
                 </div>
               </template>
               <template #cell-updatedAt="{ row }: any">
-                <span class="cell-date-text">{{ formatDate(row.updatedAt) }}</span>
+                <span class="cell-date-text">{{ formatDate(row.updatedAt || row.createdAt) }}</span>
               </template>
               <template #cell-assignee="{ row }: any">
                 <div @click.stop>
