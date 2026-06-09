@@ -180,16 +180,33 @@ function onClickOutside(e: MouseEvent) {
 }
 onMounted(() => document.addEventListener('click', onClickOutside))
 
+// ── 날짜 컬럼 모드 (프로젝트별 localStorage) ──
+type DateColumnMode = 'dueAt' | 'updatedAt'
+const dateColumnMode = ref<DateColumnMode>('dueAt')
+
+function loadDateColumnMode() {
+  const saved = localStorage.getItem(`project-${projectId}-dateColumn`)
+  if (saved === 'updatedAt') dateColumnMode.value = 'updatedAt'
+  else dateColumnMode.value = 'dueAt'
+}
+
+function saveDateColumnMode(mode: DateColumnMode) {
+  dateColumnMode.value = mode
+  localStorage.setItem(`project-${projectId}-dateColumn`, mode)
+}
+
+const dateColumnLabel = computed(() => dateColumnMode.value === 'updatedAt' ? '수정일' : '마감일')
+
 // ── 이슈 테이블 ──
-const issueColumns: TableColumn[] = [
+const issueColumns = computed<TableColumn[]>(() => [
   { key: 'status', label: '상태', width: '70px', align: 'center', sortable: true },
   { key: 'category', label: '구분', width: '60px', align: 'center', sortable: true, hideBelow: 640 },
   { key: 'externalId', label: '번호', width: '70px', align: 'center', sortable: true, sortType: 'number', hideBelow: 640 },
   { key: 'title', label: '제목', align: 'left', sortable: true, sortType: 'string' },
   { key: 'priority', label: '우선순위', width: '80px', align: 'center', sortable: true, hideBelow: 640 },
-  { key: 'dueAt', label: '마감일', width: '150px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
+  { key: dateColumnMode.value, label: dateColumnLabel.value, width: '150px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
   { key: 'assignee', label: '담당자', width: '80px', align: 'center', hideBelow: 768 },
-]
+])
 
 // 상태/우선순위 드롭다운 메뉴 아이템
 const statusMenuItems: DropdownMenuItemDef[] = [
@@ -213,6 +230,13 @@ const priorityMap: Record<string, { label: string; variant: string }> = {
   high: { label: '높음', variant: 'warning' },
   mid: { label: '보통', variant: 'primary' },
   low: { label: '낮음', variant: 'default' },
+}
+
+// 날짜 포맷: ISO string → YYYY.M.D
+function formatDate(d: string | null | undefined): string {
+  if (!d) return '-'
+  const date = new Date(d)
+  return `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()}`
 }
 
 // 날짜 변환: ISO string → CalendarDate
@@ -665,6 +689,7 @@ async function onRemoveMember(member: any) {
 }
 
 onMounted(async () => {
+  loadDateColumnMode()
   try {
     const [projRes, issueRes] = await Promise.all([
       api.get(`/projects/${projectId}`),
@@ -854,6 +879,9 @@ onMounted(async () => {
                   />
                 </div>
               </template>
+              <template #cell-updatedAt="{ row }: any">
+                <span class="cell-date-text">{{ formatDate(row.updatedAt) }}</span>
+              </template>
               <template #cell-assignee="{ row }: any">
                 <div @click.stop>
                   <UiDropdownMenu
@@ -922,6 +950,16 @@ onMounted(async () => {
           />
           <UiButton variant="secondary" size="sm" @click="saveExternalUrl">저장</UiButton>
         </div>
+      </div>
+      <hr class="settings-divider" />
+      <div class="settings-section">
+        <h4 class="settings-label">날짜 컬럼</h4>
+        <UiSelect
+          :model-value="dateColumnMode"
+          :options="[{ label: '마감일', value: 'dueAt' }, { label: '수정일', value: 'updatedAt' }]"
+          size="sm"
+          @change="(v: string | number) => saveDateColumnMode(v as DateColumnMode)"
+        />
       </div>
     </UiDrawer>
 
@@ -1439,6 +1477,11 @@ onMounted(async () => {
   flex-shrink: 0;
   line-height: 1.2;
 }
+.cell-date-text {
+  font-size: 13px;
+  color: #6b7280;
+}
+
 .issue-external-id {
   font-size: 12px;
   color: #4f6af6;
