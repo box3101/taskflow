@@ -1554,16 +1554,13 @@ onMounted(async () => {
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
-  margin-left: 2px;
-  padding: 1px 5px 1px 4px;
+  margin-left: 4px;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.4;
   color: #6b7280;
-  background: #f3f4f6;
-  border-radius: 10px;
   cursor: pointer;
-  &:hover { color: #2563eb; background: #eff6ff; }
+  &:hover { color: #2563eb; }
 }
 .issue-title-input {
   font-size: 14px;
