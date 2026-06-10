@@ -258,15 +258,15 @@ onMounted(async () => {
               <div v-if="event.time" class="pulse__item-time">
                 <UiIcon name="clock" :size="12" /> {{ event.time }}
               </div>
-              <div v-if="event.expected || event.previous || eventResults[event.id]?.actual" class="pulse__item-data">
+              <div v-if="event.expected || event.previous || eventResults[event.id]?.actual || event.actual" class="pulse__item-data">
                 <span v-if="event.expected" class="data-tag">
                   <UiIcon name="target" :size="10" /> 예상 {{ event.expected }}
                 </span>
                 <span v-if="event.previous" class="data-tag">
                   <UiIcon name="history" :size="10" /> 이전 {{ event.previous }}
                 </span>
-                <span v-if="eventResults[event.id]?.actual" class="data-tag data-tag--actual">
-                  <UiIcon name="check-circle" :size="10" /> 실제 {{ eventResults[event.id].actual }}
+                <span v-if="eventResults[event.id]?.actual || event.actual" class="data-tag data-tag--actual">
+                  <UiIcon name="check-circle" :size="10" /> 실제 {{ eventResults[event.id]?.actual || event.actual }}
                 </span>
               </div>
               <div v-if="event.impact" class="pulse__item-impact">
@@ -283,7 +283,7 @@ onMounted(async () => {
     <MarketEventDrawer
       :open="drawerOpen"
       :event="selectedEvent"
-      :saved-actual="selectedEvent ? eventResults[selectedEvent.id]?.actual : null"
+      :saved-actual="selectedEvent ? (eventResults[selectedEvent.id]?.actual || selectedEvent.actual || null) : null"
       :saved-memo="selectedEvent ? eventResults[selectedEvent.id]?.memo : null"
       :saved-impact="selectedEvent ? eventResults[selectedEvent.id]?.impact : null"
       @update:open="drawerOpen = $event"
