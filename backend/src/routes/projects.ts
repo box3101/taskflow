@@ -195,7 +195,7 @@ router.get('/:id/issues', async (req, res) => {
 // 이슈 생성
 router.post('/:id/issues', async (req, res) => {
   try {
-    const { title, priority, urgency, requestedAt, dueAt, assigneeId, status } = req.body
+    const { title, description, priority, urgency, requestedAt, dueAt, assigneeId, status } = req.body
     // 해당 상태 컬럼의 마지막 order 값 + 1
     const maxOrder = await prisma.issue.aggregate({
       where: { projectId: Number(req.params.id), status: status || 'todo' },
@@ -222,6 +222,7 @@ router.post('/:id/issues', async (req, res) => {
       data: {
         projectId: Number(req.params.id),
         title,
+        description: description || null,
         priority: priority || 'mid',
         urgency: urgency || 'normal',
         category: req.body.category || 'improvement',
