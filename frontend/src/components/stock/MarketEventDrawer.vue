@@ -23,19 +23,14 @@ const impact = ref<string>('')
 const saving = ref(false)
 
 // props가 바뀔 때 기존 저장값 복원
-watch(() => props.event, () => {
-  actual.value = props.savedActual || ''
+function syncFields() {
+  actual.value = props.savedActual || props.event?.actual || ''
   memo.value = props.savedMemo || ''
   impact.value = props.savedImpact || ''
-})
+}
 
-watch(() => props.open, (v) => {
-  if (v) {
-    actual.value = props.savedActual || ''
-    memo.value = props.savedMemo || ''
-    impact.value = props.savedImpact || ''
-  }
-})
+watch(() => props.event, syncFields)
+watch(() => props.open, (v) => { if (v) syncFields() })
 
 const categoryColor: Record<string, string> = {
   'us-econ': '#ef5350',
