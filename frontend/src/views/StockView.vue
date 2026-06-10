@@ -5,11 +5,13 @@ import { UiTab, openToast } from '@leechanyong/ispark-ui'
 import type { TabItem } from '@leechanyong/ispark-ui'
 import StockDashboard from '../components/stock/StockDashboard.vue'
 import TradeLogTab from '../components/stock/TradeLogTab.vue'
+import MarketPulseTab from '../components/stock/MarketPulseTab.vue'
 
 const route = useRoute()
-const activeTab = ref('journal')
+const activeTab = ref('pulse')
 
 const tabs: TabItem[] = [
+  { value: 'pulse', label: '시황' },
   { value: 'journal', label: '매매일지' },
   { value: 'dashboard', label: '대시보드' },
 ]
@@ -31,6 +33,7 @@ onMounted(() => {
     <div style="margin-top: 16px;">
       <StockDashboard v-if="activeTab === 'dashboard'" />
       <TradeLogTab v-if="activeTab === 'journal'" />
+      <MarketPulseTab v-if="activeTab === 'pulse'" />
     </div>
   </div>
 </template>

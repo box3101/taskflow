@@ -59,3 +59,19 @@ export interface MindsetEntry {
   date: string
   text: string
 }
+
+// 시황 이벤트
+export interface MarketEvent {
+  id: string
+  date: string              // "2026-06-11"
+  time?: string             // "21:30" (한국시간)
+  category: 'us-econ' | 'us-earnings' | 'foreign-flow' | 'global' | 'kr-schedule' | 'sentiment'
+  title: string
+  subtitle?: string
+  importance: 1 | 2 | 3    // 🔴 개수
+  expected?: string
+  previous?: string
+  actual?: string
+  impact?: string
+  country: 'US' | 'KR' | 'EU' | 'JP' | 'CN' | 'GLOBAL'
+}

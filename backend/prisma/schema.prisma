@@ -347,6 +347,19 @@ model TechNote {
   @@map("tech_notes")
 }
 
+// 시황 이벤트 결과 기록
+model MarketEventResult {
+  id        Int      @id @default(autoincrement())
+  eventId   String   @unique @map("event_id") @db.VarChar(100) // JSON의 id와 매칭
+  actual    String?  @db.VarChar(100)  // 실제 결과
+  memo      String?  @db.Text          // 메모
+  impact    String?  @db.VarChar(20)   // above | meet | below (예상 대비)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("market_event_results")
+}
+
 // 이슈 댓글
 model IssueComment {
   id        Int      @id @default(autoincrement())

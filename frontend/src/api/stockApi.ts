@@ -261,6 +261,26 @@ export async function updateGuardSettings(
   await api.patch('/stock/guard/settings', payload)
 }
 
+// ── 시황 이벤트 결과 ──
+
+export type EventResultMap = Record<string, { actual: string | null; memo: string | null; impact: string | null }>
+
+export async function fetchEventResults(): Promise<EventResultMap> {
+  try {
+    const { data } = await api.get('/market-events')
+    return data.data || {}
+  } catch {
+    return {}
+  }
+}
+
+export async function saveEventResult(
+  eventId: string,
+  payload: { actual?: string; memo?: string; impact?: string }
+): Promise<void> {
+  await api.put(`/market-events/${encodeURIComponent(eventId)}`, payload)
+}
+
 export async function unlinkKakao(): Promise<void> {
   await api.delete('/stock/guard/kakao')
 }
