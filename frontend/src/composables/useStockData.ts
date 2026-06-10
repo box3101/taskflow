@@ -18,20 +18,22 @@ function isMarketOpen(): boolean {
   return t >= 540 && t <= 930 // 09:00 ~ 15:30
 }
 
+// 모듈 레벨 상태 (네비게이션 시 유지 = 캐시 역할, 재진입 시 이전 시세 즉시 표시)
+const holdings = ref<StockHolding[]>([])
+const prices = ref<Record<string, StockPrice>>({})
+const quotes = ref<Record<string, StockQuote>>({})
+const themes = ref<ThemeDef[]>([])
+const themeQuotes = ref<Record<string, StockQuote>>({})
+const kospiTop = ref<TopValueStock[]>([])
+const kosdaqTop = ref<TopValueStock[]>([])
+const mindsetHistory = ref<MindsetEntry[]>([])
+const investorData = ref<Record<string, InvestorData>>({})
+const fearGreed = ref<FearGreedData>({ value: null, text: 'N/A', previous_close: null })
+const loading = ref(false)
+const lastUpdated = ref('')
+let stockLoaded = false
+
 export function useStockData() {
-  // 상태
-  const holdings = ref<StockHolding[]>([])
-  const prices = ref<Record<string, StockPrice>>({})
-  const quotes = ref<Record<string, StockQuote>>({})
-  const themes = ref<ThemeDef[]>([])
-  const themeQuotes = ref<Record<string, StockQuote>>({})
-  const kospiTop = ref<TopValueStock[]>([])
-  const kosdaqTop = ref<TopValueStock[]>([])
-  const mindsetHistory = ref<MindsetEntry[]>([])
-  const investorData = ref<Record<string, InvestorData>>({})
-  const fearGreed = ref<FearGreedData>({ value: null, text: 'N/A', previous_close: null })
-  const loading = ref(false)
-  const lastUpdated = ref('')
   let refreshTimer: ReturnType<typeof setInterval> | null = null
 
   // localStorage 로드
@@ -235,13 +237,15 @@ export function useStockData() {
 
   // 전체 로드
   async function loadAll() {
-    loading.value = true
+    // 이미 받아둔 데이터가 있으면 로딩 표시 없이 갱신 (이전 시세 보여주며 조용히 새로고침)
+    if (!stockLoaded) loading.value = true
     loadHoldings()
     loadMindsets()
     await Promise.all([refreshPrices(), loadThemes(), loadFearGreed()])
     // 테마 종목 quotes + 외인/기관은 별도 (약간 느림)
     loadThemeQuotes()
     loadInvestor()
+    stockLoaded = true
     loading.value = false
   }
 

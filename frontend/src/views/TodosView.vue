@@ -10,6 +10,7 @@ import type { DateValue } from '@internationalized/date'
 import type { Todo, TodoFile } from '../types/todo'
 import { CalendarDate } from '@internationalized/date'
 import api from '../api/client'
+import { useCachedFetch } from '../composables/useCachedFetch'
 
 // D-day 계산
 function getDday(dueDate: string | null): { label: string; variant: 'danger' | 'warning' | 'default' } | null {
@@ -37,8 +38,12 @@ function fromCalendarDate(val: DateValue | undefined): string | null {
   return `${val.year}-${String(val.month).padStart(2, '0')}-${String(val.day).padStart(2, '0')}`
 }
 
-const todoLoading = ref(false)
-const todos = ref<Todo[]>([])
+// 캐시: 재진입 시 이전 할일 목록 즉시 표시 → 백그라운드 갱신
+const { data: todos, loading: todoLoading, load: loadTodos } = useCachedFetch<Todo[]>(
+  'todos',
+  async () => (await api.get('/todos')).data.data,
+  [],
+)
 const trashTodos = ref<Todo[]>([])
 const trashLoaded = ref(false)
 
@@ -173,16 +178,6 @@ const repeatTodos = computed(() => {
 })
 
 const completedTodos = computed(() => todos.value.filter(t => t.done))
-
-async function loadTodos() {
-  todoLoading.value = true
-  try {
-    const { data } = await api.get('/todos')
-    todos.value = data.data
-  } finally {
-    todoLoading.value = false
-  }
-}
 
 onMounted(() => { loadTodos() })
 

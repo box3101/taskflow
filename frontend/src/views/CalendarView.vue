@@ -4,6 +4,7 @@ import {
   UiButton, UiIcon, UiLoading, UiToggle, openToast,
 } from '@leechanyong/ispark-ui'
 import api from '../api/client'
+import { getCached, setCached } from '../composables/useCachedFetch'
 import type { CalendarEvent } from '../types/calendar'
 import CalendarMonth from '../components/calendar/CalendarMonth.vue'
 import CalendarEventList from '../components/calendar/CalendarEventList.vue'
@@ -48,14 +49,24 @@ const selectedEvents = computed(() => {
 })
 
 async function fetchEvents() {
-  loading.value = true
+  // 월별 캐시: 본 적 있는 달이면 즉시 표시 → 백그라운드 갱신
+  const cacheKey = `calendar-${currentYear.value}-${currentMonth.value}`
+  const cached = getCached<CalendarEvent[]>(cacheKey)
+  if (cached) {
+    allEvents.value = cached
+    loading.value = false
+  } else {
+    loading.value = true
+  }
   try {
     const { data } = await api.get('/calendar', {
       params: { year: currentYear.value, month: currentMonth.value },
     })
     allEvents.value = data.data
+    setCached(cacheKey, data.data)
   } catch {
-    openToast({ message: '일정을 불러오는데 실패했습니다.', type: 'error' })
+    // 갱신 실패 시 기존(stale) 데이터 유지, 캐시 없을 때만 알림
+    if (!cached) openToast({ message: '일정을 불러오는데 실패했습니다.', type: 'error' })
   } finally {
     loading.value = false
   }

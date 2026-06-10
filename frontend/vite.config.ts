@@ -49,6 +49,26 @@ export default defineConfig({
     proxy: {
       '/uploads': 'http://localhost:4000',
     },
+    // dev 서버 시작 시 자주 쓰는 화면을 미리 변환(예열) → 첫 방문 컴파일 대기 감소
+    warmup: {
+      clientFiles: [
+        './src/layouts/AppLayout.vue',
+        './src/views/DashboardView.vue',
+        './src/components/dashboard/DashboardHome.vue',
+        './src/views/CalendarView.vue',
+        './src/views/ProjectsView.vue',
+        './src/views/TodosView.vue',
+      ],
+    },
+  },
+  // 무거운 라이브러리를 dev 서버 시작 때 미리 번들 → 페이지 첫 진입 시 즉석 변환 제거
+  optimizeDeps: {
+    include: [
+      '@leechanyong/ispark-ui',
+      '@lucide/vue',
+      'axios',
+      'marked',
+    ],
   },
   resolve: {
     preserveSymlinks: true,

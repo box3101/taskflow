@@ -63,15 +63,26 @@
 import { ref, computed, onMounted } from 'vue'
 import { UiIcon, UiInput, UiEmpty, UiLoading, openToast, openConfirm } from '@leechanyong/ispark-ui'
 import api from '../../api/client'
+import { useCachedFetch } from '../../composables/useCachedFetch'
 import TechNoteCard from './TechNoteCard.vue'
 import TechNoteDrawer from './TechNoteDrawer.vue'
 import type { TechNote } from './types'
 import { CATEGORIES } from './types'
 
-const notes = ref<TechNote[]>([])
-const loading = ref(false)
 const searchQuery = ref('')
 const selectedCategory = ref('')
+// 캐시: 재진입 시 이전 노트 목록 즉시 표시 → 백그라운드 갱신
+const { data: notes, loading, load: loadNotes } = useCachedFetch<TechNote[]>(
+  'tech-notes',
+  async () => {
+    const params: Record<string, string> = {}
+    if (selectedCategory.value) params.category = selectedCategory.value
+    if (searchQuery.value.trim()) params.search = searchQuery.value.trim()
+    return (await api.get('/tech-notes', { params })).data.data
+  },
+  [],
+  () => openToast({ message: '노트 목록을 불러오지 못했습니다.', type: 'error' }),
+)
 const drawerOpen = ref(false)
 const selectedNote = ref<TechNote | null>(null)
 const saving = ref(false)
@@ -91,21 +102,6 @@ const filteredNotes = computed(() => {
   }
   return result
 })
-
-async function loadNotes() {
-  loading.value = true
-  try {
-    const params: Record<string, string> = {}
-    if (selectedCategory.value) params.category = selectedCategory.value
-    if (searchQuery.value.trim()) params.search = searchQuery.value.trim()
-    const res = await api.get('/tech-notes', { params })
-    notes.value = res.data.data
-  } catch {
-    openToast({ message: '노트 목록을 불러오지 못했습니다.', type: 'error' })
-  } finally {
-    loading.value = false
-  }
-}
 
 function openCreate() {
   selectedNote.value = null

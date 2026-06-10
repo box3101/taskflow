@@ -83,12 +83,18 @@
 import { ref, computed, onMounted } from 'vue'
 import { UiButton, UiInput, UiEmpty, UiLoading, openToast, openConfirm } from '@leechanyong/ispark-ui'
 import api from '../../api/client'
+import { useCachedFetch } from '../../composables/useCachedFetch'
 import AiToolCard from './AiToolCard.vue'
 import AiToolDrawer from './AiToolDrawer.vue'
 import type { AiTool } from './AiToolCard.vue'
 
-const tools = ref<AiTool[]>([])
-const loading = ref(false)
+// 캐시: 재진입 시 이전 도구 목록 즉시 표시 → 백그라운드 갱신
+const { data: tools, loading, load: loadTools } = useCachedFetch<AiTool[]>(
+  'ai-tools',
+  async () => (await api.get('/ai-tools')).data.data,
+  [],
+  () => openToast({ message: '도구 목록을 불러오지 못했습니다.', type: 'error' }),
+)
 const searchQuery = ref('')
 const selectedCategory = ref('')
 const selectedTag = ref('')
@@ -137,17 +143,6 @@ const filteredTools = computed(() => {
   return result
 })
 
-async function loadTools() {
-  loading.value = true
-  try {
-    const res = await api.get('/ai-tools')
-    tools.value = res.data.data
-  } catch {
-    openToast({ message: '도구 목록을 불러오지 못했습니다.', type: 'error' })
-  } finally {
-    loading.value = false
-  }
-}
 
 function openCreate() {
   selectedTool.value = null

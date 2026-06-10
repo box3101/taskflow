@@ -20,20 +20,25 @@ export const MEMO_COLORS: { value: string; label: string; bg: string }[] = [
   { value: 'purple', label: '보라', bg: '#f3e8ff' },
 ]
 
+// 모듈 레벨 상태 (네비게이션 시 유지 = 캐시 역할, 재진입 시 빈 화면 없음)
+const memos = ref<MemoEntry[]>([])
+let memosLoaded = false
+
 export function useMemo() {
-  const memos = ref<MemoEntry[]>([])
   const loading = ref(false)
 
   const pinnedMemos = computed(() => memos.value.filter(m => m.pinned))
   const unpinnedMemos = computed(() => memos.value.filter(m => !m.pinned))
 
   async function fetchMemos(q?: string) {
-    loading.value = true
+    // 이미 받아둔 데이터가 있으면 로딩 표시 없이 갱신 (검색은 로딩 표시)
+    if (!memosLoaded || q) loading.value = true
     try {
       const params: Record<string, string> = {}
       if (q) params.q = q
       const { data } = await api.get('/memos', { params })
       memos.value = data.data
+      memosLoaded = true
     } catch {
       memos.value = []
       throw new Error('메모를 불러올 수 없습니다.')

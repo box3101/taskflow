@@ -9,12 +9,16 @@ import {
 import type { DropdownMenuItemDef, TableColumn, SelectOption } from '@leechanyong/ispark-ui'
 import draggable from 'vuedraggable'
 import api from '../api/client'
+import { useCachedFetch } from '../composables/useCachedFetch'
 
 const router = useRouter()
 
-// 프로젝트
-const projectLoading = ref(true)
-const projects = ref<any[]>([])
+// 프로젝트 (캐시: 재진입 시 이전 목록 즉시 표시 → 백그라운드 갱신)
+const { data: projects, loading: projectLoading, load: loadProjects } = useCachedFetch<any[]>(
+  'projects',
+  async () => (await api.get('/projects')).data.data,
+  [],
+)
 const projectColumns: TableColumn[] = [
   { key: 'name', label: '프로젝트명', align: 'left' },
   { key: 'status', label: '상태', width: '100px' },
@@ -115,14 +119,7 @@ async function onDragEnd() {
   }
 }
 
-onMounted(async () => {
-  try {
-    const { data } = await api.get('/projects')
-    projects.value = data.data
-  } finally {
-    projectLoading.value = false
-  }
-})
+onMounted(loadProjects)
 </script>
 
 <template>

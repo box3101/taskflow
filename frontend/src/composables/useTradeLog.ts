@@ -46,22 +46,27 @@ export const STATUS_COLORS: Record<string, string> = {
   watching: '#9ca3af',
 }
 
+// 모듈 레벨 상태 (네비게이션 시 유지 = 캐시 역할, 재진입 시 빈 화면 없음)
+const logs = ref<TradeLog[]>([])
+let logsLoaded = false
+
 export function useTradeLog() {
-  const logs = ref<TradeLog[]>([])
   const loading = ref(false)
 
   const holdingLogs = computed(() => logs.value.filter(l => l.status === 'holding'))
   const completedLogs = computed(() => logs.value.filter(l => l.status !== 'holding' && l.status !== 'watching'))
 
   async function fetchLogs(status?: string) {
-    loading.value = true
+    // 이미 받아둔 데이터가 있으면 로딩 표시 없이 갱신 (상태 필터 시에는 로딩 표시)
+    if (!logsLoaded || status) loading.value = true
     try {
       const params: Record<string, string> = {}
       if (status) params.status = status
       const { data } = await api.get('/trade-logs', { params })
       logs.value = data.data
+      logsLoaded = true
     } catch {
-      logs.value = []
+      // 갱신 실패 시 기존(stale) 데이터 유지
     } finally {
       loading.value = false
     }
