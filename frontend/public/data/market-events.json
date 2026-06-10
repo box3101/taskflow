@@ -288,5 +288,117 @@
     "importance": 2,
     "impact": "위원별 금리 인하 의견 차이 확인",
     "country": "US"
+  },
+  {
+    "id": "earnings-orcl-2026-06",
+    "date": "2026-06-12",
+    "time": "05:00",
+    "category": "us-earnings",
+    "title": "오라클(ORCL) 실적발표",
+    "subtitle": "FY2026 Q4 실적",
+    "importance": 2,
+    "expected": "EPS $1.65",
+    "previous": "EPS $1.47",
+    "impact": "클라우드/AI 인프라 수요 → 삼성SDS, 네이버클라우드 심리",
+    "country": "US"
+  },
+  {
+    "id": "earnings-adbe-2026-06",
+    "date": "2026-06-12",
+    "time": "05:00",
+    "category": "us-earnings",
+    "title": "어도비(ADBE) 실적발표",
+    "subtitle": "FY2026 Q2 실적",
+    "importance": 2,
+    "expected": "EPS $4.55",
+    "previous": "EPS $4.48",
+    "impact": "AI 소프트웨어 수익화 바로미터",
+    "country": "US"
+  },
+  {
+    "id": "earnings-avgo-2026-06",
+    "date": "2026-06-12",
+    "time": "05:00",
+    "category": "us-earnings",
+    "title": "브로드컴(AVGO) 실적발표",
+    "subtitle": "FY2026 Q2 실적",
+    "importance": 3,
+    "expected": "EPS $1.45",
+    "previous": "EPS $1.32",
+    "impact": "AI 네트워킹칩 수요 → SK하이닉스, 삼성전자 영향",
+    "country": "US"
+  },
+  {
+    "id": "earnings-fdx-2026-06",
+    "date": "2026-06-26",
+    "time": "05:00",
+    "category": "us-earnings",
+    "title": "페덱스(FDX) 실적발표",
+    "subtitle": "FY2026 Q4 실적",
+    "importance": 1,
+    "expected": "EPS $5.60",
+    "previous": "EPS $5.41",
+    "impact": "물류/경기선행 지표 → 글로벌 경기 판단",
+    "country": "US"
+  },
+  {
+    "id": "us-auto-tariff-2026-06",
+    "date": "2026-06-15",
+    "category": "global",
+    "title": "미국 자동차 관세 결정",
+    "subtitle": "EU/한국산 자동차 관세 검토",
+    "importance": 3,
+    "impact": "현대차·기아 수출 직결, 25% 관세 시 주가 급락 리스크",
+    "country": "US"
+  },
+  {
+    "id": "kr-hyundai-sales-2026-06",
+    "date": "2026-07-01",
+    "category": "us-earnings",
+    "title": "현대차 6월 글로벌 판매실적",
+    "subtitle": "월간 판매 데이터",
+    "importance": 2,
+    "impact": "미국 시장 점유율 변화, EV 판매 추이 → 2차전지 연동",
+    "country": "KR"
+  },
+  {
+    "id": "earnings-hyundai-2026-07",
+    "date": "2026-07-25",
+    "category": "us-earnings",
+    "title": "현대차 2Q 실적발표",
+    "subtitle": "2026 Q2 실적",
+    "importance": 3,
+    "impact": "미국 판매호조 여부, 환율 효과, 제네시스·EV 믹스 개선",
+    "country": "KR"
+  },
+  {
+    "id": "earnings-kia-2026-07",
+    "date": "2026-07-25",
+    "category": "us-earnings",
+    "title": "기아 2Q 실적발표",
+    "subtitle": "2026 Q2 실적",
+    "importance": 2,
+    "impact": "EV6/EV9 판매, 미국 공장 가동률, 현대차와 동반 주가 움직임",
+    "country": "KR"
+  },
+  {
+    "id": "us-ev-tax-credit-2026-06",
+    "date": "2026-06-20",
+    "category": "global",
+    "title": "미국 EV 세액공제 재검토",
+    "subtitle": "IRA 보조금 규정 변경안",
+    "importance": 2,
+    "impact": "현대차 조지아 공장 수혜 여부, 배터리 원산지 규정 변경 → 2차전지주",
+    "country": "US"
+  },
+  {
+    "id": "eu-tariff-ev-2026-07",
+    "date": "2026-07-04",
+    "category": "global",
+    "title": "EU 중국산 EV 관세 최종 결정",
+    "subtitle": "반보조금 관세 확정",
+    "importance": 2,
+    "impact": "중국 EV 견제 → 현대차/기아 유럽 점유율 반사이익 기대",
+    "country": "EU"
   }
 ]
