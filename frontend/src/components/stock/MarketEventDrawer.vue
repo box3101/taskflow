@@ -23,10 +23,23 @@ const impact = ref<string>('')
 const saving = ref(false)
 
 // props가 바뀔 때 기존 저장값 복원
+// 예상 vs 실제 비교하여 자동 impact 추론
+function guessImpact(ev: MarketEvent | null, actualVal: string): string {
+  if (!ev?.expected || !actualVal) return ''
+  const exp = parseFloat(ev.expected)
+  const act = parseFloat(actualVal)
+  if (isNaN(exp) || isNaN(act)) return ''
+  if (act > exp) return 'above'
+  if (act < exp) return 'below'
+  return 'meet'
+}
+
 function syncFields() {
-  actual.value = props.savedActual || props.event?.actual || ''
+  const actualVal = props.savedActual || props.event?.actual || ''
+  actual.value = actualVal
   memo.value = props.savedMemo || ''
-  impact.value = props.savedImpact || ''
+  // DB에 저장된 impact 우선, 없으면 자동 추론
+  impact.value = props.savedImpact || guessImpact(props.event, actualVal)
 }
 
 watch(() => props.event, syncFields)
@@ -66,7 +79,7 @@ const isPast = computed(() => {
 
 const impactOptions = [
   { value: 'above', label: '예상 상회', icon: 'trending-up', color: '#ef4444' },
-  { value: 'meet', label: '예상 부합', icon: 'minus', color: '#9ca3af' },
+  { value: 'meet', label: '예상 부합', icon: 'minus', color: '#4f6af6' },
   { value: 'below', label: '예상 하회', icon: 'trending-down', color: '#3b82f6' },
 ]
 
@@ -406,7 +419,9 @@ async function handleSave() {
   &:hover { border-color: #d1d5db; }
 
   &--active {
-    background: #f9fafb;
+    background: color-mix(in srgb, currentColor 8%, #fff);
+    border-width: 2px;
+    font-weight: 700;
   }
 }
 
