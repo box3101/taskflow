@@ -184,7 +184,11 @@ router.get('/:id/issues', async (req, res) => {
     const issues = await prisma.issue.findMany({
       where: { projectId: Number(req.params.id) },
       orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
-      include: { assignee: { select: { id: true, name: true } } },
+      // 댓글(피드백) 수를 _count로 한 번에 조회 (이슈마다 별도 쿼리하는 N+1 회피)
+      include: {
+        assignee: { select: { id: true, name: true } },
+        _count: { select: { comments: true } },
+      },
     })
     res.json(issues)
   } catch {

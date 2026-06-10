@@ -393,6 +393,12 @@ async function loadComments(issueId: number) {
   try {
     const res = await api.get(`/issues/${issueId}/comments`)
     comments.value = res.data.data
+    // 목록 행의 댓글 수 배지도 동기화 (추가/삭제 후 stale 방지)
+    const idx = issues.value.findIndex((i: any) => i.id === issueId)
+    if (idx >= 0) {
+      if (!issues.value[idx]._count) issues.value[idx]._count = { comments: 0 }
+      issues.value[idx]._count.comments = comments.value.length
+    }
   } catch {
     comments.value = []
   }
@@ -822,6 +828,14 @@ onMounted(async () => {
                 <div v-else class="issue-title-cell">
                     <span v-if="isNew(row.createdAt)" class="issue-new-badge">NEW</span>
                     <span class="issue-title" @click="openPanel(row)" @dblclick.stop="startTitleEdit(row)">{{ row.title }}</span>
+                    <span
+                      v-if="row._count?.comments"
+                      class="issue-comment-count"
+                      :title="`피드백 ${row._count.comments}건`"
+                      @click.stop="openPanel(row)"
+                    >
+                      <UiIcon name="message-circle" :size="13" />{{ row._count.comments }}
+                    </span>
                     <button class="issue-title-edit" @click.stop="startTitleEdit(row)" title="제목 수정">
                       <i class="icon-edit size-12" />
                     </button>
@@ -1534,6 +1548,22 @@ onMounted(async () => {
   word-break: break-word;
   cursor: pointer;
   &:hover { color: #2563eb; }
+}
+.issue-comment-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: 2px;
+  padding: 1px 5px 1px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #6b7280;
+  background: #f3f4f6;
+  border-radius: 10px;
+  cursor: pointer;
+  &:hover { color: #2563eb; background: #eff6ff; }
 }
 .issue-title-input {
   font-size: 14px;
