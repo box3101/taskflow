@@ -8,6 +8,7 @@ import { fetchFearGreed, fetchEventResults } from '../../api/stockApi'
 import CalendarMonth from '../calendar/CalendarMonth.vue'
 import MarketSentimentBar from './MarketSentimentBar.vue'
 import MarketEventDrawer from './MarketEventDrawer.vue'
+import MarketOutlookCard from './MarketOutlookCard.vue'
 
 const events = ref<MarketEvent[]>([])
 const fearGreed = ref<FearGreedData>({ value: null, text: 'N/A', previous_close: null })
@@ -172,6 +173,9 @@ onMounted(async () => {
   <div class="pulse">
     <UiLoading v-if="loading" />
     <template v-else>
+      <!-- 시장 전망 카드 -->
+      <MarketOutlookCard />
+
       <!-- 심리 게이지 -->
       <MarketSentimentBar
         :fear-greed="fearGreed"

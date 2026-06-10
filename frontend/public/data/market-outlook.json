@@ -1,0 +1,29 @@
+{
+  "updatedAt": "2026-06-10",
+  "foreignFlow": {
+    "status": "sell",
+    "consecutiveDays": 20,
+    "ytdTotal": "-120조원",
+    "dailyAvg": "-3조원",
+    "topSells": [
+      { "name": "삼성전자", "amount": "-60.2조" },
+      { "name": "SK하이닉스", "amount": "-40.8조" }
+    ],
+    "topBuys": ["로봇", "방산", "제약/바이오"],
+    "reasons": ["반도체 피크아웃 우려", "삼성전자 파업", "환율 1,560원 터치", "포트폴리오 리밸런싱"]
+  },
+  "brokerageTargets": [
+    { "name": "골드만삭스", "target": "12,000", "note": "12개월, 비중확대 유지" },
+    { "name": "노무라", "target": "10,000~11,000", "note": "대폭 상향" },
+    { "name": "한국투자", "target": "11,000", "note": "하반기 상단" },
+    { "name": "삼성증권", "target": "8,400", "note": "상단" }
+  ],
+  "reversalSignals": [
+    { "label": "환율", "current": "1,527원", "target": "1,500원 이하 복귀", "status": "warning" },
+    { "label": "연준 금리", "current": "3.50~3.75%", "target": "인하 시그널", "status": "pending" },
+    { "label": "반도체 실적", "current": "피크아웃 우려", "target": "2Q 실적 확인 (7월)", "status": "pending" },
+    { "label": "삼성 파업", "current": "진행 중", "target": "해결", "status": "warning" }
+  ],
+  "outlook": "7월 분기초 계절적 매수 복귀 패턴 + 2Q 반도체 실적 확인이 핵심. 외국인 보유비중 39.31%로 역대 최고 유지 → 장기 이탈 아닌 단기 리밸런싱 가능성",
+  "kospiPER": "8.5배 (역사 평균 10배 대비 저평가)"
+}
