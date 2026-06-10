@@ -3,15 +3,13 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { UiButton, UiIcon, UiLoading, UiBadge, UiBadgeGroup, UiEmpty } from '@leechanyong/ispark-ui'
 import type { MarketEvent } from '../../types/stock'
 import type { CalendarEvent } from '../../types/calendar'
-import type { FearGreedData, EventResultMap } from '../../api/stockApi'
-import { fetchFearGreed, fetchEventResults } from '../../api/stockApi'
+import type { EventResultMap } from '../../api/stockApi'
+import { fetchEventResults } from '../../api/stockApi'
 import CalendarMonth from '../calendar/CalendarMonth.vue'
-import MarketSentimentBar from './MarketSentimentBar.vue'
 import MarketEventDrawer from './MarketEventDrawer.vue'
 import MarketOutlookCard from './MarketOutlookCard.vue'
 
 const events = ref<MarketEvent[]>([])
-const fearGreed = ref<FearGreedData>({ value: null, text: 'N/A', previous_close: null })
 const eventResults = ref<EventResultMap>({})
 const loading = ref(true)
 
@@ -146,14 +144,6 @@ async function loadEvents() {
   }
 }
 
-async function loadSentiment() {
-  try {
-    fearGreed.value = await fetchFearGreed()
-  } catch (e) {
-    console.warn('[MarketPulse] 공포탐욕 로드 실패:', e)
-  }
-}
-
 async function loadResults() {
   try {
     eventResults.value = await fetchEventResults()
@@ -164,7 +154,7 @@ async function loadResults() {
 
 onMounted(async () => {
   loading.value = true
-  await Promise.all([loadEvents(), loadSentiment(), loadResults()])
+  await Promise.all([loadEvents(), loadResults()])
   loading.value = false
 })
 </script>
@@ -175,13 +165,6 @@ onMounted(async () => {
     <template v-else>
       <!-- 시장 전망 카드 -->
       <MarketOutlookCard />
-
-      <!-- 심리 게이지 -->
-      <MarketSentimentBar
-        :fear-greed="fearGreed"
-        :foreign-net="null"
-        :vix="null"
-      />
 
       <!-- 캘린더 + 사이드 패널 -->
       <div class="pulse__body">
