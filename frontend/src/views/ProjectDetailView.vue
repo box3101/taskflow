@@ -78,12 +78,14 @@ const categoryFilterItems = [
 ]
 
 const moduleFilterItems = [
+  { label: '공통', value: '공통' },
   { label: '개인성과', value: '개인성과' },
   { label: '업무', value: '업무' },
   { label: '인사평가', value: '인사평가' },
 ]
 
 const moduleSelectOptions: SelectOption[] = [
+  { label: '공통', value: '공통' },
   { label: '개인성과', value: '개인성과' },
   { label: '업무', value: '업무' },
   { label: '인사평가', value: '인사평가' },
