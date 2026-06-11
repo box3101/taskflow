@@ -110,16 +110,52 @@ function cancelEdit() {
   }
 }
 
+// 섹션 아이콘 매핑
+const sectionIcons: Record<string, string> = {
+  '이벤트': '📋', '핵심': '🔑', '결과': '📊',
+  '하이닉스': '💎', 'SK': '💎', '삼성': '🏭', '현대': '🚗',
+  '수급': '🌊', '외국인': '🌊', '매매': '🌊',
+  '오라클': '☁️', '영향': '⚡', '반영': '⚡',
+  '가격': '📍', '레벨': '📍', '지지': '📍',
+  '체크': '✅', '포인트': '✅', '내일': '📌', '대응': '🎯',
+  '시장': '📈', '반응': '📈', '코스피': '🇰🇷',
+}
+
+function getSectionIcon(title: string): string {
+  for (const [key, icon] of Object.entries(sectionIcons)) {
+    if (title.includes(key)) return icon
+  }
+  return '📌'
+}
+
 function renderContent(text: string): string {
-  return text
+  let html = text
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/^## (.+)$/gm, '<h4>$1</h4>')
-    .replace(/^### (.+)$/gm, '<h5>$1</h5>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
-    .replace(/\n{2,}/g, '<br/><br/>')
-    .replace(/\n/g, '<br/>')
+
+  // ## 헤더 → 섹션 카드 헤더
+  html = html.replace(/^## (.+)$/gm, (_m, title) => {
+    const icon = getSectionIcon(title)
+    return `</div><div class="j-section"><div class="j-section__head">${icon} ${title}</div><div class="j-section__body">`
+  })
+
+  // ### 서브헤더
+  html = html.replace(/^### (.+)$/gm, '<div class="j-sub">$1</div>')
+
+  // **볼드**
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+
+  // 리스트
+  html = html.replace(/^- (.+)$/gm, '<div class="j-li">$1</div>')
+
+  // 줄바꿈
+  html = html.replace(/\n{2,}/g, '<div class="j-gap"></div>')
+  html = html.replace(/\n/g, '')
+
+  // 첫 빈 div 제거 + 마지막 div 닫기
+  html = html.replace(/^<\/div>/, '') + '</div></div>'
+  html = html.replace(/<div class="j-section"><\/div><\/div>$/, '')
+
+  return html
 }
 </script>
 
@@ -307,39 +343,60 @@ function renderContent(text: string): string {
   }
 
   &__body {
-    font-size: 14px;
+    font-size: 13px;
     color: #374151;
-    line-height: 1.8;
+    line-height: 1.7;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 
-    :deep(h4) {
-      font-size: 15px;
+    :deep(.j-section) {
+      background: #f9fafb;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    :deep(.j-section__head) {
+      font-size: 14px;
       font-weight: 700;
       color: #1f2937;
-      margin: 16px 0 6px 0;
-      padding-bottom: 4px;
-      border-bottom: 1px solid #f3f4f6;
+      padding: 8px 12px;
+      background: #f3f4f6;
+      border-bottom: 1px solid #e5e7eb;
     }
 
-    :deep(h5) {
-      font-size: 13px;
+    :deep(.j-section__body) {
+      padding: 8px 12px 10px;
+    }
+
+    :deep(.j-sub) {
+      font-size: 12px;
       font-weight: 600;
       color: #6b7280;
-      margin: 10px 0 4px 0;
+      margin: 6px 0 2px;
     }
 
-    :deep(ul) {
-      margin: 6px 0;
-      padding-left: 18px;
-    }
-
-    :deep(li) {
-      font-size: 14px;
-      margin: 3px 0;
+    :deep(.j-li) {
+      position: relative;
+      padding-left: 14px;
+      font-size: 13px;
       line-height: 1.7;
+      margin: 3px 0;
+
+      &::before {
+        content: '•';
+        position: absolute;
+        left: 2px;
+        color: #9ca3af;
+      }
+    }
+
+    :deep(.j-gap) {
+      height: 4px;
     }
 
     :deep(strong) {
-      color: #1f2937;
+      color: #4f6af6;
       font-weight: 700;
     }
   }
@@ -402,8 +459,9 @@ function renderContent(text: string): string {
   .journal-drawer {
     &__summary { background: #1e2a4a; color: #e5e7eb; }
     &__body { color: #d1d5db; }
-    &__body :deep(h4) { color: #e5e7eb; border-bottom-color: #2d2f36; }
-    &__body :deep(strong) { color: #e5e7eb; }
+    &__body :deep(.j-section) { background: #1a1c22; }
+    &__body :deep(.j-section__head) { background: #22252d; color: #e5e7eb; border-bottom-color: #2d2f36; }
+    &__body :deep(strong) { color: #6b8aff; }
     &__footer { border-top-color: #2d2f36; }
     &__summary-input {
       background: #1e2028; border-color: #2d2f36; color: #e5e7eb;
