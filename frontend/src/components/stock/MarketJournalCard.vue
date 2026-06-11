@@ -51,16 +51,30 @@ function selectFromList(date: string) {
   loadAndOpenJournal(date)
 }
 
+// 현재 드로어에서 보고 있는 날짜
+const viewingDate = ref('')
+
 async function loadAndOpenJournal(date: string) {
+  viewingDate.value = date
   const d = new Date(date)
   dateLabel.value = `${d.getMonth() + 1}/${d.getDate()} (${DAY_NAMES[d.getDay()]})`
   journal.value = await fetchJournal(date)
   if (journal.value) {
     content.value = journal.value.content
     summary.value = journal.value.summary || ''
+  } else {
+    content.value = ''
+    summary.value = ''
   }
   editing.value = false
   drawerOpen.value = true
+}
+
+function goDay(offset: number) {
+  const d = new Date(viewingDate.value || props.selectedDate)
+  d.setDate(d.getDate() + offset)
+  const dateStr = d.toISOString().split('T')[0]
+  loadAndOpenJournal(dateStr)
 }
 
 watch(() => props.selectedDate, async (date) => {
@@ -81,6 +95,9 @@ watch(() => props.selectedDate, async (date) => {
 }, { immediate: true })
 
 function openDrawer(edit?: boolean) {
+  viewingDate.value = props.selectedDate
+  const d = new Date(props.selectedDate)
+  dateLabel.value = `${d.getMonth() + 1}/${d.getDate()} (${DAY_NAMES[d.getDay()]})`
   if (edit || !journal.value) {
     if (!journal.value) {
       content.value = ''
@@ -236,8 +253,14 @@ function renderContent(text: string): string {
   >
     <template #title>
       <div class="drawer-title">
-        <UiIcon name="notebook-pen" :size="18" />
-        <span>{{ dateLabel }} 시황 일지</span>
+        <UiButton variant="ghost" size="sm" icon-only aria-label="이전 날" @click="goDay(-1)">
+          <template #icon-left><UiIcon name="chevron-left" :size="16" /></template>
+        </UiButton>
+        <UiIcon name="notebook-pen" :size="16" />
+        <span>{{ dateLabel }}</span>
+        <UiButton variant="ghost" size="sm" icon-only aria-label="다음 날" @click="goDay(1)">
+          <template #icon-left><UiIcon name="chevron-right" :size="16" /></template>
+        </UiButton>
       </div>
     </template>
 
