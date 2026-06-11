@@ -191,6 +191,9 @@ onMounted(async () => {
             <span class="pulse__side-date">{{ sideDateLabel }}</span>
           </div>
 
+          <!-- 시황 일지 (날짜 헤더 바로 아래) -->
+          <MarketJournalCard :selected-date="selectedDate" />
+
           <!-- 카테고리 필터 -->
           <UiBadgeGroup :gap="6" class="pulse__filters">
             <UiBadge
@@ -256,9 +259,6 @@ onMounted(async () => {
               </div>
             </div>
           </div>
-
-          <!-- 시황 일지 -->
-          <MarketJournalCard :selected-date="selectedDate" />
         </div>
       </div>
     </template>
