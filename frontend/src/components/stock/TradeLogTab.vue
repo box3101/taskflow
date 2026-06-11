@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { UiButton, UiIcon, UiEmpty, UiLoading, openToast, openConfirm } from '@leechanyong/ispark-ui'
-import CalendarMonth from '../calendar/CalendarMonth.vue'
+import { UiButton, UiIcon, UiEmpty, UiLoading, UiCalendarMonth, openToast, openConfirm } from '@leechanyong/ispark-ui'
+import type { CalendarMonthEvent } from '@leechanyong/ispark-ui'
 import TradeLogForm from './TradeLogForm.vue'
 import { useTradeLog, STATUS_LABELS, STATUS_COLORS, STRATEGY_LABELS, type TradeLog } from '../../composables/useTradeLog'
 
@@ -54,16 +54,12 @@ watch([currentYear, currentMonth], () => {
 })
 
 // 캘린더 힌트 이벤트 (매수일 기준 점 표시)
-const calendarEvents = computed(() => {
+const calendarEvents = computed<CalendarMonthEvent[]>(() => {
   return logs.value.map(log => ({
     id: log.id,
-    type: 'event',
+    start: log.buyDate,
     title: `${log.stockName}`,
-    date: log.buyDate,
-    startTime: null,
-    endTime: null,
     color: STATUS_COLORS[log.status] || '#3b82f6',
-    memo: null,
   }))
 })
 
@@ -249,14 +245,13 @@ const strategyStats = computed(() => {
           </UiButton>
           <UiButton variant="ghost" size="sm" @click="goToday">오늘</UiButton>
         </div>
-        <CalendarMonth
-          :year="currentYear"
-          :month="currentMonth"
+        <UiCalendarMonth
+          v-model:year="currentYear"
+          v-model:month="currentMonth"
           :events="calendarEvents"
           :selected-date="selectedDate"
           @select-date="selectedDate = $event"
-          @swipe-left="nextMonth"
-          @swipe-right="prevMonth"
+          @select-event="selectedDate = $event.start"
         />
       </div>
 

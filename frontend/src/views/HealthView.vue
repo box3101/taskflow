@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
 import {
-  UiButton, UiIcon, UiLoading, UiTab, openToast,
+  UiButton, UiIcon, UiLoading, UiTab, UiCalendarMonth, openToast,
 } from '@leechanyong/ispark-ui'
+import type { CalendarMonthEvent } from '@leechanyong/ispark-ui'
 import { useWorkout } from '../composables/useWorkout'
 import { useMeal } from '../composables/useMeal'
-import CalendarMonth from '../components/calendar/CalendarMonth.vue'
 import WorkoutTab from '../components/health/WorkoutTab.vue'
 import MealTab from '../components/health/MealTab.vue'
 
@@ -83,6 +83,11 @@ const calendarHintEvents = computed(() => {
   }
   return events
 })
+
+// UiCalendarMonth용 매핑 (모두 단일일 힌트)
+const calendarMonthEvents = computed<CalendarMonthEvent[]>(() =>
+  calendarHintEvents.value.map(ev => ({ id: ev.id, start: ev.date, title: ev.title, color: ev.color })),
+)
 
 const loading = computed(() => workoutLoading.value || mealLoading.value)
 
@@ -164,14 +169,13 @@ async function onMealDeleted() {
           <span class="health-page__stat">💪 {{ monthWorkoutCount }}회</span>
           <span class="health-page__stat">🍚 {{ monthMealCount }}끼</span>
         </div>
-        <CalendarMonth
-          :year="currentYear"
-          :month="currentMonth"
-          :events="calendarHintEvents"
+        <UiCalendarMonth
+          v-model:year="currentYear"
+          v-model:month="currentMonth"
+          :events="calendarMonthEvents"
           :selected-date="selectedDate"
           @select-date="selectedDate = $event"
-          @swipe-left="nextMonth"
-          @swipe-right="prevMonth"
+          @select-event="selectedDate = $event.start"
         />
       </div>
 
