@@ -30,6 +30,7 @@ model User {
   techNotes         TechNote[]
   issueComments     IssueComment[]
   kakaoToken        KakaoToken?
+  marketJournals    MarketJournal[]
 
   @@map("users")
 }
@@ -358,6 +359,22 @@ model MarketEventResult {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("market_event_results")
+}
+
+// 시황 일지
+model MarketJournal {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  date      String   @db.VarChar(10)   // "YYYY-MM-DD"
+  content   String   @db.Text          // 마크다운 본문
+  summary   String?  @db.VarChar(200)  // 한줄 요약
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("market_journals")
 }
 
 // 이슈 댓글

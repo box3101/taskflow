@@ -274,6 +274,41 @@ export async function fetchEventResults(): Promise<EventResultMap> {
   }
 }
 
+// ── 시황 일지 ──
+
+export interface MarketJournalEntry {
+  date: string
+  content: string
+  summary: string | null
+  updatedAt: string
+}
+
+export async function fetchJournal(date: string): Promise<MarketJournalEntry | null> {
+  try {
+    const { data } = await api.get(`/market-journal/${date}`)
+    return data.data || null
+  } catch {
+    return null
+  }
+}
+
+export async function fetchJournalList(year: number, month: number): Promise<{ date: string; summary: string | null }[]> {
+  try {
+    const { data } = await api.get('/market-journal', { params: { year, month } })
+    return data.data || []
+  } catch {
+    return []
+  }
+}
+
+export async function saveJournal(date: string, content: string, summary?: string): Promise<void> {
+  await api.put(`/market-journal/${date}`, { content, summary })
+}
+
+export async function deleteJournal(date: string): Promise<void> {
+  await api.delete(`/market-journal/${date}`)
+}
+
 export async function saveEventResult(
   eventId: string,
   payload: { actual?: string; memo?: string; impact?: string }

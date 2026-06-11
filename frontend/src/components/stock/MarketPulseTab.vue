@@ -7,6 +7,7 @@ import type { EventResultMap } from '../../api/stockApi'
 import { fetchEventResults } from '../../api/stockApi'
 import MarketEventDrawer from './MarketEventDrawer.vue'
 import MarketOutlookCard from './MarketOutlookCard.vue'
+import MarketJournalCard from './MarketJournalCard.vue'
 
 const events = ref<MarketEvent[]>([])
 const eventResults = ref<EventResultMap>({})
@@ -255,6 +256,9 @@ onMounted(async () => {
               </div>
             </div>
           </div>
+
+          <!-- 시황 일지 -->
+          <MarketJournalCard :selected-date="selectedDate" />
         </div>
       </div>
     </template>
