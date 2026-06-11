@@ -250,21 +250,19 @@ function renderContent(text: string): string {
     @update:open="drawerOpen = $event"
     position="right"
     width="480px"
+    title="시황 일지"
   >
-    <template #title>
-      <div class="drawer-title">
+    <div class="journal-drawer">
+      <!-- 날짜 네비게이션 -->
+      <div class="journal-drawer__nav">
         <UiButton variant="ghost" size="sm" icon-only aria-label="이전 날" @click="goDay(-1)">
           <template #icon-left><UiIcon name="chevron-left" :size="16" /></template>
         </UiButton>
-        <UiIcon name="notebook-pen" :size="16" />
-        <span>{{ dateLabel }}</span>
+        <span class="journal-drawer__nav-date">{{ dateLabel }}</span>
         <UiButton variant="ghost" size="sm" icon-only aria-label="다음 날" @click="goDay(1)">
           <template #icon-left><UiIcon name="chevron-right" :size="16" /></template>
         </UiButton>
       </div>
-    </template>
-
-    <div class="journal-drawer">
       <!-- 읽기 모드 -->
       <template v-if="!editing">
         <div v-if="journal" class="journal-drawer__read">
@@ -400,13 +398,22 @@ function renderContent(text: string): string {
   }
 }
 
-// 드로어 타이틀
-.drawer-title {
+// 드로어 날짜 네비
+.journal-drawer__nav {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.journal-drawer__nav-date {
   font-size: 16px;
   font-weight: 700;
+  min-width: 100px;
+  text-align: center;
 }
 
 // 드로어 내용
