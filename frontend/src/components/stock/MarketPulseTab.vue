@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { UiButton, UiIcon, UiLoading, UiBadge, UiBadgeGroup, UiEmpty } from '@leechanyong/ispark-ui'
+import { UiButton, UiIcon, UiLoading, UiBadge, UiBadgeGroup, UiEmpty, UiCalendarMonth } from '@leechanyong/ispark-ui'
+import type { CalendarMonthEvent } from '@leechanyong/ispark-ui'
 import type { MarketEvent } from '../../types/stock'
-import type { CalendarEvent } from '../../types/calendar'
 import type { EventResultMap } from '../../api/stockApi'
 import { fetchEventResults } from '../../api/stockApi'
-import CalendarMonth from '../calendar/CalendarMonth.vue'
 import MarketEventDrawer from './MarketEventDrawer.vue'
 import MarketOutlookCard from './MarketOutlookCard.vue'
 
@@ -98,17 +97,12 @@ const categoryLabel: Record<string, string> = {
 }
 
 // 캘린더 이벤트 변환
-const calendarEvents = computed<CalendarEvent[]>(() => {
+const calendarEvents = computed<CalendarMonthEvent[]>(() => {
   return events.value.map((e, i) => ({
-    id: i,
-    type: 'event' as const,
+    id: `market-${i}`,
+    start: e.date,
     title: e.title,
-    date: e.date,
-    startTime: e.time || null,
-    endTime: null,
     color: categoryColor[e.category] || '#9ca3af',
-    memo: null,
-    location: null,
   }))
 })
 
@@ -180,14 +174,13 @@ onMounted(async () => {
             </UiButton>
             <UiButton variant="ghost" size="sm" @click="goToday">오늘</UiButton>
           </div>
-          <CalendarMonth
-            :year="currentYear"
-            :month="currentMonth"
+          <UiCalendarMonth
+            v-model:year="currentYear"
+            v-model:month="currentMonth"
             :events="calendarEvents"
             :selected-date="selectedDate"
             @select-date="selectedDate = $event"
-            @swipe-left="nextMonth"
-            @swipe-right="prevMonth"
+            @select-event="selectedDate = $event.start"
           />
         </div>
 
