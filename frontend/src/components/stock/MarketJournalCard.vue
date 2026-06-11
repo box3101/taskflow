@@ -254,9 +254,9 @@ function renderContent(text: string): string {
 <style scoped lang="scss">
 // 사이드패널 미니 카드
 .journal-mini {
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid #e5e7eb;
+  margin-top: 0;
+  margin-bottom: 14px;
+  padding-top: 0;
 
   &__header {
     display: flex;
