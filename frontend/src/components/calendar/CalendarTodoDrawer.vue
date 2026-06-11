@@ -3,12 +3,13 @@ import { ref, watch } from 'vue'
 import { CalendarDate } from '@internationalized/date'
 import type { DateValue } from '@internationalized/date'
 import {
-  UiDrawer, UiInput, UiTextarea, UiDatePicker, UiButton, UiToggle,
+  UiDrawer, UiInput, UiTextarea, UiDatePicker, UiButton, UiToggle, UiSelect,
   UiFileList, UiFileUpload, openToast, openConfirm,
 } from '@leechanyong/ispark-ui'
 import type { FileItem } from '@leechanyong/ispark-ui'
 import api from '../../api/client'
 import type { Todo, TodoFile } from '../../types/todo'
+import { TIME_OPTIONS } from '../../types/calendar'
 
 const props = defineProps<{
   open: boolean
@@ -24,7 +25,11 @@ const emit = defineEmits<{
 const loading = ref(false)
 const saving = ref(false)
 const title = ref('')
+const startDate = ref<DateValue | undefined>(undefined)
 const dueDate = ref<DateValue | undefined>(undefined)
+const allDay = ref(true)
+const startTime = ref('')
+const endTime = ref('')
 const memo = ref('')
 const done = ref(false)
 const files = ref<TodoFile[]>([])
@@ -54,7 +59,11 @@ watch(() => [props.open, props.todoId], async ([open, id]) => {
     const t: Todo = data.data
     todo.value = t
     title.value = t.title
+    startDate.value = toCalendarDate(t.startDate)
     dueDate.value = toCalendarDate(t.dueDate)
+    allDay.value = t.allDay ?? true
+    startTime.value = t.startTime || ''
+    endTime.value = t.endTime || ''
     memo.value = t.memo ?? ''
     done.value = t.done
     files.value = t.files ? [...t.files] : []
@@ -71,12 +80,32 @@ async function onSave() {
   const trimTitle = title.value.trim()
   if (!trimTitle) return
 
+  const startDateStr = fromCalendarDate(startDate.value)
   const dueDateStr = fromCalendarDate(dueDate.value)
   const memoStr = memo.value.trim() || null
 
+  // 시작일 > 마감일 방지
+  if (startDateStr && dueDateStr && startDateStr > dueDateStr) {
+    openToast({ message: '시작일은 마감일 이전이어야 합니다.', type: 'warning' })
+    return
+  }
+  const st = allDay.value ? null : (startTime.value || null)
+  const et = allDay.value ? null : (endTime.value || null)
+  if (st && et && st >= et) {
+    openToast({ message: '종료 시간은 시작 시간 이후여야 합니다.', type: 'warning' })
+    return
+  }
+
+  const dueOld = todo.value.dueDate ? todo.value.dueDate.slice(0, 10) : null
+  const startOld = todo.value.startDate ? todo.value.startDate.slice(0, 10) : null
+
   const patch: Record<string, unknown> = {}
   if (trimTitle !== todo.value.title) patch.title = trimTitle
-  if (dueDateStr !== todo.value.dueDate) patch.dueDate = dueDateStr
+  if (dueDateStr !== dueOld) patch.dueDate = dueDateStr
+  if (startDateStr !== startOld) patch.startDate = startDateStr
+  if (allDay.value !== todo.value.allDay) patch.allDay = allDay.value
+  if (st !== (todo.value.startTime ?? null)) patch.startTime = st
+  if (et !== (todo.value.endTime ?? null)) patch.endTime = et
   if (memoStr !== (todo.value.memo ?? null)) patch.memo = memoStr
 
   if (Object.keys(patch).length === 0) {
@@ -162,9 +191,29 @@ async function deleteFile(file: FileItem) {
     <div v-if="loading" style="text-align:center; padding:40px; color:#9ca3af;">불러오는 중...</div>
     <form v-else class="drawer-form" @submit.prevent="onSave">
       <UiInput v-model="title" label="제목" placeholder="할일 제목" />
-      <div class="drawer-field">
-        <label class="drawer-field__label">마감일</label>
-        <UiDatePicker v-model="dueDate" type="date" size="sm" />
+      <div class="drawer-date-row">
+        <div class="drawer-field">
+          <label class="drawer-field__label">시작일 (선택)</label>
+          <UiDatePicker v-model="startDate" type="date" size="sm" />
+        </div>
+        <div class="drawer-field">
+          <label class="drawer-field__label">마감일</label>
+          <UiDatePicker v-model="dueDate" type="date" size="sm" />
+        </div>
+      </div>
+      <div class="drawer-allday">
+        <span class="drawer-field__label">하루종일</span>
+        <UiToggle v-model="allDay" />
+      </div>
+      <div v-if="!allDay" class="drawer-date-row">
+        <div class="drawer-field">
+          <label class="drawer-field__label">시작 시간</label>
+          <UiSelect v-model="startTime" :options="TIME_OPTIONS" placeholder="시작 시간" size="sm" />
+        </div>
+        <div class="drawer-field">
+          <label class="drawer-field__label">종료 시간</label>
+          <UiSelect v-model="endTime" :options="TIME_OPTIONS" placeholder="종료 시간" size="sm" />
+        </div>
       </div>
       <UiTextarea v-model="memo" label="메모" placeholder="메모를 입력하세요..." :rows="5" />
 
@@ -205,6 +254,16 @@ async function deleteFile(file: FileItem) {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+.drawer-date-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.drawer-allday {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .drawer-field__label {
   font-size: 13px;

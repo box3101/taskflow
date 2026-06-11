@@ -75,7 +75,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const userId = req.user!.id
-    const { title, dueDate, memo } = req.body
+    const { title, dueDate, startDate, startTime, endTime, allDay, memo } = req.body
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
       res.status(400).json({ message: '할일 제목을 입력해주세요.' })
@@ -92,6 +92,18 @@ router.post('/', async (req, res) => {
       if (!isNaN(parsed.getTime())) safeDueDate = parsed
     }
 
+    // 시작일: dueDate 존재 + start <= due 일 때만 유효 (start <= due 불변식 유지)
+    let safeStartDate: Date | null = null
+    if (startDate && typeof startDate === 'string' && safeDueDate) {
+      const parsed = new Date(startDate)
+      if (!isNaN(parsed.getTime()) && parsed <= safeDueDate) safeStartDate = parsed
+    }
+
+    // 하루종일이면 시간 제거
+    const isAllDay = allDay !== false
+    const safeStartTime = isAllDay ? null : (typeof startTime === 'string' && startTime ? startTime : null)
+    const safeEndTime = isAllDay ? null : (typeof endTime === 'string' && endTime ? endTime : null)
+
     // repeatType, repeatDay 처리
     const safeRepeatType = ['daily', 'weekly', 'monthly'].includes(req.body.repeatType)
       ? req.body.repeatType
@@ -106,6 +118,10 @@ router.post('/', async (req, res) => {
         userId,
         title: title.trim(),
         dueDate: safeDueDate,
+        startDate: safeStartDate,
+        startTime: safeStartTime,
+        endTime: safeEndTime,
+        allDay: isAllDay,
         memo: memo ?? null,
         repeatType: safeRepeatType,
         repeatDay: safeRepeatDay,
@@ -122,7 +138,7 @@ router.patch('/:id', async (req, res) => {
   try {
     const userId = req.user!.id
     const id = Number(req.params.id)
-    const { done, title, memo, dueDate, repeatType, repeatDay } = req.body
+    const { done, title, memo, dueDate, startDate, startTime, endTime, allDay, repeatType, repeatDay } = req.body
 
     // 본인 할일인지 확인
     const existing = await prisma.todo.findFirst({ where: { id, userId } })
@@ -146,6 +162,34 @@ router.patch('/:id', async (req, res) => {
         const parsed = new Date(dueDate)
         if (!isNaN(parsed.getTime())) updateData.dueDate = parsed
       }
+    }
+    // 시작일/시간/하루종일 (start <= due 불변식 유지)
+    const effectiveDue = (updateData.dueDate !== undefined ? updateData.dueDate : existing.dueDate) as Date | null
+    if (startDate !== undefined) {
+      if (startDate === null || !effectiveDue) {
+        updateData.startDate = null
+      } else if (typeof startDate === 'string') {
+        const parsed = new Date(startDate)
+        updateData.startDate = !isNaN(parsed.getTime()) && parsed <= effectiveDue ? parsed : null
+      }
+    } else if (updateData.dueDate !== undefined) {
+      // 마감일이 바뀌었는데 시작일은 안 보냈을 때: 기존 시작일이 마감일보다 늦으면 정리
+      if (!effectiveDue || (existing.startDate && existing.startDate > effectiveDue)) {
+        updateData.startDate = null
+      }
+    }
+    if (allDay !== undefined) {
+      updateData.allDay = Boolean(allDay)
+      if (allDay) {
+        updateData.startTime = null
+        updateData.endTime = null
+      }
+    }
+    if (startTime !== undefined && updateData.startTime === undefined) {
+      updateData.startTime = typeof startTime === 'string' && startTime ? startTime : null
+    }
+    if (endTime !== undefined && updateData.endTime === undefined) {
+      updateData.endTime = typeof endTime === 'string' && endTime ? endTime : null
     }
     if (repeatType !== undefined) {
       updateData.repeatType = ['daily', 'weekly', 'monthly'].includes(repeatType) ? repeatType : null
@@ -171,11 +215,16 @@ router.patch('/:id', async (req, res) => {
       const nextDate = getNextRepeatDate(existing.repeatType, existing.repeatDay, baseDate)
       const dueDateStr = nextDate.toISOString().slice(0, 10)
 
+      // 시작일이 있으면 마감일 이동량만큼 함께 이동 (범위 길이 유지)
+      const resetData: Record<string, unknown> = { done: false, dueDate: new Date(dueDateStr) }
+      if (existing.startDate) {
+        const deltaMs = nextDate.getTime() - baseDate.getTime()
+        const newStart = new Date(new Date(existing.startDate).getTime() + deltaMs)
+        resetData.startDate = new Date(newStart.toISOString().slice(0, 10))
+      }
+
       // 같은 할일을 미완료로 리셋 + 다음 반복일로 업데이트
-      await prisma.todo.update({
-        where: { id },
-        data: { done: false, dueDate: new Date(dueDateStr) },
-      })
+      await prisma.todo.update({ where: { id }, data: resetData })
 
       // 응답은 리셋된 상태로 반환
       const resetTodo = await prisma.todo.findUnique({ where: { id }, include: { files: true } })

@@ -8,6 +8,7 @@ import {
 import type { TabItem, SelectOption, FileItem } from '@leechanyong/ispark-ui'
 import type { DateValue } from '@internationalized/date'
 import type { Todo, TodoFile } from '../types/todo'
+import { TIME_OPTIONS } from '../types/calendar'
 import { CalendarDate } from '@internationalized/date'
 import api from '../api/client'
 import { useCachedFetch } from '../composables/useCachedFetch'
@@ -79,7 +80,11 @@ const todoDrawerOpen = ref(false)
 const drawerMode = ref<'create' | 'edit'>('create')
 const drawerTodo = ref<Todo | null>(null)
 const drawerTitle = ref('')
+const drawerStartDate = ref<DateValue | undefined>(undefined)
 const drawerDueDate = ref<DateValue | undefined>(undefined)
+const drawerAllDay = ref(true)
+const drawerStartTime = ref('')
+const drawerEndTime = ref('')
 const drawerMemo = ref('')
 const drawerDone = ref(false)
 const drawerSaving = ref(false)
@@ -185,7 +190,11 @@ function openCreateTodoDrawer() {
   drawerMode.value = 'create'
   drawerTodo.value = null
   drawerTitle.value = ''
+  drawerStartDate.value = undefined
   drawerDueDate.value = undefined
+  drawerAllDay.value = true
+  drawerStartTime.value = ''
+  drawerEndTime.value = ''
   drawerMemo.value = ''
   drawerRepeatType.value = ''
   drawerRepeatDay.value = null
@@ -196,7 +205,11 @@ function openTodoDrawer(todo: Todo) {
   drawerMode.value = 'edit'
   drawerTodo.value = todo
   drawerTitle.value = todo.title
+  drawerStartDate.value = toCalendarDate(todo.startDate)
   drawerDueDate.value = toCalendarDate(todo.dueDate)
+  drawerAllDay.value = todo.allDay ?? true
+  drawerStartTime.value = todo.startTime || ''
+  drawerEndTime.value = todo.endTime || ''
   drawerMemo.value = todo.memo ?? ''
   drawerDone.value = todo.done
   drawerRepeatType.value = todo.repeatType ?? ''
@@ -229,24 +242,45 @@ async function saveTodoDrawer() {
     return
   }
 
+  const startDate = fromCalendarDate(drawerStartDate.value)
   const dueDate = fromCalendarDate(drawerDueDate.value)
   const memo = drawerMemo.value.trim() || null
   const repeatType = drawerRepeatType.value || null
   const repeatDayRaw = repeatType === 'weekly' || repeatType === 'monthly' ? drawerRepeatDay.value : null
   const repeatDay = repeatDayRaw !== null && repeatDayRaw !== undefined ? Number(repeatDayRaw) : null
 
+  // 시작일 > 마감일 방지
+  if (startDate && dueDate && startDate > dueDate) {
+    openToast({ message: '시작일은 마감일 이전이어야 합니다.', type: 'warning' })
+    return
+  }
+  const st = drawerAllDay.value ? null : (drawerStartTime.value || null)
+  const et = drawerAllDay.value ? null : (drawerEndTime.value || null)
+  if (st && et && st >= et) {
+    openToast({ message: '종료 시간은 시작 시간 이후여야 합니다.', type: 'warning' })
+    return
+  }
+
   drawerSaving.value = true
   try {
     if (drawerMode.value === 'create') {
-      const { data } = await api.post('/todos', { title, dueDate, memo, repeatType, repeatDay })
+      const { data } = await api.post('/todos', {
+        title, dueDate, startDate, allDay: drawerAllDay.value,
+        startTime: st, endTime: et, memo, repeatType, repeatDay,
+      })
       todos.value.push(data.data)
       todoDrawerOpen.value = false
       openToast({ message: '할일이 추가되었습니다.', type: 'success' })
     } else {
       const todo = drawerTodo.value!
+      const startOld = todo.startDate ? todo.startDate.slice(0, 10) : null
       const patch: Record<string, unknown> = {}
       if (title !== todo.title) patch.title = title
       if (dueDate !== todo.dueDate) patch.dueDate = dueDate
+      if (startDate !== startOld) patch.startDate = startDate
+      if (drawerAllDay.value !== todo.allDay) patch.allDay = drawerAllDay.value
+      if (st !== (todo.startTime ?? null)) patch.startTime = st
+      if (et !== (todo.endTime ?? null)) patch.endTime = et
       if (memo !== (todo.memo ?? null)) patch.memo = memo
       if (repeatType !== (todo.repeatType ?? null)) patch.repeatType = repeatType
       if (repeatDay !== (todo.repeatDay ?? null)) patch.repeatDay = repeatDay
@@ -547,9 +581,29 @@ async function emptyTrash() {
     <UiDrawer v-model:open="todoDrawerOpen" :title="drawerMode === 'create' ? '할일 추가' : '할일 상세'" max-width="100vw">
       <form class="drawer-form" @submit.prevent="saveTodoDrawer">
         <UiInput v-model="drawerTitle" label="제목" placeholder="할일 제목" />
-        <div class="drawer-field">
-          <label class="drawer-field__label">마감일</label>
-          <UiDatePicker v-model="drawerDueDate" type="date" size="sm" />
+        <div class="drawer-date-row">
+          <div class="drawer-field">
+            <label class="drawer-field__label">시작일 (선택)</label>
+            <UiDatePicker v-model="drawerStartDate" type="date" size="sm" />
+          </div>
+          <div class="drawer-field">
+            <label class="drawer-field__label">마감일</label>
+            <UiDatePicker v-model="drawerDueDate" type="date" size="sm" />
+          </div>
+        </div>
+        <div class="drawer-allday">
+          <span class="drawer-field__label">하루종일</span>
+          <UiToggle v-model="drawerAllDay" />
+        </div>
+        <div v-if="!drawerAllDay" class="drawer-date-row">
+          <div class="drawer-field">
+            <label class="drawer-field__label">시작 시간</label>
+            <UiSelect v-model="drawerStartTime" :options="TIME_OPTIONS" placeholder="시작 시간" size="sm" />
+          </div>
+          <div class="drawer-field">
+            <label class="drawer-field__label">종료 시간</label>
+            <UiSelect v-model="drawerEndTime" :options="TIME_OPTIONS" placeholder="종료 시간" size="sm" />
+          </div>
         </div>
         <UiTextarea v-model="drawerMemo" label="메모" placeholder="메모를 입력하세요..." :rows="5" />
         <div class="drawer-field">
@@ -677,6 +731,8 @@ async function emptyTrash() {
 
 .drawer-form { display: flex; flex-direction: column; gap: 16px; }
 .drawer-field { display: flex; flex-direction: column; gap: 6px; }
+.drawer-date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.drawer-allday { display: flex; align-items: center; gap: 10px; }
 .drawer-field__label { font-size: 12px; font-weight: 500; color: #374151; }
 .drawer-file-hint { font-size: 12px; color: #9ca3af; }
 

@@ -160,6 +160,14 @@ const eventsByDate = computed(() => {
     list.push(ev)
     map.set(ev.date, list)
   }
+  // 다일(범위) 항목을 위쪽 레인에 고정 → 날짜 칸을 가로질러 막대가 이어져 보이도록
+  for (const list of map.values()) {
+    list.sort((a, b) => {
+      const ra = a.span && a.span !== 'single' ? 0 : 1
+      const rb = b.span && b.span !== 'single' ? 0 : 1
+      return ra - rb
+    })
+  }
   return map
 })
 </script>

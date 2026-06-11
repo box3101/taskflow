@@ -15,6 +15,28 @@ const emit = defineEmits<{
 }>()
 
 const maxHints = 3
+
+// 다일(범위) 항목 여부
+function isRange(ev: CalendarEvent): boolean {
+  return !!ev.span && ev.span !== 'single'
+}
+
+// 막대 스타일: 범위는 색 채운 막대(흰 글씨), 단일은 기존 좌측 보더
+function hintStyle(ev: CalendarEvent) {
+  if (isRange(ev)) return { background: ev.color, color: '#fff', borderLeftColor: 'transparent' }
+  return { borderLeftColor: ev.color }
+}
+
+function hintClass(ev: CalendarEvent) {
+  if (!isRange(ev)) return 'day-cell__hint--single'
+  return ['day-cell__hint--range', `day-cell__hint--${ev.span}`]
+}
+
+// 제목은 시작일·단일, 또는 주 시작(일요일=연속 막대 이어받는 칸)에만 표시
+function showTitle(ev: CalendarEvent): boolean {
+  if (!isRange(ev)) return true
+  return ev.span === 'start' || props.dow === 0
+}
 </script>
 
 <template>
@@ -37,9 +59,10 @@ const maxHints = 3
         v-for="(ev, i) in events.slice(0, maxHints)"
         :key="i"
         class="day-cell__hint"
-        :style="{ borderLeftColor: ev.color }"
+        :class="hintClass(ev)"
+        :style="hintStyle(ev)"
       >
-        <span class="day-cell__hint-title">{{ ev.title }}</span>
+        <span v-if="showTitle(ev)" class="day-cell__hint-title">{{ ev.title }}</span>
       </div>
       <span v-if="events.length > maxHints" class="day-cell__more">
         +{{ events.length - maxHints }}
@@ -85,6 +108,14 @@ const maxHints = 3
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   min-width: 0;
 }
+// 다일(범위) 막대 — 각 날짜 칸을 색으로 채워 범위처럼 보이게 (양끝만 둥글게)
+.day-cell__hint--range {
+  border-left: none; padding: 1px 4px; border-radius: 0;
+  .day-cell__hint-title { color: #fff; font-weight: 500; }
+}
+.day-cell__hint--start { border-radius: 3px 0 0 3px; }
+.day-cell__hint--end { border-radius: 0 3px 3px 0; }
+.day-cell__hint--single { border-radius: 0 2px 2px 0; }
 .day-cell__more { font-size: 9px; color: #9ca3af; line-height: 1; text-align: left; padding-left: 6px; margin-top: 1px; }
 @media (max-width: 768px) {
   .day-cell { min-height: 60px; padding: 4px 1px; }

@@ -119,6 +119,10 @@ model Todo {
   deletedAt   DateTime? @map("deleted_at")
   repeatType  String?   @map("repeat_type")   // 'none' | 'daily' | 'weekly' | 'monthly'
   repeatDay   Int?      @map("repeat_day")    // weekly: 요일(0=일~6=토), monthly: 날짜(1~31)
+  startDate   DateTime? @map("start_date")            // 시작일 (없으면 dueDate 단일 날짜)
+  startTime   String?   @map("start_time") @db.VarChar(5) // "HH:mm"
+  endTime     String?   @map("end_time")   @db.VarChar(5) // "HH:mm"
+  allDay      Boolean   @default(true)     @map("all_day")    // 하루종일 여부
 
   user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   files TodoFile[]
@@ -177,6 +181,8 @@ model CalendarEvent {
   userId    Int      @map("user_id")
   title     String   @db.VarChar(200)
   date      DateTime @db.Date
+  endDate   DateTime? @map("end_date") @db.Date          // 종료일 (없으면 date 단일 날짜)
+  allDay    Boolean  @default(false) @map("all_day")     // 하루종일 여부
   startTime String?  @map("start_time") @db.VarChar(5)
   endTime   String?  @map("end_time") @db.VarChar(5)
   memo      String?  @db.Text
