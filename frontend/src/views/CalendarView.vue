@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import {
-  UiButton, UiIcon, UiLoading, UiToggle, openToast,
+  UiButton, UiIcon, UiLoading, UiToggle, UiCalendarMonth, openToast,
 } from '@leechanyong/ispark-ui'
+import type { CalendarMonthEvent } from '@leechanyong/ispark-ui'
 import api from '../api/client'
 import { getCached, setCached } from '../composables/useCachedFetch'
 import type { CalendarEvent } from '../types/calendar'
-import CalendarMonth from '../components/calendar/CalendarMonth.vue'
 import CalendarEventList from '../components/calendar/CalendarEventList.vue'
 import CalendarEventForm from '../components/calendar/CalendarEventForm.vue'
 import CalendarTodoDrawer from '../components/calendar/CalendarTodoDrawer.vue'
@@ -46,6 +46,28 @@ const filteredEvents = computed(() => {
 
 const selectedEvents = computed(() => {
   return filteredEvents.value.filter(ev => ev.date === selectedDate.value)
+})
+
+// UiCalendarMonth용: 확장된 일별 항목을 원본 일정 단위로 dedupe → 정규화 모델로 매핑
+// (컴포넌트가 start/end로 단일·여러 날 막대를 자체 전개)
+const calendarMonthEvents = computed<CalendarMonthEvent[]>(() => {
+  const seen = new Set<string>()
+  const out: CalendarMonthEvent[] = []
+  for (const ev of filteredEvents.value) {
+    const key = `${ev.type}-${ev.id}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push({
+      id: key,
+      start: ev.srcStart ?? ev.date,
+      end: ev.srcEnd ?? null,
+      title: ev.title,
+      color: ev.color,
+      allDay: ev.allDay,
+      meta: ev,
+    })
+  }
+  return out
 })
 
 async function fetchEvents() {
@@ -105,6 +127,14 @@ function openEdit(ev: CalendarEvent) { editingEvent.value = ev; drawerOpen.value
 function onSaved() { fetchEvents() }
 function onDeleted() { fetchEvents() }
 
+// 그리드에서 일정 막대 클릭 → 타입별 편집/상세 열기
+function onSelectEvent(cm: CalendarMonthEvent) {
+  const ev = cm.meta as CalendarEvent
+  if (ev.type === 'todo') openTodoDrawer(ev)
+  else if (ev.type === 'issue') openIssueDrawer(ev)
+  else openEdit(ev)
+}
+
 function openTodoDrawer(ev: CalendarEvent) {
   todoDrawerId.value = ev.id
   todoDrawerOpen.value = true
@@ -153,9 +183,9 @@ onMounted(fetchEvents)
             </label>
           </div>
         </div>
-        <CalendarMonth :year="currentYear" :month="currentMonth" :events="filteredEvents"
-          :selected-date="selectedDate" @select-date="selectedDate = $event"
-          @swipe-left="nextMonth" @swipe-right="prevMonth" />
+        <UiCalendarMonth v-model:year="currentYear" v-model:month="currentMonth"
+          :events="calendarMonthEvents" :selected-date="selectedDate"
+          @select-date="selectedDate = $event" @select-event="onSelectEvent" />
       </div>
       <div class="calendar-page__side">
         <CalendarEventList :date="selectedDate" :events="selectedEvents"

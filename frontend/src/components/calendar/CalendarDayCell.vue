@@ -4,7 +4,9 @@ import type { CalendarEvent } from '../../types/calendar'
 const props = defineProps<{
   day: number
   dow: number // 0=일, 6=토
-  events: CalendarEvent[]
+  lanes: (CalendarEvent | null)[] // 레인별 일정 (null = 여러 날 일정이 지나가는 빈 자리)
+  hidden: number                  // 표시 못 한 일정 수 (+N)
+  count: number                   // 전체 일정 수
   isToday: boolean
   isSelected: boolean
   isOtherMonth: boolean
@@ -13,8 +15,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   select: []
 }>()
-
-const maxHints = 3
 
 // 다일(범위) 항목 여부
 function isRange(ev: CalendarEvent): boolean {
@@ -50,22 +50,25 @@ function showTitle(ev: CalendarEvent): boolean {
       'day-cell--saturday': dow === 6,
     }"
     role="gridcell"
-    :aria-label="`${day}일${events.length ? `, 일정 ${events.length}건` : ''}`"
+    :aria-label="`${day}일${count ? `, 일정 ${count}건` : ''}`"
     @click="emit('select')"
   >
     <span class="day-cell__number">{{ day }}</span>
-    <div v-if="events.length" class="day-cell__hints">
-      <div
-        v-for="(ev, i) in events.slice(0, maxHints)"
-        :key="i"
-        class="day-cell__hint"
-        :class="hintClass(ev)"
-        :style="hintStyle(ev)"
-      >
-        <span v-if="showTitle(ev)" class="day-cell__hint-title">{{ ev.title }}</span>
-      </div>
-      <span v-if="events.length > maxHints" class="day-cell__more">
-        +{{ events.length - maxHints }}
+    <div v-if="count" class="day-cell__hints">
+      <template v-for="(ev, i) in lanes" :key="i">
+        <div
+          v-if="ev"
+          class="day-cell__hint"
+          :class="hintClass(ev)"
+          :style="hintStyle(ev)"
+        >
+          <span v-if="showTitle(ev)" class="day-cell__hint-title">{{ ev.title }}</span>
+        </div>
+        <!-- 여러 날 일정이 지나가는 빈 레인: 높이만 유지 -->
+        <div v-else class="day-cell__hint day-cell__hint--empty"></div>
+      </template>
+      <span v-if="hidden > 0" class="day-cell__more">
+        +{{ hidden }}
       </span>
     </div>
   </button>
@@ -74,7 +77,7 @@ function showTitle(ev: CalendarEvent): boolean {
 <style scoped lang="scss">
 .day-cell {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 6px 2px; min-height: 72px; border: none; background: none;
+  padding: 6px 2px 10px; min-height: 72px; border: none; background: none;
   border-radius: 8px; cursor: pointer; transition: background 0.15s;
   overflow: hidden; min-width: 0;
   &:hover { background: #f9fafb; }
@@ -94,23 +97,29 @@ function showTitle(ev: CalendarEvent): boolean {
 }
 .day-cell__number { font-size: 13px; font-weight: 500; color: #374151; line-height: 1; }
 .day-cell__hints {
-  display: flex; flex-direction: column; gap: 1px;
+  display: flex; flex-direction: column; gap: 3px;
   width: 100%; padding: 0 2px; margin-top: 2px;
-  min-width: 0; overflow: hidden;
+  min-width: 0; overflow: visible;
 }
 .day-cell__hint {
   display: flex; align-items: center; min-width: 0;
+  min-height: 15px; box-sizing: border-box;
   border-left: 3px solid #3b82f6; padding: 1px 3px;
   border-radius: 0 2px 2px 0; background: rgba(0, 0, 0, 0.03);
+}
+// 여러 날 일정이 지나가는 빈 레인 — 높이만 유지(투명)
+.day-cell__hint--empty {
+  border-left: none; background: transparent;
 }
 .day-cell__hint-title {
   font-size: 10px; color: #4b5563; line-height: 1.3;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   min-width: 0;
 }
-// 다일(범위) 막대 — 각 날짜 칸을 색으로 채워 범위처럼 보이게 (양끝만 둥글게)
+// 다일(범위) 막대 — 칸 좌우 끝까지 채워 가로로 이어지게 (양끝만 둥글게)
 .day-cell__hint--range {
   border-left: none; padding: 1px 4px; border-radius: 0;
+  margin: 0 -4px; // 칸 경계까지 full-bleed → 옆 칸 막대와 연결
   .day-cell__hint-title { color: #fff; font-weight: 500; }
 }
 .day-cell__hint--start { border-radius: 3px 0 0 3px; }
@@ -118,7 +127,7 @@ function showTitle(ev: CalendarEvent): boolean {
 .day-cell__hint--single { border-radius: 0 2px 2px 0; }
 .day-cell__more { font-size: 9px; color: #9ca3af; line-height: 1; text-align: left; padding-left: 6px; margin-top: 1px; }
 @media (max-width: 768px) {
-  .day-cell { min-height: 60px; padding: 4px 1px; }
+  .day-cell { min-height: 60px; padding: 4px 1px 8px; }
   .day-cell__number { font-size: 11px; }
   .day-cell__hint { padding: 0 2px; border-left-width: 2px; }
   .day-cell__hint-title { font-size: 9px; line-height: 1.4; }

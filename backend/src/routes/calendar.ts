@@ -104,16 +104,22 @@ router.get('/', async (req, res) => {
         return expandRange(sStr, eStr, monthStartStr, monthEndStr).map(({ date, span }) => ({
           id: t.id, type: 'todo' as const, title: t.title, date,
           startTime: t.startTime, endTime: t.endTime, allDay: t.allDay, span,
+          // 원본 범위(그리드 컴포넌트가 단일/여러 날 재전개에 사용)
+          srcStart: sStr, srcEnd: sStr === eStr ? null : eStr,
           color: '#ef4444', memo: null, location: null,
         }))
       }),
-      ...issues.map(i => ({
-        id: i.id, type: 'issue' as const, title: i.title,
-        date: i.dueAt!.toISOString().slice(0, 10),
-        startTime: null, endTime: null, allDay: true, span: 'single' as const,
-        color: '#22c55e', memo: null, location: null,
-        projectId: i.projectId, projectName: i.project.name,
-      })),
+      ...issues.map(i => {
+        const dueStr = i.dueAt!.toISOString().slice(0, 10)
+        return {
+          id: i.id, type: 'issue' as const, title: i.title,
+          date: dueStr,
+          startTime: null, endTime: null, allDay: true, span: 'single' as const,
+          srcStart: dueStr, srcEnd: null,
+          color: '#22c55e', memo: null, location: null,
+          projectId: i.projectId, projectName: i.project.name,
+        }
+      }),
     ]
 
     res.json({ data: events })

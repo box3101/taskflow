@@ -153,23 +153,90 @@ const calendarDays = computed(() => {
   return days
 })
 
-const eventsByDate = computed(() => {
-  const map = new Map<string, CalendarEvent[]>()
+// 한 칸에 표시할 최대 레인 수 (초과분은 +N)
+const MAX_LANES = 3
+
+interface DayLayout {
+  lanes: (CalendarEvent | null)[] // 레인별 일정(빈 레인은 null → 높이 유지용 placeholder)
+  hidden: number                  // 표시 못 한 일정 수 (+N)
+  count: number                   // 해당 날짜 전체 일정 수
+}
+
+// 주(week) 단위로 여러 날 일정에 고정 레인을 부여 → 같은 일정이 모든 날에서 같은 줄에 위치(가로 연속 막대)
+const dayLayouts = computed(() => {
+  const byDate = new Map<string, CalendarEvent[]>()
   for (const ev of props.events) {
-    const list = map.get(ev.date) || []
+    const list = byDate.get(ev.date) || []
     list.push(ev)
-    map.set(ev.date, list)
+    byDate.set(ev.date, list)
   }
-  // 다일(범위) 항목을 위쪽 레인에 고정 → 날짜 칸을 가로질러 막대가 이어져 보이도록
-  for (const list of map.values()) {
-    list.sort((a, b) => {
-      const ra = a.span && a.span !== 'single' ? 0 : 1
-      const rb = b.span && b.span !== 'single' ? 0 : 1
-      return ra - rb
+
+  const isRange = (ev: CalendarEvent) => !!ev.span && ev.span !== 'single'
+  const result = new Map<string, DayLayout>()
+  const days = calendarDays.value
+
+  for (let w = 0; w < 6; w++) {
+    const week = days.slice(w * 7, w * 7 + 7)
+
+    // 1) 이 주의 여러 날 세그먼트 수집 (type+id로 묶어 같은 일정의 칸 범위 파악)
+    interface Seg { colStart: number; colEnd: number; perCol: Map<number, CalendarEvent>; lane: number }
+    const segs = new Map<string, Seg>()
+    week.forEach((d, col) => {
+      for (const ev of byDate.get(d.dateStr) || []) {
+        if (!isRange(ev)) continue
+        const key = `${ev.type}-${ev.id}`
+        let s = segs.get(key)
+        if (!s) { s = { colStart: col, colEnd: col, perCol: new Map(), lane: -1 }; segs.set(key, s) }
+        s.colStart = Math.min(s.colStart, col)
+        s.colEnd = Math.max(s.colEnd, col)
+        s.perCol.set(col, ev)
+      }
+    })
+
+    // 2) 그리디 레인 배정 — 시작 칸 빠른 순, 긴 막대 우선 (겹치지 않는 최소 레인)
+    const segList = [...segs.values()].sort(
+      (a, b) => a.colStart - b.colStart || (b.colEnd - b.colStart) - (a.colEnd - a.colStart),
+    )
+    const laneRanges: Array<Array<[number, number]>> = []
+    for (const seg of segList) {
+      let lane = 0
+      while (true) {
+        const ranges = laneRanges[lane] || []
+        const overlap = ranges.some(([s, e]) => seg.colStart <= e && seg.colEnd >= s)
+        if (!overlap) {
+          seg.lane = lane
+          ;(laneRanges[lane] ||= []).push([seg.colStart, seg.colEnd])
+          break
+        }
+        lane++
+      }
+    }
+
+    // 3) 칸별 레인 구성: 여러 날 일정은 고정 레인에, 단일 일정은 남는 레인에 채움
+    week.forEach((d, col) => {
+      const dayEvents = byDate.get(d.dateStr) || []
+      const lanes: (CalendarEvent | null)[] = []
+      for (const seg of segList) {
+        if (col < seg.colStart || col > seg.colEnd) continue
+        const ev = seg.perCol.get(col)
+        if (ev) lanes[seg.lane] = ev
+      }
+      for (const ev of dayEvents) {
+        if (isRange(ev)) continue
+        let idx = 0
+        while (lanes[idx]) idx++
+        lanes[idx] = ev
+      }
+      // 비어있는(여러 날 일정이 지나가는 빈) 레인은 null placeholder로 채워 높이 유지
+      for (let i = 0; i < lanes.length; i++) if (lanes[i] === undefined) lanes[i] = null
+      const visible = lanes.slice(0, MAX_LANES).filter(Boolean).length
+      result.set(d.dateStr, { lanes, hidden: dayEvents.length - visible, count: dayEvents.length })
     })
   }
-  return map
+  return result
 })
+
+const emptyLayout: DayLayout = { lanes: [], hidden: 0, count: 0 }
 </script>
 
 <template>
@@ -188,7 +255,10 @@ const eventsByDate = computed(() => {
     </div>
     <div class="calendar-month__grid" :style="gridStyle">
       <CalendarDayCell v-for="(d, i) in calendarDays" :key="i"
-        :day="d.day" :dow="d.dow" :events="eventsByDate.get(d.dateStr) || []"
+        :day="d.day" :dow="d.dow"
+        :lanes="(dayLayouts.get(d.dateStr) || emptyLayout).lanes.slice(0, MAX_LANES)"
+        :hidden="(dayLayouts.get(d.dateStr) || emptyLayout).hidden"
+        :count="(dayLayouts.get(d.dateStr) || emptyLayout).count"
         :is-today="d.dateStr === today" :is-selected="d.dateStr === selectedDate"
         :is-other-month="d.isOtherMonth" @select="emit('selectDate', d.dateStr)" />
     </div>
@@ -211,7 +281,8 @@ const eventsByDate = computed(() => {
   &--saturday { color: #3b82f6; }
 }
 .calendar-month__grid {
-  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px;
+  // 행(주) 간격은 여유 있게, 열 간격은 0 → 여러 날 막대가 칸 사이에서 끊기지 않고 가로로 이어짐
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px 0;
   will-change: transform;
 }
 @media (max-width: 768px) {
