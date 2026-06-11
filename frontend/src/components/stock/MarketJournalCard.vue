@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { UiButton, UiIcon, UiDrawer, UiTextarea, openToast, openConfirm } from '@leechanyong/ispark-ui'
-import { fetchJournal, saveJournal, deleteJournal } from '../../api/stockApi'
+import { fetchJournal, fetchJournalList, saveJournal, deleteJournal } from '../../api/stockApi'
 import type { MarketJournalEntry } from '../../api/stockApi'
 
 const props = defineProps<{
@@ -23,6 +23,45 @@ const loading = ref(false)
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
 
 const dateLabel = ref('')
+
+// 목록 드로어
+const listDrawerOpen = ref(false)
+const journalList = ref<{ date: string; summary: string | null }[]>([])
+const listLoading = ref(false)
+
+async function openListDrawer() {
+  listDrawerOpen.value = true
+  listLoading.value = true
+  // 최근 3개월 일지 로드
+  const now = new Date()
+  const results: { date: string; summary: string | null }[] = []
+  for (let i = 0; i < 3; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const items = await fetchJournalList(d.getFullYear(), d.getMonth() + 1)
+    results.push(...items)
+  }
+  journalList.value = results.sort((a, b) => b.date.localeCompare(a.date))
+  listLoading.value = false
+}
+
+function selectFromList(date: string) {
+  listDrawerOpen.value = false
+  // 해당 날짜의 일지를 상세 드로어로 열기
+  // selectedDate를 바꿀 수는 없으니 직접 로드
+  loadAndOpenJournal(date)
+}
+
+async function loadAndOpenJournal(date: string) {
+  const d = new Date(date)
+  dateLabel.value = `${d.getMonth() + 1}/${d.getDate()} (${DAY_NAMES[d.getDay()]})`
+  journal.value = await fetchJournal(date)
+  if (journal.value) {
+    content.value = journal.value.content
+    summary.value = journal.value.summary || ''
+  }
+  editing.value = false
+  drawerOpen.value = true
+}
 
 watch(() => props.selectedDate, async (date) => {
   if (!date) return
@@ -110,6 +149,11 @@ function cancelEdit() {
   }
 }
 
+function formatListDate(dateStr: string) {
+  const d = new Date(dateStr)
+  return `${d.getMonth() + 1}/${d.getDate()} (${DAY_NAMES[d.getDay()]})`
+}
+
 // 섹션 아이콘 매핑
 const sectionIcons: Record<string, string> = {
   '이벤트': '📋', '핵심': '🔑', '결과': '📊',
@@ -164,6 +208,9 @@ function renderContent(text: string): string {
     <div class="journal-mini__header">
       <UiIcon name="notebook-pen" :size="15" />
       <span class="journal-mini__title">시황 일지</span>
+      <UiButton variant="ghost" size="sm" icon-only aria-label="전체 일지" @click="openListDrawer">
+        <template #icon-left><UiIcon name="list" :size="14" /></template>
+      </UiButton>
     </div>
 
     <!-- 일지 있으면 요약 카드 -->
@@ -247,6 +294,46 @@ function renderContent(text: string): string {
           </div>
         </div>
       </template>
+    </div>
+  </UiDrawer>
+
+  <!-- 목록 드로어 -->
+  <UiDrawer
+    :open="listDrawerOpen"
+    @update:open="listDrawerOpen = $event"
+    position="right"
+    width="420px"
+  >
+    <template #title>
+      <div class="drawer-title">
+        <UiIcon name="list" :size="18" />
+        <span>시황 일지 목록</span>
+      </div>
+    </template>
+
+    <div class="journal-list">
+      <div v-if="listLoading" class="journal-list__loading">
+        불러오는 중...
+      </div>
+      <div v-else-if="journalList.length === 0" class="journal-list__empty">
+        작성된 일지가 없습니다.
+      </div>
+      <div v-else class="journal-list__items">
+        <div
+          v-for="item in journalList"
+          :key="item.date"
+          class="journal-list__item"
+          @click="selectFromList(item.date)"
+        >
+          <div class="journal-list__date">
+            {{ formatListDate(item.date) }}
+          </div>
+          <div class="journal-list__summary">
+            {{ item.summary || '(요약 없음)' }}
+          </div>
+          <UiIcon name="chevron-right" :size="14" />
+        </div>
+      </div>
     </div>
   </UiDrawer>
 </template>
@@ -448,6 +535,51 @@ function renderContent(text: string): string {
   }
 }
 
+// 목록 드로어
+.journal-list {
+  &__loading, &__empty {
+    text-align: center;
+    padding: 32px;
+    color: #9ca3af;
+    font-size: 14px;
+  }
+
+  &__items {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover { background: #f3f4f6; }
+  }
+
+  &__date {
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #374151;
+    min-width: 70px;
+  }
+
+  &__summary {
+    flex: 1;
+    font-size: 13px;
+    color: #6b7280;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 // 다크모드
 :global([data-theme="dark"]) {
   .journal-mini {
@@ -462,6 +594,8 @@ function renderContent(text: string): string {
     &__body :deep(.j-section) { background: #1a1c22; }
     &__body :deep(.j-section__head) { background: #22252d; color: #e5e7eb; border-bottom-color: #2d2f36; }
     &__body :deep(strong) { color: #6b8aff; }
+  .journal-list__item { &:hover { background: #262830; } }
+  .journal-list__date { color: #d1d5db; }
     &__footer { border-top-color: #2d2f36; }
     &__summary-input {
       background: #1e2028; border-color: #2d2f36; color: #e5e7eb;
