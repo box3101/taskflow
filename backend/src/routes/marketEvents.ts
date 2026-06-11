@@ -14,7 +14,12 @@ router.get('/', async (_req, res) => {
       map[r.eventId] = { actual: r.actual, memo: r.memo, impact: r.impact }
     }
     res.json({ data: map })
-  } catch (err) {
+  } catch (err: any) {
+    // 테이블 미생성 시 빈 결과 반환 (마이그레이션 전)
+    if (err?.code === 'P2021' || err?.message?.includes('does not exist')) {
+      res.json({ data: {} })
+      return
+    }
     console.error('GET /market-events error:', err)
     res.status(500).json({ message: '서버 오류가 발생했습니다.' })
   }
@@ -41,7 +46,11 @@ router.put('/:eventId', async (req, res) => {
       },
     })
     res.json({ data: result })
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.code === 'P2021' || err?.message?.includes('does not exist')) {
+      res.status(503).json({ message: '테이블 마이그레이션 필요' })
+      return
+    }
     console.error('PUT /market-events error:', err)
     res.status(500).json({ message: '서버 오류가 발생했습니다.' })
   }
