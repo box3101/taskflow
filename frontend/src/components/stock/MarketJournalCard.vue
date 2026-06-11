@@ -215,15 +215,16 @@ function renderContent(text: string): string {
 
     <!-- 일지 있으면 요약 카드 -->
     <div v-if="journal" class="journal-mini__card" @click="openDrawer()">
+      <UiIcon name="file-text" :size="14" color="primary" />
       <div class="journal-mini__summary">{{ journal.summary || '(요약 없음)' }}</div>
       <UiIcon name="chevron-right" :size="14" />
     </div>
 
     <!-- 없으면 작성 버튼 -->
-    <div v-else class="journal-mini__empty" @click="openDrawer(true)">
-      <UiIcon name="plus" :size="14" />
-      <span>시황 분석 작성</span>
-    </div>
+    <UiButton v-else variant="outline" size="sm" full-width @click="openDrawer(true)">
+      <template #icon-left><UiIcon name="plus" :size="14" /></template>
+      시황 분석 작성
+    </UiButton>
   </div>
 
   <!-- 드로어 -->
@@ -249,14 +250,8 @@ function renderContent(text: string): string {
           </div>
           <div class="journal-drawer__body" v-html="renderContent(journal.content)"></div>
           <div class="journal-drawer__footer">
-            <UiButton variant="secondary" size="sm" @click="editing = true">
-              <template #icon-left><UiIcon name="pencil" :size="14" /></template>
-              수정
-            </UiButton>
-            <UiButton variant="ghost" size="sm" @click="handleDelete">
-              <template #icon-left><UiIcon name="trash-2" :size="14" color="danger" /></template>
-              삭제
-            </UiButton>
+            <UiButton variant="secondary" size="sm" @click="editing = true">수정</UiButton>
+            <UiButton variant="danger" size="sm" @click="handleDelete">삭제</UiButton>
           </div>
         </div>
       </template>
@@ -360,45 +355,25 @@ function renderContent(text: string): string {
   &__card {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 8px;
     padding: 10px 12px;
-    background: #f0f5ff;
-    border-radius: 8px;
-    border-left: 3px solid #4f6af6;
+    background: #fff;
+    border: 1px solid #e6e8ec;
+    border-radius: 10px;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: all 0.15s;
 
-    &:hover { background: #e8eeff; }
+    &:hover { background: #f9fafb; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
   }
 
   &__summary {
     font-size: 13px;
-    font-weight: 600;
-    color: #1f2937;
+    font-weight: 500;
+    color: #374151;
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  &__empty {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 14px;
-    color: #9ca3af;
-    font-size: 13px;
-    border: 1px dashed #e5e7eb;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.15s;
-
-    &:hover {
-      border-color: #4f6af6;
-      color: #4f6af6;
-      background: #f8f9ff;
-    }
   }
 }
 
@@ -423,10 +398,9 @@ function renderContent(text: string): string {
     font-size: 15px;
     font-weight: 600;
     color: #1f2937;
-    padding: 8px 12px;
-    background: #f0f5ff;
-    border-radius: 8px;
-    border-left: 3px solid #4f6af6;
+    padding: 10px 14px;
+    background: #f8f9fa;
+    border-radius: 10px;
   }
 
   &__body {
@@ -490,6 +464,7 @@ function renderContent(text: string): string {
 
   &__footer {
     display: flex;
+    justify-content: flex-end;
     gap: 8px;
     padding-top: 12px;
     border-top: 1px solid #e5e7eb;
@@ -584,12 +559,11 @@ function renderContent(text: string): string {
 :global([data-theme="dark"]) {
   .journal-mini {
     border-top-color: #2d2f36;
-    &__card { background: #1e2a4a; &:hover { background: #253560; } }
+    &__card { background: #1e2028; border-color: #2d2f36; &:hover { background: #262830; } }
     &__summary { color: #e5e7eb; }
-    &__empty { border-color: #2d2f36; &:hover { background: #1e2028; } }
   }
   .journal-drawer {
-    &__summary { background: #1e2a4a; color: #e5e7eb; }
+    &__summary { background: #262830; color: #e5e7eb; }
     &__body { color: #d1d5db; }
     &__body :deep(.j-section) { background: #1a1c22; }
     &__body :deep(.j-section__head) { background: #22252d; color: #e5e7eb; border-bottom-color: #2d2f36; }
