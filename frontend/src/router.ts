@@ -48,6 +48,10 @@ const router = createRouter({
           path: 'stock',
           component: () => import('./views/StockView.vue'),
         },
+        {
+          path: 'settings',
+          component: () => import('./views/SettingsView.vue'),
+        },
       ],
     },
     // 기존 /main 경로 호환 → /projects로 리다이렉트

@@ -31,6 +31,7 @@ model User {
   issueComments     IssueComment[]
   kakaoToken        KakaoToken?
   marketJournals    MarketJournal[]
+  preference        UserPreference?
 
   @@map("users")
 }
@@ -346,6 +347,19 @@ model TechNote {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("tech_notes")
+}
+
+// 유저 설정
+model UserPreference {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @unique @map("user_id")
+  preferences Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
 }
 
 // 시황 이벤트 결과 기록

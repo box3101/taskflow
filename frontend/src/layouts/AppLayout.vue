@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   UiIcon, UiButton, UiDropdownMenu, UiConfirm, UiToast, openToast,
@@ -7,6 +7,7 @@ import {
 import type { DropdownMenuItemDef } from '@leechanyong/ispark-ui'
 import { useAuthStore } from '../stores/auth'
 import { useTheme } from '../composables/useTheme'
+import { usePreferences } from '../composables/usePreferences'
 import MemoForm from '../components/memo/MemoForm.vue'
 import { useMemo, type MemoEntry } from '../composables/useMemo'
 
@@ -16,8 +17,11 @@ const auth = useAuthStore()
 
 const menuOpen = ref(false)
 const { theme, toggle: toggleTheme } = useTheme()
+const { load: loadPrefs, isMenuVisible } = usePreferences()
 
-const menuItems = [
+onMounted(() => { loadPrefs() })
+
+const allMenuItems = [
   { label: '홈', value: '', icon: 'home', path: '/', pinned: true },
   { label: '캘린더', value: 'calendar', icon: 'calendar', path: '/calendar', pinned: true },
   { label: 'AI Tools', value: 'ai-tools', icon: 'bot', path: '/ai-tools', pinned: false },
@@ -28,8 +32,13 @@ const menuItems = [
   { label: '주식', value: 'stock', icon: 'trending-up', path: '/stock', pinned: false },
 ]
 
-const pinnedItems = menuItems.filter(item => item.pinned)
-const moreItems = menuItems.filter(item => !item.pinned)
+// 유저 설정에 따라 메뉴 필터링 (홈은 항상 표시)
+const menuItems = computed(() =>
+  allMenuItems.filter(item => item.value === '' || isMenuVisible(item.value))
+)
+
+const pinnedItems = computed(() => menuItems.value.filter(item => item.pinned))
+const moreItems = computed(() => menuItems.value.filter(item => !item.pinned))
 
 // 더보기 메뉴 열림 상태
 const moreOpen = ref(false)
@@ -52,10 +61,12 @@ function navigate(item: typeof menuItems[0]) {
 }
 
 const userMenuItems: DropdownMenuItemDef[] = [
+  { value: 'settings', label: '설정', icon: 'icon-settings' },
   { value: 'logout', label: '로그아웃', icon: 'icon-arrow-right', color: 'danger' },
 ]
 
 function onUserMenuSelect(value: string) {
+  if (value === 'settings') { router.push('/settings') }
   if (value === 'logout') { auth.logout(); router.push('/login') }
 }
 
