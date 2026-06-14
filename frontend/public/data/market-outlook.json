@@ -2,29 +2,30 @@
   "updatedAt": "2026-06-14",
   "foreignFlow": {
     "status": "recovering",
-    "consecutiveDays": 2,
-    "ytdTotal": "-120조원",
-    "dailyAvg": "-3조원",
+    "consecutiveDays": 1,
+    "ytdTotal": "-5조원 이상",
+    "dailyAvg": "+2.67조(6/12)",
     "topSells": [
-      { "name": "삼성전자", "amount": "-60.2조" },
-      { "name": "SK하이닉스", "amount": "-40.8조" }
+      { "name": "삼성전자", "amount": "연간 -5조+" },
+      { "name": "SK하이닉스", "amount": "연간 -5조+" }
     ],
     "topBuys": ["로봇", "방산", "제약/바이오"],
-    "reasons": ["레버리지 ETF 강제 청산(6/8 진범)", "환율 부담", "포트폴리오 리밸런싱"]
+    "reasons": ["레버리지 ETF 강제 청산(6/8 진범)", "환율 1,521원 부담", "25거래일 연속 매도 후 전환"]
   },
   "brokerageTargets": [
-    { "name": "골드만삭스", "target": "12,000", "note": "12개월, 비중확대 유지" },
-    { "name": "노무라", "target": "10,000~11,000", "note": "대폭 상향" },
-    { "name": "한국투자", "target": "11,000", "note": "하반기 상단" },
-    { "name": "삼성증권", "target": "8,400", "note": "상단" }
+    { "name": "골드만삭스", "target": "12,000", "note": "EPS 성장 320% 전망, 비중확대" },
+    { "name": "노무라", "target": "10,000~11,000", "note": "반도체 슈퍼사이클 초입 (6/12)" },
+    { "name": "한국투자", "target": "11,000", "note": "하반기 상단 9,250→11,000 상향 (6/4)" },
+    { "name": "삼성증권", "target": "10,000", "note": "연말 컨센서스 부근" }
   ],
   "reversalSignals": [
-    { "label": "환율", "current": "1,527원", "target": "1,500원 이하 복귀", "status": "warning" },
-    { "label": "FOMC", "current": "6/17 동결 99.5%, 매파적", "target": "9월 인하 힌트 약화", "status": "warning" },
-    { "label": "반도체 실적", "current": "HBM 풀가동, capex 7,250억$", "target": "2Q 실적 확인 (7월)", "status": "ok" },
-    { "label": "삼성 파업", "current": "잠정합의 상태", "target": "성과급 근본 갈등 미해결", "status": "pending" },
-    { "label": "외인 매수", "current": "순매수 전환 확인 중", "target": "3일 연속 순매수", "status": "pending" }
+    { "label": "환율", "current": "1,521원", "target": "1,500원 이하 안정", "status": "warning" },
+    { "label": "FOMC", "current": "6/17 동결 99.5%", "target": "점도표 매파 vs 비둘기", "status": "warning" },
+    { "label": "반도체", "current": "HBM 매출 +105%, 시장 9,750억$", "target": "2Q 실적 확인 (7월)", "status": "ok" },
+    { "label": "삼성 파업", "current": "5/28 임단협 타결 완료", "target": "해결됨", "status": "ok" },
+    { "label": "외인 매수", "current": "6/12 순매수 전환 (25일 만)", "target": "연속 순매수 확인", "status": "pending" },
+    { "label": "미·이란", "current": "MOU 서명 임박 (6/14)", "target": "서명 시 유가↓ 안도 랠리", "status": "pending" }
   ],
-  "outlook": "6/8 급락은 레버리지 ETF 강제청산(진범), 펀더멘털 훼손 아님. 코스피 8,000 회복(6/12). 미·이란 MOU 서명 여부(월요일 시초가 90% 결정) + FOMC(6/17) 점도표가 단기 방향키. HBM 수요 건재, 공급과잉은 2027년 예약석 → 올 4분기부터 감시",
-  "kospiPER": "8.5배 (역사 평균 10배 대비 저평가)"
+  "outlook": "6/8 급락은 레버리지 ETF 강제청산, 펀더멘털 훼손 아님. 6/12 외인 25거래일 만에 순매수 전환(+2.67조), 코스피 8,000 회복. 미·이란 MOU 서명 여부(월요일 시초가 결정) + FOMC(6/17) 점도표가 단기 방향키. 반도체 시장 9,750억$(+25%), HBM 매출 +105% 성장 전망",
+  "kospiPER": "Forward 8.5배 (역사 평균 10배 대비 저평가)"
 }
