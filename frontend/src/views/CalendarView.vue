@@ -129,10 +129,8 @@ function onDeleted() { fetchEvents() }
 
 // 그리드에서 일정 막대 클릭 → 타입별 편집/상세 열기
 function onSelectEvent(cm: CalendarMonthEvent) {
-  const ev = cm.meta as CalendarEvent
-  if (ev.type === 'todo') openTodoDrawer(ev)
-  else if (ev.type === 'issue') openIssueDrawer(ev)
-  else openEdit(ev)
+  // 캘린더 이벤트 클릭 시 날짜 선택만 (사이드 리스트에서 클릭하면 드로어 열림)
+  selectedDate.value = cm.start
 }
 
 function openTodoDrawer(ev: CalendarEvent) {
