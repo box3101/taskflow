@@ -84,17 +84,10 @@ function renderContent(text: string): string {
 </script>
 
 <template>
-  <!-- 사이드패널 버튼 -->
-  <div class="watchlist-mini">
-    <UiButton
-      variant="outline"
-      size="sm"
-      @click="openDrawer()"
-    >
-      <template #icon-left><UiIcon name="radar" :size="14" /></template>
-      워치리스트
-    </UiButton>
-  </div>
+  <!-- FAB 버튼 -->
+  <button class="watchlist-fab" @click="openDrawer()" aria-label="워치리스트">
+    <UiIcon name="radar" :size="20" />
+  </button>
 
   <!-- 드로어 -->
   <UiDrawer
@@ -154,8 +147,26 @@ function renderContent(text: string): string {
 </template>
 
 <style scoped lang="scss">
-.watchlist-mini {
-  display: inline-flex;
+.watchlist-fab {
+  position: fixed;
+  right: 76px;
+  bottom: 76px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: #1f2937;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s;
+  z-index: 50;
+
+  &:hover { transform: scale(1.08); }
+  &:active { transform: scale(0.95); }
 }
 
 .watchlist-drawer {

@@ -193,11 +193,8 @@ onMounted(async () => {
           </div>
 
           <!-- 시황 일지 (날짜 헤더 바로 아래) -->
-          <!-- 시황 일지 + 워치리스트 -->
-          <div class="pulse__tools">
-            <MarketJournalCard :selected-date="selectedDate" />
-            <MarketWatchlist />
-          </div>
+          <!-- 시황 일지 -->
+          <MarketJournalCard :selected-date="selectedDate" />
 
           <!-- 카테고리 필터 -->
           <UiBadgeGroup :gap="6" class="pulse__filters">
@@ -278,6 +275,9 @@ onMounted(async () => {
       @update:open="drawerOpen = $event"
       @saved="onResultSaved"
     />
+
+    <!-- 워치리스트 FAB -->
+    <MarketWatchlist />
   </div>
 </template>
 
@@ -329,12 +329,6 @@ onMounted(async () => {
   color: #1a1f2b;
 }
 
-.pulse__tools {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
 
 .pulse__filters {
   margin-bottom: 12px;
