@@ -688,13 +688,20 @@ async function emptyTrash() {
 
 .todo-toolbar {
   display: flex; align-items: center; justify-content: space-between;
-  flex-wrap: wrap; gap: 8px; margin: 16px 0;
+  gap: 8px; margin: 16px 0;
 }
 .todo-toolbar__filters {
-  display: flex; gap: 8px;
+  display: flex; gap: 8px; flex-shrink: 0;
   :deep(.ui-select-trigger) { min-width: 110px; min-height: 36px; }
 }
-.todo-toolbar__search { width: 160px; }
+.todo-toolbar__search { width: 160px; flex-shrink: 0; margin-left: auto; }
+
+@media (max-width: 640px) {
+  .todo-toolbar__filters {
+    :deep(.ui-select-trigger) { min-width: 80px; }
+  }
+  .todo-toolbar__search { width: 120px; }
+}
 
 .todo-cards {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
