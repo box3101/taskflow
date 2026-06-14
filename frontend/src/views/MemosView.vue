@@ -196,9 +196,10 @@ async function handleDelete(id: string) {
 
 .memo-filter {
   cursor: pointer;
-  transition: opacity 0.15s;
-  &:not(.memo-filter--active) { opacity: 0.4; }
-  &:hover { opacity: 0.8; }
+  transition: all 0.15s;
+  &:not(.memo-filter--active) { opacity: 0.55; filter: saturate(0.5); }
+  &:hover { opacity: 0.85; filter: saturate(0.8); }
+  &--active { font-weight: 700; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
 }
 
 .memos-view__grid {
