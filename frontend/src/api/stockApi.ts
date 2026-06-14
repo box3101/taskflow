@@ -309,6 +309,18 @@ export async function deleteJournal(date: string): Promise<void> {
   await api.delete(`/market-journal/${date}`)
 }
 
+// ── 워치리스트 (상시 메모) ──
+
+const WATCHLIST_KEY = '_watchlist'
+
+export async function fetchWatchlist(): Promise<MarketJournalEntry | null> {
+  return fetchJournal(WATCHLIST_KEY)
+}
+
+export async function saveWatchlist(content: string): Promise<void> {
+  await saveJournal(WATCHLIST_KEY, content, '워치리스트')
+}
+
 export async function saveEventResult(
   eventId: string,
   payload: { actual?: string; memo?: string; impact?: string }

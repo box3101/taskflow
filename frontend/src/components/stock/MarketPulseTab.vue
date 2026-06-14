@@ -8,6 +8,7 @@ import { fetchEventResults } from '../../api/stockApi'
 import MarketEventDrawer from './MarketEventDrawer.vue'
 import MarketOutlookCard from './MarketOutlookCard.vue'
 import MarketJournalCard from './MarketJournalCard.vue'
+import MarketWatchlist from './MarketWatchlist.vue'
 
 const events = ref<MarketEvent[]>([])
 const eventResults = ref<EventResultMap>({})
@@ -192,7 +193,11 @@ onMounted(async () => {
           </div>
 
           <!-- 시황 일지 (날짜 헤더 바로 아래) -->
-          <MarketJournalCard :selected-date="selectedDate" />
+          <!-- 시황 일지 + 워치리스트 -->
+          <div class="pulse__tools">
+            <MarketJournalCard :selected-date="selectedDate" />
+            <MarketWatchlist />
+          </div>
 
           <!-- 카테고리 필터 -->
           <UiBadgeGroup :gap="6" class="pulse__filters">
@@ -322,6 +327,13 @@ onMounted(async () => {
   font-size: 16px;
   font-weight: 700;
   color: #1a1f2b;
+}
+
+.pulse__tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .pulse__filters {
