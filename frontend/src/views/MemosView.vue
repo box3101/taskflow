@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { UiButton, UiInput, UiIcon, UiLoading, UiEmpty, openToast, openConfirm } from '@leechanyong/ispark-ui'
+import { ref, computed, onMounted } from 'vue'
+import { UiButton, UiInput, UiIcon, UiLoading, UiEmpty, UiBadge, UiBadgeGroup, openToast, openConfirm } from '@leechanyong/ispark-ui'
 import MemoCard from '../components/memo/MemoCard.vue'
 import MemoForm from '../components/memo/MemoForm.vue'
 import { useMemo, type MemoEntry } from '../composables/useMemo'
@@ -8,6 +8,21 @@ import { useMemo, type MemoEntry } from '../composables/useMemo'
 const { memos, loading, fetchMemos, addMemo, updateMemo, togglePin, deleteMemo } = useMemo()
 
 const searchQuery = ref('')
+const activeFilter = ref('all')
+
+const colorCategories = [
+  { key: 'all', label: '전체', color: '' },
+  { key: 'yellow', label: '메모/명령어', color: '#f59e0b' },
+  { key: 'green', label: '계정/정보', color: '#22c55e' },
+  { key: 'pink', label: 'AI 사용법', color: '#ec4899' },
+  { key: 'blue', label: '주식', color: '#3b82f6' },
+  { key: 'purple', label: '기타', color: '#8b5cf6' },
+]
+
+const filteredMemos = computed(() => {
+  if (activeFilter.value === 'all') return memos.value
+  return memos.value.filter(m => m.color === activeFilter.value)
+})
 const formOpen = ref(false)
 const editingMemo = ref<MemoEntry | null>(null)
 
@@ -101,20 +116,36 @@ async function handleDelete(id: string) {
       </UiInput>
     </div>
 
+    <!-- 카테고리 필터 -->
+    <UiBadgeGroup :gap="6" class="memos-view__filters">
+      <UiBadge
+        v-for="c in colorCategories"
+        :key="c.key"
+        :color-hex="c.color || undefined"
+        :variant="c.key === 'all' ? 'default' : undefined"
+        size="sm"
+        class="memo-filter"
+        :class="{ 'memo-filter--active': activeFilter === c.key }"
+        @click="activeFilter = c.key"
+      >
+        {{ c.label }}
+      </UiBadge>
+    </UiBadgeGroup>
+
     <!-- 로딩 -->
     <UiLoading v-if="loading" />
 
     <!-- 빈 상태 -->
     <UiEmpty
-      v-else-if="memos.length === 0"
-      :title="searchQuery ? '검색 결과가 없습니다' : '메모가 없습니다'"
-      :description="searchQuery ? '다른 키워드로 검색해보세요.' : '새 메모를 추가해보세요!'"
+      v-else-if="filteredMemos.length === 0"
+      :title="activeFilter !== 'all' ? '해당 카테고리의 메모가 없습니다' : searchQuery ? '검색 결과가 없습니다' : '메모가 없습니다'"
+      :description="activeFilter !== 'all' ? '다른 카테고리를 선택해보세요.' : searchQuery ? '다른 키워드로 검색해보세요.' : '새 메모를 추가해보세요!'"
     />
 
     <!-- 메모 그리드 -->
     <div v-else class="memos-view__grid">
       <MemoCard
-        v-for="memo in memos"
+        v-for="memo in filteredMemos"
         :key="memo.id"
         :memo="memo"
         @edit="openEdit"
@@ -155,8 +186,19 @@ async function handleDelete(id: string) {
 }
 
 .memos-view__search {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   max-width: 400px;
+}
+
+.memos-view__filters {
+  margin-bottom: 16px;
+}
+
+.memo-filter {
+  cursor: pointer;
+  transition: opacity 0.15s;
+  &:not(.memo-filter--active) { opacity: 0.4; }
+  &:hover { opacity: 0.8; }
 }
 
 .memos-view__grid {
