@@ -496,7 +496,7 @@ async function emptyTrash() {
       </div>
       <div v-else />
       <div class="todo-toolbar__search">
-        <UiInput v-model="searchQuery" placeholder="검색" size="sm" clearable>
+        <UiInput v-model="searchQuery" placeholder="검색" size="md" clearable>
           <template #icon-left><UiIcon name="search" :size="16" /></template>
         </UiInput>
       </div>
@@ -694,10 +694,7 @@ async function emptyTrash() {
   display: flex; gap: 8px; flex-shrink: 0;
   :deep(.ui-select-trigger) { min-width: 110px; min-height: 36px; }
 }
-.todo-toolbar__search {
-  width: 160px; flex-shrink: 0; margin-left: auto;
-  :deep(.ui-input) { height: 36px; }
-}
+.todo-toolbar__search { width: 160px; flex-shrink: 0; margin-left: auto; }
 
 @media (max-width: 640px) {
   .todo-toolbar__filters {
