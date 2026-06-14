@@ -496,9 +496,7 @@ async function emptyTrash() {
       </div>
       <div v-else />
       <div class="todo-toolbar__search">
-        <UiInput v-model="searchQuery" placeholder="검색" size="sm" clearable>
-          <template #prefix><UiIcon name="search" :size="16" /></template>
-        </UiInput>
+        <UiInput v-model="searchQuery" placeholder="검색" size="sm" clearable />
       </div>
     </div>
 
