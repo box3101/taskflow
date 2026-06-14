@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-06-10",
+  "updatedAt": "2026-06-14",
   "foreignFlow": {
-    "status": "sell",
-    "consecutiveDays": 20,
+    "status": "recovering",
+    "consecutiveDays": 2,
     "ytdTotal": "-120조원",
     "dailyAvg": "-3조원",
     "topSells": [
@@ -10,7 +10,7 @@
       { "name": "SK하이닉스", "amount": "-40.8조" }
     ],
     "topBuys": ["로봇", "방산", "제약/바이오"],
-    "reasons": ["반도체 피크아웃 우려", "삼성전자 파업", "환율 1,560원 터치", "포트폴리오 리밸런싱"]
+    "reasons": ["레버리지 ETF 강제 청산(6/8 진범)", "환율 부담", "포트폴리오 리밸런싱"]
   },
   "brokerageTargets": [
     { "name": "골드만삭스", "target": "12,000", "note": "12개월, 비중확대 유지" },
@@ -20,10 +20,11 @@
   ],
   "reversalSignals": [
     { "label": "환율", "current": "1,527원", "target": "1,500원 이하 복귀", "status": "warning" },
-    { "label": "연준 금리", "current": "3.50~3.75%", "target": "인하 시그널", "status": "pending" },
-    { "label": "반도체 실적", "current": "피크아웃 우려", "target": "2Q 실적 확인 (7월)", "status": "pending" },
-    { "label": "삼성 파업", "current": "진행 중", "target": "해결", "status": "warning" }
+    { "label": "FOMC", "current": "6/17 동결 99.5%, 매파적", "target": "9월 인하 힌트 약화", "status": "warning" },
+    { "label": "반도체 실적", "current": "HBM 풀가동, capex 7,250억$", "target": "2Q 실적 확인 (7월)", "status": "ok" },
+    { "label": "삼성 파업", "current": "잠정합의 상태", "target": "성과급 근본 갈등 미해결", "status": "pending" },
+    { "label": "외인 매수", "current": "순매수 전환 확인 중", "target": "3일 연속 순매수", "status": "pending" }
   ],
-  "outlook": "7월 분기초 계절적 매수 복귀 패턴 + 2Q 반도체 실적 확인이 핵심. 외국인 보유비중 39.31%로 역대 최고 유지 → 장기 이탈 아닌 단기 리밸런싱 가능성",
+  "outlook": "6/8 급락은 레버리지 ETF 강제청산(진범), 펀더멘털 훼손 아님. 코스피 8,000 회복(6/12). 미·이란 MOU 서명 여부(월요일 시초가 90% 결정) + FOMC(6/17) 점도표가 단기 방향키. HBM 수요 건재, 공급과잉은 2027년 예약석 → 올 4분기부터 감시",
   "kospiPER": "8.5배 (역사 평균 10배 대비 저평가)"
 }

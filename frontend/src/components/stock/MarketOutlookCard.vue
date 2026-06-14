@@ -51,8 +51,10 @@ const statusColor: Record<string, string> = {
       <div class="outlook__title">
         <UiIcon name="radar" :size="16" color="primary" />
         <span>시장 전망</span>
-        <UiBadge variant="danger" size="sm">
-          외국인 {{ data.foreignFlow.consecutiveDays }}일 연속 매도
+        <UiBadge :variant="data.foreignFlow.status === 'sell' ? 'danger' : 'success'" size="sm">
+          {{ data.foreignFlow.status === 'sell'
+            ? `외국인 ${data.foreignFlow.consecutiveDays}일 연속 매도`
+            : `외인 순매수 전환 ${data.foreignFlow.consecutiveDays}일차` }}
         </UiBadge>
       </div>
       <div class="outlook__meta">
