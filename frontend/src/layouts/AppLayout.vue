@@ -45,13 +45,13 @@ const moreOpen = ref(false)
 
 const currentValue = computed(() => {
   const path = route.path
-  const match = menuItems.find(item => item.path !== '/' && path.startsWith(item.path))
+  const match = allMenuItems.find(item => item.path !== '/' && path.startsWith(item.path))
   return match?.value ?? ''
 })
 
 // 현재 활성 메뉴가 더보기에 포함된 항목인지
 const isMoreActive = computed(() => {
-  return moreItems.some(item => currentValue.value === item.value)
+  return moreItems.value.some(item => currentValue.value === item.value)
 })
 
 function navigate(item: typeof menuItems[0]) {
