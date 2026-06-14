@@ -48,6 +48,9 @@ const { data: todos, loading: todoLoading, load: loadTodos } = useCachedFetch<To
 const trashTodos = ref<Todo[]>([])
 const trashLoaded = ref(false)
 
+// 검색
+const searchQuery = ref('')
+
 // 필터/정렬
 const todoFilter = ref('all')
 const todoSort = ref('dueDate')
@@ -139,6 +142,14 @@ const incompleteTodos = computed(() => {
 
   let filtered = todos.value.filter(t => !t.done && !t.repeatType)
 
+  // 검색 필터
+  const q = searchQuery.value.trim().toLowerCase()
+  if (q) {
+    filtered = filtered.filter(t =>
+      t.title.toLowerCase().includes(q) || (t.memo && t.memo.toLowerCase().includes(q))
+    )
+  }
+
   if (todoFilter.value !== 'all') {
     filtered = filtered.filter(t => {
       if (todoFilter.value === 'none') return !t.dueDate
@@ -173,16 +184,22 @@ const incompleteTodos = computed(() => {
 const repeatTodos = computed(() => {
   const now = new Date()
   now.setHours(0, 0, 0, 0)
+  const q = searchQuery.value.trim().toLowerCase()
   return todos.value.filter(t => {
     if (t.done || !t.repeatType) return false
     if (!t.dueDate) return true
     const due = new Date(t.dueDate)
     due.setHours(0, 0, 0, 0)
     return due.getTime() <= now.getTime()
-  })
+  }).filter(t => !q || t.title.toLowerCase().includes(q) || (t.memo && t.memo.toLowerCase().includes(q)))
 })
 
-const completedTodos = computed(() => todos.value.filter(t => t.done))
+const completedTodos = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  return todos.value.filter(t => t.done).filter(t =>
+    !q || t.title.toLowerCase().includes(q) || (t.memo && t.memo.toLowerCase().includes(q))
+  )
+})
 
 onMounted(() => { loadTodos() })
 
@@ -471,11 +488,17 @@ async function emptyTrash() {
       @update:model-value="onTodoSubTabChange"
     />
 
-    <!-- 필터/정렬 + 추가 버튼 -->
-    <div v-if="todoSubTab === 'todo'" class="todo-toolbar">
-      <div class="todo-toolbar__filters">
+    <!-- 필터/정렬 + 검색바 -->
+    <div class="todo-toolbar" v-if="todoSubTab !== 'trash'">
+      <div v-if="todoSubTab === 'todo'" class="todo-toolbar__filters">
         <UiSelect v-model="todoFilter" :options="filterOptions" size="sm" />
         <UiSelect v-model="todoSort" :options="sortOptions" size="sm" />
+      </div>
+      <div v-else />
+      <div class="todo-toolbar__search">
+        <UiInput v-model="searchQuery" placeholder="검색" size="sm" clearable>
+          <template #prefix><UiIcon name="search" :size="16" /></template>
+        </UiInput>
       </div>
     </div>
 
@@ -534,6 +557,7 @@ async function emptyTrash() {
           v-for="todo in completedTodos"
           :key="todo.id"
           class="todo-card todo-card--done"
+          @click="openTodoDrawer(todo)"
         >
           <div class="todo-card__title todo-card__title--done">{{ todo.title }}</div>
           <div class="todo-card__footer">
@@ -670,6 +694,7 @@ async function emptyTrash() {
   display: flex; gap: 8px;
   :deep(.ui-select-trigger) { min-width: 110px; min-height: 36px; }
 }
+.todo-toolbar__search { width: 160px; }
 
 .todo-cards {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
