@@ -70,8 +70,10 @@ const statusColor: Record<string, string> = {
         <span class="outlook__stat-value outlook__stat-value--sell">{{ data.foreignFlow.ytdTotal }}</span>
       </div>
       <div class="outlook__stat">
-        <span class="outlook__stat-label">일평균</span>
-        <span class="outlook__stat-value outlook__stat-value--sell">{{ data.foreignFlow.dailyAvg }}</span>
+        <span class="outlook__stat-label">{{ data.foreignFlow.status === 'sell' ? '일평균' : '매수 전환' }}</span>
+        <span class="outlook__stat-value" :class="data.foreignFlow.status === 'sell' ? 'outlook__stat-value--sell' : 'outlook__stat-value--buy'">
+          {{ data.foreignFlow.status === 'sell' ? data.foreignFlow.dailyAvg : `${data.foreignFlow.consecutiveDays}일차` }}
+        </span>
       </div>
       <div class="outlook__stat">
         <span class="outlook__stat-label">코스피 PER</span>
@@ -85,9 +87,13 @@ const statusColor: Record<string, string> = {
 
     <!-- 확장 상세 -->
     <div v-if="expanded" class="outlook__detail" @click.stop>
-      <!-- 외국인 매도 현황 -->
+      <!-- 외국인 수급 현황 -->
       <div class="outlook__section">
-        <h4><UiIcon name="trending-down" :size="14" color="danger" /> 외국인 매도 현황</h4>
+        <h4>
+          <UiIcon :name="data.foreignFlow.status === 'sell' ? 'trending-down' : 'trending-up'" :size="14"
+            :color="data.foreignFlow.status === 'sell' ? 'danger' : 'success'" />
+          {{ data.foreignFlow.status === 'sell' ? '외국인 매도 현황' : '외국인 수급 전환 중' }}
+        </h4>
         <div class="outlook__sells">
           <div v-for="s in data.foreignFlow.topSells" :key="s.name" class="sell-chip">
             {{ s.name }} <strong>{{ s.amount }}</strong>
