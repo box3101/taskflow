@@ -63,6 +63,7 @@ const memberOptions = computed<SelectOption[]>(() => [
 const statusFilterItems = [
   { label: '할 일', value: 'todo' },
   { label: '진행중', value: 'doing' },
+  { label: '컨펌중', value: 'confirm' },
   { label: '완료', value: 'done' },
 ]
 const priorityFilterItems = [
@@ -129,7 +130,7 @@ function filterLabel(checked: string[], items: { label: string; value: string }[
   return checked.map(v => items.find(i => i.value === v)?.label).join(', ')
 }
 
-const STATUS_ORDER: Record<string, number> = { doing: 0, todo: 1, done: 2 }
+const STATUS_ORDER: Record<string, number> = { doing: 0, confirm: 1, todo: 2, done: 3 }
 const PRIORITY_ORDER: Record<string, number> = { high: 0, mid: 1, low: 2 }
 
 const filteredIssues = computed(() => {
@@ -214,6 +215,7 @@ const issueColumns = computed<TableColumn[]>(() => [
 const statusMenuItems: DropdownMenuItemDef[] = [
   { label: '할 일', value: 'todo' },
   { label: '진행중', value: 'doing' },
+  { label: '컨펌중', value: 'confirm' },
   { label: '완료', value: 'done' },
 ]
 const priorityMenuItems: DropdownMenuItemDef[] = [
@@ -626,6 +628,7 @@ const issueStats = computed(() => ({
   total: issues.value.length,
   todo: issues.value.filter(i => i.status === 'todo').length,
   doing: issues.value.filter(i => i.status === 'doing').length,
+  confirm: issues.value.filter(i => i.status === 'confirm').length,
   done: issues.value.filter(i => i.status === 'done').length,
 }))
 
@@ -850,9 +853,9 @@ onMounted(async () => {
                     <template #trigger>
                       <button class="cell-badge-btn">
                         <UiBadge
-                          :variant="row.status === 'done' ? 'success' : row.status === 'doing' ? 'primary' : 'default'"
+                          :variant="row.status === 'done' ? 'success' : row.status === 'confirm' ? 'warning' : row.status === 'doing' ? 'primary' : 'default'"
                           size="sm"
-                        >{{ row.status === 'done' ? '완료' : row.status === 'doing' ? '진행중' : '할 일' }}</UiBadge>
+                        >{{ row.status === 'done' ? '완료' : row.status === 'confirm' ? '컨펌중' : row.status === 'doing' ? '진행중' : '할 일' }}</UiBadge>
                       </button>
                     </template>
                   </UiDropdownMenu>
@@ -1028,8 +1031,8 @@ onMounted(async () => {
             <UiDropdownMenu :items="statusMenuItems" @select="(val: string) => onInlineChange(panelIssue, 'status', val)">
               <template #trigger>
                 <button class="cell-badge-btn">
-                  <UiBadge :variant="panelIssue.status === 'done' ? 'success' : panelIssue.status === 'doing' ? 'primary' : 'default'" size="sm">
-                    {{ panelIssue.status === 'done' ? '완료' : panelIssue.status === 'doing' ? '진행중' : '할 일' }}
+                  <UiBadge :variant="panelIssue.status === 'done' ? 'success' : panelIssue.status === 'confirm' ? 'warning' : panelIssue.status === 'doing' ? 'primary' : 'default'" size="sm">
+                    {{ panelIssue.status === 'done' ? '완료' : panelIssue.status === 'confirm' ? '컨펌중' : panelIssue.status === 'doing' ? '진행중' : '할 일' }}
                   </UiBadge>
                 </button>
               </template>

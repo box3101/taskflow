@@ -42,6 +42,7 @@ const deleting = ref(false)
 const statusMenuItems: DropdownMenuItemDef[] = [
   { value: 'todo', label: '할 일' },
   { value: 'doing', label: '진행중' },
+  { value: 'confirm', label: '컨펌중' },
   { value: 'done', label: '완료' },
 ]
 
@@ -149,8 +150,8 @@ function formatDate(iso: string | null): string {
           <UiDropdownMenu :items="statusMenuItems" @select="(val: string) => onInlineChange('status', val)">
             <template #trigger>
               <button class="cell-badge-btn">
-                <UiBadge :variant="issue.status === 'done' ? 'success' : issue.status === 'doing' ? 'primary' : 'default'" size="sm">
-                  {{ issue.status === 'done' ? '완료' : issue.status === 'doing' ? '진행중' : '할 일' }}
+                <UiBadge :variant="issue.status === 'done' ? 'success' : issue.status === 'confirm' ? 'warning' : issue.status === 'doing' ? 'primary' : 'default'" size="sm">
+                  {{ issue.status === 'done' ? '완료' : issue.status === 'confirm' ? '컨펌중' : issue.status === 'doing' ? '진행중' : '할 일' }}
                 </UiBadge>
               </button>
             </template>
