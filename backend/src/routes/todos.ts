@@ -4,15 +4,19 @@ import path from 'path'
 import fs from 'fs'
 import prisma from '../prisma'
 import { authenticate } from '../middleware/auth'
+import { isR2Configured, uploadToR2, deleteFromR2 } from '../services/storage'
 
+// R2 설정 시 메모리 저장, 미설정 시 디스크 저장 (로컬 개발용)
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: path.join(__dirname, '../../uploads'),
-    filename: (_req, file, cb) => {
-      const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`
-      cb(null, `${unique}${path.extname(file.originalname)}`)
-    },
-  }),
+  storage: isR2Configured()
+    ? multer.memoryStorage()
+    : multer.diskStorage({
+        destination: path.join(__dirname, '../../uploads'),
+        filename: (_req, file, cb) => {
+          const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`
+          cb(null, `${unique}${path.extname(file.originalname)}`)
+        },
+      }),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 })
 
@@ -25,7 +29,16 @@ function removeFileFromDisk(filePath: string) {
   if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath)
 }
 
-// 할일에 연결된 파일들을 디스크에서 일괄 삭제
+// R2 또는 디스크에서 파일 삭제
+async function removeFile(filePath: string) {
+  if (isR2Configured() && filePath.includes('/')) {
+    await deleteFromR2(filePath)
+  } else {
+    removeFileFromDisk(filePath)
+  }
+}
+
+// 할일에 연결된 파일들을 일괄 삭제
 async function removeFilesForTodos(todoIds: number[]) {
   if (todoIds.length === 0) return
   const files = await prisma.todoFile.findMany({
@@ -33,7 +46,7 @@ async function removeFilesForTodos(todoIds: number[]) {
     select: { path: true },
   })
   for (const f of files) {
-    removeFileFromDisk(f.path)
+    await removeFile(f.path)
   }
 }
 
@@ -372,8 +385,7 @@ router.post('/:id/files', upload.single('file'), async (req, res) => {
 
     const existing = await prisma.todo.findFirst({ where: { id, userId } })
     if (!existing) {
-      // 소유권 체크 실패 — 이미 저장된 파일 정리
-      removeFileFromDisk(file.filename)
+      if (!isR2Configured()) removeFileFromDisk(file.filename)
       res.status(404).json({ message: '할일을 찾을 수 없습니다.' })
       return
     }
@@ -381,19 +393,29 @@ router.post('/:id/files', upload.single('file'), async (req, res) => {
     // 한글 파일명 디코딩
     const decodedName = Buffer.from(file.originalname, 'latin1').toString('utf8')
 
+    let storedPath: string
+    if (isR2Configured() && file.buffer) {
+      const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`
+      const key = `todos/${unique}${path.extname(file.originalname)}`
+      await uploadToR2(key, file.buffer, file.mimetype)
+      storedPath = key
+    } else {
+      storedPath = file.filename
+    }
+
     const todoFile = await prisma.todoFile.create({
       data: {
         todoId: id,
         filename: decodedName,
-        path: file.filename,
+        path: storedPath,
         mimetype: file.mimetype,
         size: file.size,
       },
     })
     res.status(201).json({ data: todoFile })
   } catch {
-    // DB 실패 시 디스크 파일 롤백
-    if (req.file) removeFileFromDisk(req.file.filename)
+    // 실패 시 정리
+    if (req.file && !isR2Configured()) removeFileFromDisk(req.file.filename)
     res.status(500).json({ message: '파일 업로드에 실패했습니다.' })
   }
 })
@@ -417,8 +439,8 @@ router.delete('/:id/files/:fileId', async (req, res) => {
       return
     }
 
-    // 디스크에서 삭제 (path traversal 방지)
-    removeFileFromDisk(file.path)
+    // R2 또는 디스크에서 삭제
+    await removeFile(file.path)
 
     await prisma.todoFile.delete({ where: { id: fileId } })
     res.json({ success: true })

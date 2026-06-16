@@ -25,9 +25,20 @@ import { startStockGuardCron } from './services/stockGuardCron'
 
 const app = express()
 
+import { isR2Configured, getR2Url } from './services/storage'
+
 app.use(cors({ origin: (origin, cb) => cb(null, true) }))
 app.use(express.json())
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
+
+// 파일 서빙: R2 설정 시 리다이렉트, 미설정 시 로컬 디스크
+if (isR2Configured()) {
+  app.get('/uploads/{*key}', (req, res) => {
+    const key = (req.params as Record<string, string>).key
+    res.redirect(getR2Url(key))
+  })
+} else {
+  app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
+}
 
 // API 라우터
 app.use('/auth', authRouter)

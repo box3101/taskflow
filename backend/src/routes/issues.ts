@@ -4,18 +4,22 @@ import path from 'path'
 import fs from 'fs'
 import prisma from '../prisma'
 import { authenticate } from '../middleware/auth'
+import { isR2Configured, uploadToR2, deleteFromR2 } from '../services/storage'
 
 const router = Router()
 router.use(authenticate)
 
+// R2 설정 시 메모리 저장, 미설정 시 디스크 저장 (로컬 개발용)
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: path.join(__dirname, '../../uploads'),
-    filename: (_req, file, cb) => {
-      const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`
-      cb(null, `${unique}${path.extname(file.originalname)}`)
-    },
-  }),
+  storage: isR2Configured()
+    ? multer.memoryStorage()
+    : multer.diskStorage({
+        destination: path.join(__dirname, '../../uploads'),
+        filename: (_req, file, cb) => {
+          const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`
+          cb(null, `${unique}${path.extname(file.originalname)}`)
+        },
+      }),
   limits: { fileSize: 10 * 1024 * 1024 },
 })
 
@@ -199,11 +203,23 @@ router.post('/:id/files', upload.single('file'), async (req, res) => {
       res.status(400).json({ message: '파일을 선택해주세요.' })
       return
     }
+
+    let storedPath: string
+    if (isR2Configured() && file.buffer) {
+      // R2에 업로드
+      const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`
+      const key = `issues/${unique}${path.extname(file.originalname)}`
+      await uploadToR2(key, file.buffer, file.mimetype)
+      storedPath = key
+    } else {
+      storedPath = file.filename
+    }
+
     const issueFile = await prisma.issueFile.create({
       data: {
         issueId,
         filename: Buffer.from(file.originalname, 'latin1').toString('utf8'),
-        path: file.filename,
+        path: storedPath,
         mimetype: file.mimetype,
         size: file.size,
       },
@@ -223,9 +239,15 @@ router.delete('/:id/files/:fileId', async (req, res) => {
       res.status(404).json({ message: '파일을 찾을 수 없습니다.' })
       return
     }
-    // 디스크 삭제
-    const filePath = path.resolve(path.join(__dirname, '../../uploads', file.path))
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
+
+    // R2 또는 디스크에서 삭제
+    if (isR2Configured() && file.path.includes('/')) {
+      await deleteFromR2(file.path)
+    } else {
+      const filePath = path.resolve(path.join(__dirname, '../../uploads', file.path))
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
+    }
+
     await prisma.issueFile.delete({ where: { id: fileId } })
     res.json({ success: true })
   } catch {
