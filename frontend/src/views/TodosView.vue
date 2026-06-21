@@ -403,7 +403,8 @@ async function deleteFile(file: FileItem) {
 }
 
 function getFileUrl(filePath: string) {
-  return `/uploads/${filePath}`
+  const base = import.meta.env.VITE_API_URL || ''
+  return `${base}/uploads/${filePath}`
 }
 
 function onTodoSubTabChange(val: string) {

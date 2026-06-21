@@ -481,7 +481,8 @@ async function loadIssueFiles(issueId: number) {
 }
 
 function getIssueFileUrl(path: string) {
-  return `/uploads/${path}`
+  const base = import.meta.env.VITE_API_URL || ''
+  return `${base}/uploads/${path}`
 }
 
 async function onIssueFileSelect(file: File) {
