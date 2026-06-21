@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  UiIcon, UiButton, UiDropdownMenu, UiConfirm, UiToast,
+  UiIcon, UiButton, UiDropdownMenu, UiConfirm, UiToast, UiAvatar,
 } from '@leechanyong/ispark-ui'
 import type { DropdownMenuItemDef } from '@leechanyong/ispark-ui'
 import { useAuthStore } from '../stores/auth'
@@ -68,7 +68,7 @@ function onUserMenuSelect(value: string) {
         >
           <template #trigger>
             <button class="user-avatar-btn">
-              <span class="user-avatar">{{ auth.user?.name?.charAt(0) }}</span>
+              <UiAvatar :name="auth.user?.name" size="sm" />
             </button>
           </template>
         </UiDropdownMenu>
@@ -147,11 +147,6 @@ function onUserMenuSelect(value: string) {
   display: flex; align-items: center; background: none; border: none;
   cursor: pointer; padding: 4px; border-radius: 50%; transition: background 0.15s;
   &:hover { background: #f3f4f6; }
-}
-.user-avatar {
-  display: flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; border-radius: 50%;
-  background: #4f6af6; color: #fff; font-size: 14px; font-weight: 600;
 }
 
 .menu-overlay {

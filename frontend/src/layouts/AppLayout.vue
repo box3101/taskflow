@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
-  UiIcon, UiButton, UiDropdownMenu, UiConfirm, UiToast, openToast,
+  UiIcon, UiButton, UiDropdownMenu, UiConfirm, UiToast, UiAvatar, openToast,
 } from '@leechanyong/ispark-ui'
 import type { DropdownMenuItemDef } from '@leechanyong/ispark-ui'
 import { useAuthStore } from '../stores/auth'
@@ -115,7 +115,7 @@ async function handleQuickMemoSaved(memo: MemoEntry) {
         >
           <template #trigger>
             <button class="user-avatar-btn">
-              <span class="user-avatar">{{ auth.user?.name?.charAt(0) }}</span>
+              <UiAvatar :name="auth.user?.name" size="sm" />
             </button>
           </template>
         </UiDropdownMenu>
@@ -236,11 +236,6 @@ async function handleQuickMemoSaved(memo: MemoEntry) {
   display: flex; align-items: center; background: none; border: none;
   cursor: pointer; padding: 4px; border-radius: 50%; transition: background 0.15s;
   &:hover { background: #f3f4f6; }
-}
-.user-avatar {
-  display: flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; border-radius: 50%;
-  background: #4f6af6; color: #fff; font-size: 14px; font-weight: 600;
 }
 
 .menu-overlay {
