@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { UiTab, UiTable, UiBadge, UiLoading, UiEmpty, UiButton, UiIcon, UiDrawer, UiDropdownMenu, UiDatePicker, UiModal, UiInput, UiSelect, UiTextarea, UiFileList, UiFileUpload, UiToast, UiConfirm, openToast, openConfirm } from '@leechanyong/ispark-ui'
+import { UiTab, UiTable, UiBadge, UiLoading, UiEmpty, UiButton, UiIcon, UiDrawer, UiDropdownMenu, UiDatePicker, UiModal, UiInput, UiSelect, UiMultiSelect, UiTextarea, UiFileList, UiFileUpload, UiToast, UiConfirm, UiAvatar, openToast, openConfirm } from '@leechanyong/ispark-ui'
 import type { TabItem, SelectOption, TableColumn, DropdownMenuItemDef } from '@leechanyong/ispark-ui'
 import { CalendarDate, type DateValue } from '@internationalized/date'
 import api from '../api/client'
@@ -105,30 +105,49 @@ function isNew(createdAt: string): boolean {
 }
 const showFilters = ref(false)
 const hasActiveFilter = computed(() =>
-  checkedStatuses.value.length > 0 || filterModule.value !== '' || filterAssignee.value !== ''
+  checkedStatuses.value.length > 0 || filterModule.value !== '' || filterAssignee.value !== '' || filterDateFrom.value != null || filterDateTo.value != null
 )
 const checkedStatuses = ref<string[]>([])
 const filterModule = ref('')
 const filterAssignee = ref('')
-const showStatusDropdown = ref(false)
+const filterDateFrom = ref<DateValue | undefined>(undefined)
+const filterDateTo = ref<DateValue | undefined>(undefined)
+const activeDatePreset = ref('')
+
+function applyDatePreset(preset: string) {
+  if (activeDatePreset.value === preset) {
+    activeDatePreset.value = ''
+    filterDateFrom.value = undefined
+    filterDateTo.value = undefined
+    resetDisplay()
+    return
+  }
+  activeDatePreset.value = preset
+  const now = new Date()
+  const todayVal = new CalendarDate(now.getFullYear(), now.getMonth() + 1, now.getDate())
+
+  if (preset === 'today') {
+    filterDateFrom.value = todayVal
+    filterDateTo.value = todayVal
+  } else if (preset === 'week') {
+    const day = now.getDay()
+    const diff = day === 0 ? 6 : day - 1
+    const mon = new Date(now)
+    mon.setDate(now.getDate() - diff)
+    filterDateFrom.value = new CalendarDate(mon.getFullYear(), mon.getMonth() + 1, mon.getDate())
+    filterDateTo.value = todayVal
+  } else if (preset === 'month') {
+    filterDateFrom.value = new CalendarDate(now.getFullYear(), now.getMonth() + 1, 1)
+    filterDateTo.value = todayVal
+  }
+  resetDisplay()
+}
 
 const assigneeFilterOptions = computed<SelectOption[]>(() => [
   { label: '전체', value: '' },
   { label: '미배정', value: 'none' },
   ...members.value.map((m: any) => ({ label: m.user.name, value: String(m.user.id) })),
 ])
-
-function toggleFilter(arr: string[], val: string) {
-  const idx = arr.indexOf(val)
-  if (idx >= 0) arr.splice(idx, 1)
-  else arr.push(val)
-  resetDisplay()
-}
-
-function filterLabel(checked: string[], items: { label: string; value: string }[]) {
-  if (checked.length === 0 || checked.length === items.length) return '전체'
-  return checked.map(v => items.find(i => i.value === v)?.label).join(', ')
-}
 
 const STATUS_ORDER: Record<string, number> = { doing: 0, confirm: 1, todo: 2, done: 3 }
 const PRIORITY_ORDER: Record<string, number> = { high: 0, mid: 1, low: 2 }
@@ -148,6 +167,12 @@ const filteredIssues = computed(() => {
       if (filterAssignee.value) {
         const assigneeVal = i.assigneeId ? String(i.assigneeId) : 'none'
         if (assigneeVal !== filterAssignee.value) return false
+      }
+      if (filterDateFrom.value || filterDateTo.value) {
+        const d = new Date(i.createdAt)
+        const created = new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate())
+        if (filterDateFrom.value && created.compare(filterDateFrom.value) < 0) return false
+        if (filterDateTo.value && created.compare(filterDateTo.value) > 0) return false
       }
       return true
     })
@@ -173,15 +198,6 @@ const hasMore = computed(() => displayCount.value < filteredIssues.value.length)
 function loadMore() { displayCount.value += PAGE_SIZE }
 // 필터 변경 시 표시 건수 리셋
 function resetDisplay() { displayCount.value = PAGE_SIZE }
-
-// 바깥 클릭 시 드롭다운 닫기
-function onClickOutside(e: MouseEvent) {
-  const t = e.target as HTMLElement
-  if (!t.closest('.multi-filter')) {
-    showStatusDropdown.value = false
-  }
-}
-onMounted(() => document.addEventListener('click', onClickOutside))
 
 // ── 날짜 컬럼 모드 (프로젝트별 localStorage) ──
 type DateColumnMode = 'dueAt' | 'updatedAt'
@@ -633,14 +649,6 @@ const issueStats = computed(() => ({
   done: issues.value.filter(i => i.status === 'done').length,
 }))
 
-// ── 담당자 색상 ──
-const avatarColors = ['#4f6af6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
-function getAvatarColor(name: string) {
-  let hash = 0
-  for (const ch of name) hash = ch.charCodeAt(0) + ((hash << 5) - hash)
-  return avatarColors[Math.abs(hash) % avatarColors.length]
-}
-
 // ── 멤버 관리 ──
 const roleOptions: SelectOption[] = [
   { label: 'Owner', value: 'owner' },
@@ -765,32 +773,19 @@ onMounted(async () => {
 
             <!-- 필터 바 (토글) -->
             <div v-if="showFilters" class="filter-bar">
-              <div class="multi-filter" @click.stop>
-                <button class="multi-filter-btn" @click="showStatusDropdown = !showStatusDropdown; showPriorityDropdown = false; showAssigneeDropdown = false">
-                  <span class="multi-filter-label">상태</span>
-                  <span class="multi-filter-value">{{ filterLabel(checkedStatuses, statusFilterItems) }}</span>
-                  <span class="multi-filter-arrow" :class="{ 'is-open': showStatusDropdown }">▾</span>
-                </button>
-                <div v-if="showStatusDropdown" class="multi-filter-dropdown">
-                  <label
-                    v-for="item in statusFilterItems"
-                    :key="item.value"
-                    class="multi-filter-option"
-                    :class="{ 'is-checked': checkedStatuses.includes(item.value) }"
-                  >
-                    <input
-                      type="checkbox"
-                      :checked="checkedStatuses.includes(item.value)"
-                      @change="toggleFilter(checkedStatuses, item.value)"
-                    />
-                    <span>{{ item.label }}</span>
-                    <span v-if="checkedStatuses.includes(item.value)" class="multi-filter-check">✓</span>
-                  </label>
-                </div>
-              </div>
-
+              <UiMultiSelect v-model="checkedStatuses" :options="statusFilterItems" all-label="상태 전체" size="sm" placeholder="상태" class="filter-status" @update:model-value="resetDisplay" />
               <UiSelect v-model="filterModule" :options="[{ label: '모듈 전체', value: '' }, ...moduleSelectOptions]" size="sm" placeholder="모듈" class="filter-module" />
               <UiSelect v-model="filterAssignee" :options="assigneeFilterOptions" size="sm" placeholder="담당자" class="filter-assignee" />
+              <div class="filter-date-presets">
+                <UiButton :variant="activeDatePreset === 'today' ? 'primary' : 'outline'" size="sm" @click="applyDatePreset('today')">오늘</UiButton>
+                <UiButton :variant="activeDatePreset === 'week' ? 'primary' : 'outline'" size="sm" @click="applyDatePreset('week')">이번주</UiButton>
+                <UiButton :variant="activeDatePreset === 'month' ? 'primary' : 'outline'" size="sm" @click="applyDatePreset('month')">이번달</UiButton>
+              </div>
+              <div class="filter-date-range">
+                <UiDatePicker v-model="filterDateFrom" type="date" size="sm" placeholder="시작일" @update:model-value="activeDatePreset = ''; resetDisplay()" />
+                <span class="filter-date-sep">~</span>
+                <UiDatePicker v-model="filterDateTo" type="date" size="sm" placeholder="종료일" @update:model-value="activeDatePreset = ''; resetDisplay()" />
+              </div>
 
             </div>
 
@@ -910,7 +905,7 @@ onMounted(async () => {
                   >
                     <template #trigger>
                       <button class="cell-badge-btn">
-                        <span v-if="row.assignee" class="cell-assignee">{{ row.assignee.name }}</span>
+                        <UiAvatar v-if="row.assignee" :name="row.assignee.name" size="xs" />
                         <span v-else class="cell-assignee cell-assignee--empty">미배정</span>
                       </button>
                     </template>
@@ -936,7 +931,7 @@ onMounted(async () => {
         </div>
         <ul v-if="project?.members?.length" class="member-list">
           <li v-for="m in project.members" :key="m.id" class="member-item">
-            <span class="member-avatar" :style="{ background: getAvatarColor(m.user.name) }">{{ m.user.name.charAt(0) }}</span>
+            <UiAvatar :name="m.user.name" size="sm" />
             <div class="member-info">
               <strong>{{ m.user.name }}</strong>
               <span>{{ m.user.email }}</span>
@@ -1299,6 +1294,24 @@ onMounted(async () => {
   flex-shrink: 0;
   flex-grow: 0;
 }
+.filter-status {
+  width: 130px;
+  min-width: 130px;
+  max-width: 130px;
+}
+.filter-date-presets {
+  display: flex;
+  gap: 4px;
+}
+.filter-date-range {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.filter-date-sep {
+  color: #9ca3af;
+  font-size: 12px;
+}
 .filter-bar {
   display: flex;
   align-items: center;
@@ -1310,72 +1323,6 @@ onMounted(async () => {
   font-size: 13px;
   color: #9ca3af;
   margin-left: auto;
-}
-.multi-filter {
-  position: relative;
-}
-.multi-filter-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 13px;
-  transition: border-color 0.15s;
-  &:hover { border-color: #3b82f6; }
-}
-.multi-filter-label {
-  color: #6b7280;
-  font-weight: 500;
-}
-.multi-filter-value {
-  color: #1f2937;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.multi-filter-arrow {
-  font-size: 10px;
-  color: #9ca3af;
-  transition: transform 0.15s;
-  &.is-open { transform: rotate(180deg); }
-}
-.multi-filter-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  min-width: 140px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-  padding: 4px 0;
-  z-index: 100;
-}
-.multi-filter-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  cursor: pointer;
-  font-size: 13px;
-  color: #374151;
-  transition: background 0.1s;
-  &:hover { background: #f3f4f6; }
-  &.is-checked {
-    color: #2563eb;
-    font-weight: 600;
-  }
-  input[type="checkbox"] { display: none; }
-}
-.multi-filter-check {
-  margin-left: auto;
-  color: #2563eb;
-  font-weight: 700;
 }
 
 // ── 이슈 테이블 ──
