@@ -112,36 +112,99 @@ const filterModule = ref('')
 const filterAssignee = ref('')
 const filterDateFrom = ref<DateValue | undefined>(undefined)
 const filterDateTo = ref<DateValue | undefined>(undefined)
-const activeDatePreset = ref('')
+// 날짜 단위(일/주/월)와 오프셋(0=현재, -1=이전, +1=다음)으로 기간 탐색
+const dateUnit = ref<'' | 'day' | 'week' | 'month'>('')
+const dateOffset = ref(0)
 
-function applyDatePreset(preset: string) {
-  if (activeDatePreset.value === preset) {
-    activeDatePreset.value = ''
+// 선택된 단위/오프셋으로 filterDateFrom/To 재계산
+function recomputeDateRange() {
+  if (!dateUnit.value) {
     filterDateFrom.value = undefined
     filterDateTo.value = undefined
     resetDisplay()
     return
   }
-  activeDatePreset.value = preset
   const now = new Date()
-  const todayVal = new CalendarDate(now.getFullYear(), now.getMonth() + 1, now.getDate())
+  const toCal = (d: Date) => new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate())
 
-  if (preset === 'today') {
-    filterDateFrom.value = todayVal
-    filterDateTo.value = todayVal
-  } else if (preset === 'week') {
+  if (dateUnit.value === 'day') {
+    const d = new Date(now)
+    d.setDate(now.getDate() + dateOffset.value)
+    filterDateFrom.value = toCal(d)
+    filterDateTo.value = toCal(d)
+  } else if (dateUnit.value === 'week') {
     const day = now.getDay()
     const diff = day === 0 ? 6 : day - 1
     const mon = new Date(now)
-    mon.setDate(now.getDate() - diff)
-    filterDateFrom.value = new CalendarDate(mon.getFullYear(), mon.getMonth() + 1, mon.getDate())
-    filterDateTo.value = todayVal
-  } else if (preset === 'month') {
-    filterDateFrom.value = new CalendarDate(now.getFullYear(), now.getMonth() + 1, 1)
-    filterDateTo.value = todayVal
+    mon.setDate(now.getDate() - diff + dateOffset.value * 7)
+    const sun = new Date(mon)
+    sun.setDate(mon.getDate() + 6)
+    filterDateFrom.value = toCal(mon)
+    filterDateTo.value = toCal(sun)
+  } else if (dateUnit.value === 'month') {
+    const first = new Date(now.getFullYear(), now.getMonth() + dateOffset.value, 1)
+    const last = new Date(now.getFullYear(), now.getMonth() + dateOffset.value + 1, 0)
+    filterDateFrom.value = toCal(first)
+    filterDateTo.value = toCal(last)
   }
   resetDisplay()
 }
+
+// 단위 버튼 클릭: 같은 단위 다시 누르면 해제
+function selectDateUnit(unit: 'day' | 'week' | 'month') {
+  dateUnit.value = dateUnit.value === unit ? '' : unit
+  dateOffset.value = 0
+  recomputeDateRange()
+}
+
+// 이전/다음 기간 이동
+function shiftDate(dir: number) {
+  if (!dateUnit.value) return
+  dateOffset.value += dir
+  recomputeDateRange()
+}
+
+// 오늘로 이동 (단위 미선택 시 '일' 기준)
+function goToday() {
+  if (!dateUnit.value) dateUnit.value = 'day'
+  dateOffset.value = 0
+  recomputeDateRange()
+}
+
+// 직접 날짜 선택 시 단위/오프셋 해제
+function clearDateUnit() {
+  dateUnit.value = ''
+  dateOffset.value = 0
+}
+
+// 현재 선택된 기간 라벨
+const dateRangeLabel = computed(() => {
+  if (!dateUnit.value) return '기간 선택'
+  const o = dateOffset.value
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const f = filterDateFrom.value as any
+  const t = filterDateTo.value as any
+
+  if (dateUnit.value === 'day') {
+    if (o === 0) return '오늘'
+    if (o === -1) return '어제'
+    if (o === 1) return '내일'
+    return f ? `${f.year}.${pad(f.month)}.${pad(f.day)}` : ''
+  }
+  if (dateUnit.value === 'week') {
+    const range = f && t ? `${pad(f.month)}.${pad(f.day)} ~ ${pad(t.month)}.${pad(t.day)}` : ''
+    if (o === 0) return `이번주 (${range})`
+    if (o === -1) return `저번주 (${range})`
+    if (o === 1) return `다음주 (${range})`
+    return range
+  }
+  // month
+  const ym = f ? `${f.year}.${pad(f.month)}` : ''
+  if (o === 0) return `이번달 (${ym})`
+  if (o === -1) return `지난달 (${ym})`
+  if (o === 1) return `다음달 (${ym})`
+  return ym
+})
 
 const assigneeFilterOptions = computed<SelectOption[]>(() => [
   { label: '전체', value: '' },
@@ -776,15 +839,27 @@ onMounted(async () => {
               <UiMultiSelect v-model="checkedStatuses" :options="statusFilterItems" all-label="상태 전체" size="sm" placeholder="상태" class="filter-status" @update:model-value="resetDisplay" />
               <UiSelect v-model="filterModule" :options="[{ label: '모듈 전체', value: '' }, ...moduleSelectOptions]" size="sm" placeholder="모듈" class="filter-module" />
               <UiSelect v-model="filterAssignee" :options="assigneeFilterOptions" size="sm" placeholder="담당자" class="filter-assignee" />
-              <div class="filter-date-presets">
-                <UiButton :variant="activeDatePreset === 'today' ? 'primary' : 'outline'" size="sm" @click="applyDatePreset('today')">오늘</UiButton>
-                <UiButton :variant="activeDatePreset === 'week' ? 'primary' : 'outline'" size="sm" @click="applyDatePreset('week')">이번주</UiButton>
-                <UiButton :variant="activeDatePreset === 'month' ? 'primary' : 'outline'" size="sm" @click="applyDatePreset('month')">이번달</UiButton>
+              <div class="filter-date-nav">
+                <div class="date-unit-seg">
+                  <UiButton :variant="dateUnit === 'day' ? 'primary' : 'outline'" size="sm" @click="selectDateUnit('day')">일</UiButton>
+                  <UiButton :variant="dateUnit === 'week' ? 'primary' : 'outline'" size="sm" @click="selectDateUnit('week')">주</UiButton>
+                  <UiButton :variant="dateUnit === 'month' ? 'primary' : 'outline'" size="sm" @click="selectDateUnit('month')">월</UiButton>
+                </div>
+                <div class="date-stepper">
+                  <UiButton variant="ghost" size="sm" icon-only :disabled="!dateUnit" aria-label="이전 기간" @click="shiftDate(-1)">
+                    <template #icon-left><UiIcon name="chevron-left" :size="16" /></template>
+                  </UiButton>
+                  <span class="date-stepper-label" :class="{ 'date-stepper-label--empty': !dateUnit }">{{ dateRangeLabel }}</span>
+                  <UiButton variant="ghost" size="sm" icon-only :disabled="!dateUnit" aria-label="다음 기간" @click="shiftDate(1)">
+                    <template #icon-left><UiIcon name="chevron-right" :size="16" /></template>
+                  </UiButton>
+                </div>
+                <UiButton variant="outline" size="sm" @click="goToday">오늘</UiButton>
               </div>
               <div class="filter-date-range">
-                <UiDatePicker v-model="filterDateFrom" type="date" size="sm" placeholder="시작일" @update:model-value="activeDatePreset = ''; resetDisplay()" />
+                <UiDatePicker v-model="filterDateFrom" type="date" size="sm" placeholder="시작일" @update:model-value="clearDateUnit(); resetDisplay()" />
                 <span class="filter-date-sep">~</span>
-                <UiDatePicker v-model="filterDateTo" type="date" size="sm" placeholder="종료일" @update:model-value="activeDatePreset = ''; resetDisplay()" />
+                <UiDatePicker v-model="filterDateTo" type="date" size="sm" placeholder="종료일" @update:model-value="clearDateUnit(); resetDisplay()" />
               </div>
 
             </div>
@@ -1299,9 +1374,29 @@ onMounted(async () => {
   min-width: 130px;
   max-width: 130px;
 }
-.filter-date-presets {
+.filter-date-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.date-unit-seg {
   display: flex;
   gap: 4px;
+}
+.date-stepper {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.date-stepper-label {
+  min-width: 130px;
+  text-align: center;
+  font-size: 12px;
+  color: #374151;
+  white-space: nowrap;
+}
+.date-stepper-label--empty {
+  color: #9ca3af;
 }
 .filter-date-range {
   display: flex;
