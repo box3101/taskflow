@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { UiTab, UiTable, UiBadge, UiLoading, UiEmpty, UiButton, UiIcon, UiDrawer, UiDropdownMenu, UiDatePicker, UiModal, UiInput, UiSelect, UiMultiSelect, UiTextarea, UiFileList, UiFileUpload, UiToast, UiConfirm, UiAvatar, openToast, openConfirm } from '@leechanyong/ispark-ui'
+import { UiTab, UiTable, UiBadge, UiLoading, UiEmpty, UiButton, UiIcon, UiDrawer, UiDropdownMenu, UiDatePicker, UiDateRangePicker, UiModal, UiInput, UiSelect, UiMultiSelect, UiTextarea, UiFileList, UiFileUpload, UiToast, UiConfirm, UiAvatar, openToast, openConfirm } from '@leechanyong/ispark-ui'
 import type { TabItem, SelectOption, TableColumn, DropdownMenuItemDef } from '@leechanyong/ispark-ui'
 import { CalendarDate, type DateValue } from '@internationalized/date'
 import api from '../api/client'
@@ -177,33 +177,40 @@ function clearDateUnit() {
   dateOffset.value = 0
 }
 
-// 현재 선택된 기간 라벨
+// UiDateRangePicker용 {start, end} 모델 — filterDateFrom/To와 양방향 연결
+const dateRangeModel = computed<{ start: DateValue | undefined; end: DateValue | undefined }>({
+  get: () => ({ start: filterDateFrom.value, end: filterDateTo.value }),
+  set: (val) => {
+    filterDateFrom.value = val?.start
+    filterDateTo.value = val?.end
+    clearDateUnit()
+    resetDisplay()
+  },
+})
+
+// 현재 선택된 기간 라벨 — 상대 기간명만 표시(실제 날짜는 우측 range 픽커가 보여줌)
 const dateRangeLabel = computed(() => {
   if (!dateUnit.value) return '기간 선택'
   const o = dateOffset.value
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const f = filterDateFrom.value as any
-  const t = filterDateTo.value as any
+  const rel = (n: number, unit: string) => `${n > 0 ? '+' : ''}${n}${unit}`
 
   if (dateUnit.value === 'day') {
     if (o === 0) return '오늘'
     if (o === -1) return '어제'
     if (o === 1) return '내일'
-    return f ? `${f.year}.${pad(f.month)}.${pad(f.day)}` : ''
+    return rel(o, '일')
   }
   if (dateUnit.value === 'week') {
-    const range = f && t ? `${pad(f.month)}.${pad(f.day)} ~ ${pad(t.month)}.${pad(t.day)}` : ''
-    if (o === 0) return `이번주 (${range})`
-    if (o === -1) return `저번주 (${range})`
-    if (o === 1) return `다음주 (${range})`
-    return range
+    if (o === 0) return '이번주'
+    if (o === -1) return '저번주'
+    if (o === 1) return '다음주'
+    return rel(o, '주')
   }
   // month
-  const ym = f ? `${f.year}.${pad(f.month)}` : ''
-  if (o === 0) return `이번달 (${ym})`
-  if (o === -1) return `지난달 (${ym})`
-  if (o === 1) return `다음달 (${ym})`
-  return ym
+  if (o === 0) return '이번달'
+  if (o === -1) return '지난달'
+  if (o === 1) return '다음달'
+  return rel(o, '개월')
 })
 
 const assigneeFilterOptions = computed<SelectOption[]>(() => [
@@ -857,9 +864,7 @@ onMounted(async () => {
                 <UiButton variant="outline" size="sm" @click="goToday">오늘</UiButton>
               </div>
               <div class="filter-date-range">
-                <UiDatePicker v-model="filterDateFrom" type="date" size="sm" placeholder="시작일" @update:model-value="clearDateUnit(); resetDisplay()" />
-                <span class="filter-date-sep">~</span>
-                <UiDatePicker v-model="filterDateTo" type="date" size="sm" placeholder="종료일" @update:model-value="clearDateUnit(); resetDisplay()" />
+                <UiDateRangePicker v-model="dateRangeModel" size="sm" />
               </div>
 
             </div>
@@ -1402,10 +1407,6 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 4px;
-}
-.filter-date-sep {
-  color: #9ca3af;
-  font-size: 12px;
 }
 .filter-bar {
   display: flex;
