@@ -211,6 +211,12 @@ function loadMore() { displayCount.value += PAGE_SIZE }
 // 필터 변경 시 표시 건수 리셋
 function resetDisplay() { displayCount.value = PAGE_SIZE }
 
+// 담당자 컬럼 헤더 필터 (전체='' / 미배정='none' / 멤버=userId)
+function onAssigneeFilter(val: string) {
+  filterAssignee.value = val
+  resetDisplay()
+}
+
 // ── 날짜 컬럼 모드 (프로젝트별 localStorage) ──
 type DateColumnMode = 'dueAt' | 'updatedAt'
 const dateColumnMode = ref<DateColumnMode>('dueAt')
@@ -903,7 +909,6 @@ onMounted(async () => {
             <div v-if="showFilters" class="filter-bar">
               <UiMultiSelect v-model="checkedStatuses" :options="statusFilterItems" all-label="상태 전체" size="sm" placeholder="상태" class="filter-status" @update:model-value="resetDisplay" />
               <UiSelect v-model="filterModule" :options="[{ label: '모듈 전체', value: '' }, ...moduleSelectOptions]" size="sm" placeholder="모듈" class="filter-module" />
-              <UiSelect v-model="filterAssignee" :options="assigneeFilterOptions" size="sm" placeholder="담당자" class="filter-assignee" />
               <div class="filter-date-range">
                 <UiDateRangePicker v-model="dateRangeModel" :presets="datePresets" size="sm" />
               </div>
@@ -917,6 +922,23 @@ onMounted(async () => {
               :data="(displayedIssues as any)"
               size="sm"
             >
+              <template #header-assignee="{ column }: any">
+                <div class="th-filter">
+                  <span>{{ column.label }}</span>
+                  <UiDropdownMenu :items="(assigneeFilterOptions as any)" @select="onAssigneeFilter">
+                    <template #trigger>
+                      <button
+                        class="th-filter-btn"
+                        :class="{ 'is-active': filterAssignee !== '' }"
+                        aria-label="담당자 필터"
+                        @click.stop
+                      >
+                        <UiIcon name="sliders-horizontal" :size="12" />
+                      </button>
+                    </template>
+                  </UiDropdownMenu>
+                </div>
+              </template>
               <template #cell-category="{ row }: any">
                 <UiBadge
                   :variant="row.category === 'bug' ? 'danger' : row.category === 'question' ? 'warning' : 'default'"
@@ -1521,6 +1543,33 @@ onMounted(async () => {
 }
 
 // ── 이슈 테이블 ──
+// 담당자 컬럼 헤더 필터
+.th-filter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.th-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border: none;
+  background: none;
+  color: #9ca3af;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+
+  &:hover {
+    color: #4b5563;
+    background: #f3f4f6;
+  }
+  &.is-active {
+    color: var(--color-primary, #3b82f6);
+  }
+}
 .cell-badge-btn {
   display: inline-flex;
   align-items: center;

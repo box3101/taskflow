@@ -40,6 +40,28 @@ if (isR2Configured()) {
   app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
 }
 
+// 프론트엔드 정적 파일 경로 (빌드 후 __dirname = backend/dist/src → ../../../frontend/dist)
+const clientPath = path.join(__dirname, '../../../frontend/dist')
+
+// 하드 새로고침(브라우저 문서 요청)이 API 경로와 겹치는 프론트 라우트로 들어올 때
+// API 라우터가 먼저 잡혀 401 JSON("로그인이 필요합니다.")이 그대로 노출되는 문제 방지.
+// → 프론트 라우트면 index.html(SPA) 반환. XHR/API 호출은 Accept에 text/html이 없어 그대로 통과한다.
+const FRONTEND_ROUTES = [
+  '/', '/login', '/settings', '/main',
+  '/projects', '/todos', '/calendar', '/ai-tools', '/memos', '/stock', '/health',
+]
+app.use((req, res, next) => {
+  if (req.method !== 'GET') return next()
+  if (!String(req.headers.accept || '').includes('text/html')) return next()
+  const isFrontRoute =
+    FRONTEND_ROUTES.includes(req.path) || /^\/projects\/[^/]+$/.test(req.path)
+  if (isFrontRoute) {
+    res.sendFile(path.join(clientPath, 'index.html'))
+    return
+  }
+  next()
+})
+
 // API 라우터
 app.use('/auth', authRouter)
 app.use('/projects', projectRouter)
@@ -67,8 +89,6 @@ app.get('/health', (_req, res) => {
 })
 
 // 프론트엔드 정적 파일 서빙 (배포 환경)
-// 빌드 후 __dirname = backend/dist/src → ../../../frontend/dist
-const clientPath = path.join(__dirname, '../../../frontend/dist')
 app.use(express.static(clientPath))
 
 // SPA catch-all — API 외 모든 경로를 index.html로 (Express 5 문법)
