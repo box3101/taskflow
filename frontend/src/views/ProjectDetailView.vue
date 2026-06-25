@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { UiTab, UiTable, UiBadge, UiLoading, UiEmpty, UiButton, UiIcon, UiDrawer, UiDropdownMenu, UiDatePicker, UiDateRangePicker, UiModal, UiInput, UiSelect, UiMultiSelect, UiTextarea, UiFileList, UiFileUpload, UiToast, UiConfirm, UiAvatar, openToast, openConfirm } from '@leechanyong/ispark-ui'
+import { UiTab, UiTable, UiBadge, UiLoading, UiEmpty, UiButton, UiIcon, UiChart, UiDrawer, UiDropdownMenu, UiDatePicker, UiDateRangePicker, UiModal, UiInput, UiSelect, UiMultiSelect, UiTextarea, UiFileList, UiFileUpload, UiToast, UiConfirm, UiAvatar, openToast, openConfirm } from '@leechanyong/ispark-ui'
 import type { TabItem, SelectOption, TableColumn, DropdownMenuItemDef } from '@leechanyong/ispark-ui'
 import { CalendarDate, type DateValue } from '@internationalized/date'
 import api from '../api/client'
@@ -44,9 +44,9 @@ async function saveExternalUrl() {
 
 const tabs: TabItem[] = [
   { label: '이슈', value: 'board' },
-  { label: '멤버', value: 'members' },
   { label: '개요', value: 'overview' },
 ]
+const activeTab = ref('board')
 
 // ── 옵션 정의 ──
 const priorityOptions: SelectOption[] = [
@@ -661,6 +661,24 @@ const issueStats = computed(() => ({
   done: issues.value.filter(i => i.status === 'done').length,
 }))
 
+// 이슈 상태 분포 도넛 차트 (색상은 상태 뱃지와 통일: 할일=회색/진행중=파랑/컨펌중=노랑/완료=초록)
+const issueStatusChart = computed(() => ({
+  style: 'taskStatus',
+  valueMode: 'raw',
+  items: [
+    { name: '할 일', value: issueStats.value.todo },
+    { name: '진행중', value: issueStats.value.doing },
+    { name: '컨펌중', value: issueStats.value.confirm },
+    { name: '완료', value: issueStats.value.done },
+  ],
+  labelColor: ['#6b7280', '#3b82f6', '#f59e0b', '#22c55e'],
+}))
+
+// 전체 진행률 (완료 / 전체)
+const donePercent = computed(() =>
+  issueStats.value.total === 0 ? 0 : Math.round((issueStats.value.done / issueStats.value.total) * 100),
+)
+
 // ── 멤버 관리 ──
 const roleOptions: SelectOption[] = [
   { label: 'Owner', value: 'owner' },
@@ -759,8 +777,10 @@ onMounted(async () => {
 
     <UiLoading v-if="loading" overlay />
         <template v-else>
+          <UiTab v-model="activeTab" :tabs="tabs" align="left" class="detail-tabs" />
+
           <!-- 이슈 -->
-          <div class="tab-content">
+          <div v-if="activeTab === 'board'" class="tab-content">
             <!-- 검색 + 필터 토글 -->
             <div class="search-bar">
               <UiInput
@@ -923,6 +943,50 @@ onMounted(async () => {
                 더보기 ({{ displayedIssues.length }} / {{ filteredIssues.length }})
               </button>
             </div>
+          </div>
+
+          <!-- 개요 -->
+          <div v-else-if="activeTab === 'overview'" class="tab-content">
+            <UiEmpty v-if="issueStats.total === 0" title="등록된 이슈가 없습니다." />
+            <template v-else>
+              <div class="overview-top">
+                <div class="overview-card overview-chart-card">
+                  <h4 class="overview-card-title">이슈 상태 분포</h4>
+                  <div class="overview-chart-wrap">
+                    <UiChart type="pie" :config="issueStatusChart" :show-legend="true" />
+                  </div>
+                </div>
+                <div class="overview-card overview-progress-card">
+                  <h4 class="overview-card-title">전체 진행률</h4>
+                  <div class="overview-progress-body">
+                    <div class="progress-percent">{{ donePercent }}<span class="progress-percent-unit">%</span></div>
+                    <div class="progress-bar">
+                      <div class="progress-fill" :style="{ width: donePercent + '%' }" />
+                    </div>
+                    <p class="overview-progress-sub">완료 {{ issueStats.done }}건 / 전체 {{ issueStats.total }}건</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="overview-stats">
+                <div class="stat-card stat-card--todo">
+                  <span class="stat-value">{{ issueStats.todo }}</span>
+                  <span class="stat-label">할 일</span>
+                </div>
+                <div class="stat-card stat-card--doing">
+                  <span class="stat-value">{{ issueStats.doing }}</span>
+                  <span class="stat-label">진행중</span>
+                </div>
+                <div class="stat-card stat-card--confirm">
+                  <span class="stat-value">{{ issueStats.confirm }}</span>
+                  <span class="stat-label">컨펌중</span>
+                </div>
+                <div class="stat-card stat-card--done">
+                  <span class="stat-value">{{ issueStats.done }}</span>
+                  <span class="stat-label">완료</span>
+                </div>
+              </div>
+            </template>
           </div>
 
         </template>
@@ -1598,7 +1662,35 @@ onMounted(async () => {
 .create-form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 
 // ── 개요 ──
+.detail-tabs { margin-bottom: 4px; }
 .overview-desc { font-size: 15px; line-height: 1.7; color: #4b5563; }
+
+// 개요 상단: 도넛 차트 + 진행률 (2단)
+.overview-top {
+  display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; margin-top: 8px;
+}
+.overview-card {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px;
+}
+.overview-card-title { font-size: 14px; font-weight: 600; color: #374151; margin: 0 0 12px; }
+.overview-chart-wrap { height: 200px; }
+// UiChart 내부 기본 min-height(260px) 해제 → 카드 안에 맞게 축소
+.overview-chart-wrap :deep(.ui-chart-canvas-wrap) { min-height: 0; }
+.overview-progress-card { display: flex; flex-direction: column; }
+.overview-progress-body {
+  flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px;
+}
+.progress-percent {
+  font-size: 32px; font-weight: 700; color: #22c55e; line-height: 1;
+}
+.progress-percent-unit { font-size: 18px; font-weight: 600; margin-left: 2px; }
+.overview-progress-card .progress-bar { height: 12px; margin-top: 0; }
+.overview-progress-sub { margin-top: 0; font-size: 13px; color: #6b7280; }
+
+@media (max-width: 640px) {
+  .overview-top { grid-template-columns: 1fr; }
+  .overview-stats { grid-template-columns: repeat(2, 1fr); }
+}
 .overview-stats {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 24px;
 }
@@ -1607,6 +1699,7 @@ onMounted(async () => {
   padding: 16px; text-align: center; border-top: 3px solid #d1d5db;
   &--todo { border-top-color: #6b7280; }
   &--doing { border-top-color: #3b82f6; }
+  &--confirm { border-top-color: #f59e0b; }
   &--done { border-top-color: #22c55e; }
 }
 .stat-value { display: block; font-size: 28px; font-weight: 700; color: #1f2937; }
