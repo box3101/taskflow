@@ -41,6 +41,22 @@ router.put('/reorder', async (req, res) => {
   }
 })
 
+// 내게 배정된 미완료 이슈 (할일 화면용, 전 프로젝트) — '/:id'보다 먼저 정의
+router.get('/assigned', async (req, res) => {
+  try {
+    const userId = req.user!.id
+    const issues = await prisma.issue.findMany({
+      where: { assigneeId: userId, status: { not: 'done' } },
+      include: { project: { select: { id: true, name: true } } },
+      // 마감일 빠른 순(없는 건 뒤로), 그다음 최근 등록순
+      orderBy: [{ dueAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
+    })
+    res.json({ data: issues })
+  } catch {
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
+  }
+})
+
 // 이슈 단건 조회
 router.get('/:id', async (req, res) => {
   try {

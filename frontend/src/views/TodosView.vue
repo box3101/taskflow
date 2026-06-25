@@ -12,6 +12,7 @@ import { TIME_OPTIONS } from '../types/calendar'
 import { CalendarDate } from '@internationalized/date'
 import api from '../api/client'
 import { useCachedFetch } from '../composables/useCachedFetch'
+import CalendarIssueDrawer from '../components/calendar/CalendarIssueDrawer.vue'
 
 // D-day 계산
 function getDday(dueDate: string | null): { label: string; variant: 'danger' | 'warning' | 'default' } | null {
@@ -48,6 +49,9 @@ const { data: todos, loading: todoLoading, load: loadTodos } = useCachedFetch<To
 const trashTodos = ref<Todo[]>([])
 const trashLoaded = ref(false)
 
+// 내 이슈 (담당자가 나 + 미완료, 전 프로젝트)
+const assignedIssues = ref<any[]>([])
+
 // 검색
 const searchQuery = ref('')
 
@@ -73,6 +77,7 @@ const sortOptions: SelectOption[] = [
 const todoSubTab = ref('todo')
 const todoSubTabs = computed<TabItem[]>(() => [
   { label: '할일', value: 'todo', count: incompleteTodos.value.length || undefined },
+  { label: '내 이슈', value: 'issue', count: assignedIssues.value.length || undefined },
   { label: '반복', value: 'repeat', count: repeatTodos.value.length || undefined },
   { label: '완료', value: 'done', count: completedTodos.value.length || undefined },
   { label: '휴지통', value: 'trash', count: trashTodos.value.length || undefined },
@@ -201,7 +206,42 @@ const completedTodos = computed(() => {
   )
 })
 
-onMounted(() => { loadTodos() })
+// ── 내 이슈 ──
+async function loadAssignedIssues() {
+  try {
+    const { data } = await api.get('/issues/assigned')
+    assignedIssues.value = data.data
+  } catch {
+    openToast({ message: '배정된 이슈를 불러오지 못했습니다.', type: 'error' })
+  }
+}
+
+// 검색어로 필터링한 내 이슈 목록
+const displayAssignedIssues = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  return assignedIssues.value.filter(i =>
+    !q || (i.title || '').toLowerCase().includes(q) || (i.project?.name || '').toLowerCase().includes(q)
+  )
+})
+
+// 이슈 상태 뱃지 매핑
+const ISSUE_STATUS: Record<string, { label: string; variant: 'default' | 'primary' | 'warning' }> = {
+  todo: { label: '할 일', variant: 'default' },
+  doing: { label: '진행중', variant: 'primary' },
+  confirm: { label: '컨펌중', variant: 'warning' },
+}
+
+// 내 이슈 상세 드로어 (캘린더 이슈 드로어 재사용)
+const issueDrawerOpen = ref(false)
+const issueDrawerId = ref<number | null>(null)
+const issueDrawerProjectId = ref<number | null>(null)
+function openIssueDrawer(issue: any) {
+  issueDrawerId.value = issue.id
+  issueDrawerProjectId.value = issue.projectId
+  issueDrawerOpen.value = true
+}
+
+onMounted(() => { loadTodos(); loadAssignedIssues() })
 
 function openCreateTodoDrawer() {
   drawerMode.value = 'create'
@@ -532,6 +572,33 @@ async function emptyTrash() {
       </div>
     </template>
 
+    <!-- 할일 서브탭: 내 이슈 (담당=나, 미완료) -->
+    <template v-if="todoSubTab === 'issue'">
+      <UiEmpty v-if="displayAssignedIssues.length === 0" title="배정된 이슈가 없어요" description="프로젝트 이슈의 담당자가 나로 지정되면 여기에 표시됩니다." />
+      <div v-else class="todo-cards">
+        <div
+          v-for="issue in displayAssignedIssues"
+          :key="issue.id"
+          class="todo-card"
+          :class="{
+            'todo-card--danger': getDday(issue.dueAt)?.variant === 'danger',
+            'todo-card--warning': getDday(issue.dueAt)?.variant === 'warning',
+          }"
+          @click="openIssueDrawer(issue)"
+        >
+          <div class="todo-card__title">{{ issue.title }}</div>
+          <div class="todo-card__footer">
+            <div class="todo-card__tags">
+              <UiBadge variant="info" size="xs">{{ issue.project?.name || '프로젝트' }}</UiBadge>
+              <UiBadge v-if="ISSUE_STATUS[issue.status]" :variant="ISSUE_STATUS[issue.status].variant" size="xs">{{ ISSUE_STATUS[issue.status].label }}</UiBadge>
+              <UiBadge v-if="getDday(issue.dueAt)" :variant="getDday(issue.dueAt)!.variant" size="xs">{{ getDday(issue.dueAt)!.label }}</UiBadge>
+              <UiBadge v-if="issue.externalId" variant="default" size="xs">#{{ issue.externalId }}</UiBadge>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
     <!-- 할일 서브탭: 반복 -->
     <template v-if="todoSubTab === 'repeat'">
       <UiEmpty v-if="repeatTodos.length === 0" title="반복 할일이 없어요" description="할일 추가 시 반복 옵션을 설정해보세요." />
@@ -601,6 +668,15 @@ async function emptyTrash() {
     <button class="fab" aria-label="할일 추가" @click="openCreateTodoDrawer">
       <UiIcon name="plus" :size="22" />
     </button>
+
+    <!-- 내 이슈 상세 (캘린더 이슈 드로어 재사용) -->
+    <CalendarIssueDrawer
+      v-model:open="issueDrawerOpen"
+      :issue-id="issueDrawerId"
+      :project-id="issueDrawerProjectId"
+      @saved="loadAssignedIssues"
+      @deleted="loadAssignedIssues"
+    />
 
     <!-- 할일 상세 Drawer -->
     <UiDrawer v-model:open="todoDrawerOpen" :title="drawerMode === 'create' ? '할일 추가' : '할일 상세'" max-width="100vw">
