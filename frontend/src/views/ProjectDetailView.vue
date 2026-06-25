@@ -653,13 +653,109 @@ async function onCreateIssue() {
 }
 
 // ── 개요 탭 ──
+// 개요 월 스코프 (등록일 createdAt 기준). scope='all'이면 전 기간
+const overviewScope = ref<'month' | 'all'>('month')
+const overviewMonth = ref<{ year: number; month: number }>({
+  year: new Date().getFullYear(),
+  month: new Date().getMonth() + 1,
+})
+
+// 다음 달 버튼 비활성 판단용 (이번 달까지만 이동)
+const isCurrentMonth = computed(() => {
+  const now = new Date()
+  return overviewMonth.value.year === now.getFullYear() && overviewMonth.value.month === now.getMonth() + 1
+})
+
+// 월 라벨 (예: 2026년 6월)
+const overviewMonthLabel = computed(() => `${overviewMonth.value.year}년 ${overviewMonth.value.month}월`)
+
+// 개요 스코프 이슈 (전체 or 해당 월 등록분)
+const scopedIssues = computed(() => {
+  if (overviewScope.value === 'all') return issues.value
+  const { year, month } = overviewMonth.value
+  return issues.value.filter(i => {
+    const d = new Date(i.createdAt)
+    return d.getFullYear() === year && d.getMonth() + 1 === month
+  })
+})
+
+// 이전/다음 달 이동 (다음은 이번 달까지만). 이동 시 자동으로 월 스코프로 전환
+function prevOverviewMonth() {
+  overviewScope.value = 'month'
+  const { year, month } = overviewMonth.value
+  overviewMonth.value = month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 }
+}
+function nextOverviewMonth() {
+  if (isCurrentMonth.value) return
+  overviewScope.value = 'month'
+  const { year, month } = overviewMonth.value
+  overviewMonth.value = month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 }
+}
+
 const issueStats = computed(() => ({
-  total: issues.value.length,
-  todo: issues.value.filter(i => i.status === 'todo').length,
-  doing: issues.value.filter(i => i.status === 'doing').length,
-  confirm: issues.value.filter(i => i.status === 'confirm').length,
-  done: issues.value.filter(i => i.status === 'done').length,
+  total: scopedIssues.value.length,
+  todo: scopedIssues.value.filter(i => i.status === 'todo').length,
+  doing: scopedIssues.value.filter(i => i.status === 'doing').length,
+  confirm: scopedIssues.value.filter(i => i.status === 'confirm').length,
+  done: scopedIssues.value.filter(i => i.status === 'done').length,
 }))
+
+// 컨펌중 + 관리번호(externalId) 보유 이슈 (현재 스코프 내) — 일괄 시트 열기 대상
+const SHEET_URL_BASE =
+  'https://script.google.com/macros/s/AKfycbwTDrTn456l1q5rT_fECsRLkrErRBEovRFib4WGZtSrkP4jE1YuSizei13UfDhuHVlS/exec'
+const confirmSheetIssues = computed(() =>
+  scopedIssues.value.filter(i => i.status === 'confirm' && (i as any).externalId),
+)
+
+// 시트 일괄 열기 모달
+const sheetModalOpen = ref(false)
+const sheetModalCount = computed(() => confirmSheetIssues.value.length)
+
+// 담당자별 그룹 (컨펌중 + 관리번호 보유) — 담당자마다 따로 열 수 있도록
+const confirmSheetGroups = computed(() => {
+  const map = new Map<string, { key: string; name: string; issues: any[] }>()
+  for (const i of confirmSheetIssues.value) {
+    const key = (i as any).assigneeId ? String((i as any).assigneeId) : 'none'
+    const name = (i as any).assignee?.name || '미배정'
+    if (!map.has(key)) map.set(key, { key, name, issues: [] })
+    map.get(key)!.issues.push(i)
+  }
+  // 건수 많은 담당자 먼저
+  return Array.from(map.values()).sort((a, b) => b.issues.length - a.issues.length)
+})
+
+// 컨펌중 시트 일괄 열기 진입 (5건 이상이면 담당자별 모달, 미만이면 바로 전체 열기)
+function openConfirmSheets() {
+  const targets = confirmSheetIssues.value
+  const noIdCount = scopedIssues.value.filter(i => i.status === 'confirm' && !(i as any).externalId).length
+  if (targets.length === 0) {
+    openToast({
+      message: noIdCount > 0 ? `컨펌중 ${noIdCount}건 모두 관리번호가 없어 열 수 없습니다.` : '컨펌중 이슈가 없습니다.',
+      type: 'warning',
+    })
+    return
+  }
+  if (targets.length >= 5) {
+    sheetModalOpen.value = true
+    return
+  }
+  openSheets(targets)
+}
+
+// 주어진 이슈들의 시트 행을 새 탭으로 오픈 (버튼 클릭 직접 제스처 → 팝업차단에 유리)
+function openSheets(list: any[]) {
+  list.forEach(i => window.open(`${SHEET_URL_BASE}?id=${(i as any).externalId}`, '_blank'))
+}
+
+// 전체 열기 (모달 닫음)
+function openAllConfirmSheets() {
+  openSheets(confirmSheetIssues.value)
+  sheetModalOpen.value = false
+  const noIdCount = scopedIssues.value.filter(i => i.status === 'confirm' && !(i as any).externalId).length
+  if (noIdCount > 0) {
+    openToast({ message: `관리번호 없는 ${noIdCount}건은 제외했습니다.`, type: 'warning' })
+  }
+}
 
 // 이슈 상태 분포 도넛 차트 (색상은 상태 뱃지와 통일: 할일=회색/진행중=파랑/컨펌중=노랑/완료=초록)
 const issueStatusChart = computed(() => ({
@@ -947,7 +1043,25 @@ onMounted(async () => {
 
           <!-- 개요 -->
           <div v-else-if="activeTab === 'overview'" class="tab-content">
-            <UiEmpty v-if="issueStats.total === 0" title="등록된 이슈가 없습니다." />
+            <!-- 월 네비게이터 + 컨펌중 일괄 시트 열기 -->
+            <div class="overview-header">
+              <div class="overview-month-nav">
+                <UiButton variant="ghost" size="sm" icon-only aria-label="이전 달" @click="prevOverviewMonth">
+                  <template #icon-left><UiIcon name="chevron-left" :size="18" /></template>
+                </UiButton>
+                <span class="overview-month-label">{{ overviewScope === 'all' ? '전체 기간' : overviewMonthLabel }}</span>
+                <UiButton variant="ghost" size="sm" icon-only aria-label="다음 달" :disabled="isCurrentMonth" @click="nextOverviewMonth">
+                  <template #icon-left><UiIcon name="chevron-right" :size="18" /></template>
+                </UiButton>
+                <UiButton :variant="overviewScope === 'all' ? 'primary' : 'outline'" size="sm" @click="overviewScope = overviewScope === 'all' ? 'month' : 'all'">전체</UiButton>
+              </div>
+              <UiButton variant="outline" size="sm" :disabled="confirmSheetIssues.length === 0" @click="openConfirmSheets">
+                <template #icon-left><UiIcon name="external-link" :size="14" /></template>
+                컨펌중 시트 열기 ({{ confirmSheetIssues.length }}건)
+              </UiButton>
+            </div>
+
+            <UiEmpty v-if="issueStats.total === 0" :title="overviewScope === 'all' ? '등록된 이슈가 없습니다.' : '이 달 등록된 이슈가 없습니다.'" />
             <template v-else>
               <div class="overview-top">
                 <div class="overview-card overview-chart-card">
@@ -1059,6 +1173,26 @@ onMounted(async () => {
         <div style="display: flex; gap: 8px; justify-content: flex-end;">
           <UiButton variant="secondary" size="sm" @click="doneModalOpen = false">취소</UiButton>
           <UiButton variant="primary" size="sm" @click="confirmDone">완료 처리</UiButton>
+        </div>
+      </template>
+    </UiModal>
+
+    <!-- 컨펌중 시트 일괄 열기 (담당자별) -->
+    <UiModal v-model:open="sheetModalOpen" title="시트 일괄 열기" size="sm">
+      <p class="sheet-modal-desc">컨펌중 <strong>{{ sheetModalCount }}건</strong> · 담당자별로 열거나 전체를 한 번에 열 수 있어요.</p>
+      <ul class="sheet-group-list">
+        <li v-for="g in confirmSheetGroups" :key="g.key" class="sheet-group-item">
+          <div class="sheet-group-info">
+            <span class="sheet-group-name">{{ g.name }}</span>
+            <span class="sheet-group-count">{{ g.issues.length }}건</span>
+          </div>
+          <UiButton variant="outline" size="sm" @click="openSheets(g.issues)">열기</UiButton>
+        </li>
+      </ul>
+      <template #footer>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <UiButton variant="secondary" size="sm" @click="sheetModalOpen = false">닫기</UiButton>
+          <UiButton variant="primary" size="sm" @click="openAllConfirmSheets">전체 열기 ({{ sheetModalCount }}건)</UiButton>
         </div>
       </template>
     </UiModal>
@@ -1664,6 +1798,27 @@ onMounted(async () => {
 // ── 개요 ──
 .detail-tabs { margin-bottom: 4px; }
 .overview-desc { font-size: 15px; line-height: 1.7; color: #4b5563; }
+
+// 개요 헤더: 월 네비게이터(좌) + 컨펌중 일괄 열기(우)
+.overview-header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px; margin: 8px 0 4px;
+}
+.overview-month-nav { display: flex; align-items: center; gap: 4px; }
+.overview-month-label {
+  min-width: 96px; text-align: center; font-size: 15px; font-weight: 600; color: #1f2937;
+}
+
+// 시트 일괄 열기 모달 — 담당자별 그룹
+.sheet-modal-desc { font-size: 13px; color: #6b7280; margin: 0 0 12px; }
+.sheet-group-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.sheet-group-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 8px;
+}
+.sheet-group-info { flex: 1; display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.sheet-group-name { font-size: 14px; font-weight: 600; color: #1f2937; }
+.sheet-group-count { font-size: 13px; color: #6b7280; }
 
 // 개요 상단: 도넛 차트 + 진행률 (2단)
 .overview-top {
