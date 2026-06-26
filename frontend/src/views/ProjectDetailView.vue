@@ -658,6 +658,164 @@ async function onCreateIssue() {
   }
 }
 
+// ── 엑셀 붙여넣기로 추가 ──
+const pasteModalOpen = ref(false)
+const pasteText = ref('')
+const pasteLoading = ref(false)
+
+// 탭 구분 TSV 파싱 (따옴표로 감싼 멀티라인 셀 지원 — 엑셀/구글시트 복사 형식)
+function parseTsv(text: string): string[][] {
+  const s = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const rows: string[][] = []
+  let row: string[] = []
+  let field = ''
+  let inQuotes = false
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i]
+    if (inQuotes) {
+      if (c === '"') {
+        if (s[i + 1] === '"') { field += '"'; i++ } // 이스케이프된 따옴표
+        else inQuotes = false
+      } else field += c
+    } else {
+      if (c === '"') inQuotes = true
+      else if (c === '\t') { row.push(field); field = '' }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = '' }
+      else field += c
+    }
+  }
+  if (field !== '' || row.length > 0) { row.push(field); rows.push(row) }
+  // 완전히 빈 행 제거
+  return rows.filter(r => r.some(c => c.trim() !== ''))
+}
+
+// 구분(category) 사전 — 이 단어가 든 칸을 "기준점"으로 삼아 그 다음 칸을 내용으로 본다
+const CATEGORY_MAP: Record<string, string> = {
+  '오류': 'bug', '버그': 'bug', 'bug': 'bug',
+  '확인': 'question', '문의': 'question', '질문': 'question',
+  '개선': 'improvement', '개선요청': 'improvement', '요청': 'improvement',
+}
+
+function categoryLabel(c: string): string {
+  return c === 'bug' ? '오류' : c === 'question' ? '확인' : '개선'
+}
+
+// YY.MM.DD → ISO(YYYY-MM-DD), 실패 시 null
+function parseKDate(s: string): string | null {
+  const m = (s || '').trim().match(/^(\d{2})\.(\d{1,2})\.(\d{1,2})$/)
+  if (!m) return null
+  return `20${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`
+}
+
+// 파싱 미리보기: 행마다 열 개수가 달라(6열/9열 등) "구분(개선)" 칸을 기준점으로 잡는다.
+// 번호 … [모듈들] … 구분(개선) … 내용 … 요청자 … 요청일 … 담당자
+const pastePreview = computed(() => {
+  return parseTsv(pasteText.value).map(cols => {
+    const trimmed = cols.map(c => (c || '').trim())
+
+    // 번호: 첫 칸이 숫자면 사용
+    const externalId = /^\d+$/.test(trimmed[0] || '') ? trimmed[0] : ''
+
+    // 구분: 사전에 매칭되는 칸을 찾아 기준점(catIdx)으로
+    let category = 'improvement'
+    let catIdx = -1
+    for (let i = 0; i < trimmed.length; i++) {
+      const hit = CATEGORY_MAP[trimmed[i]]
+      if (hit) { category = hit; catIdx = i; break }
+    }
+
+    // 내용: 구분 바로 다음 칸 (구분 못 찾으면 가장 긴 칸으로 폴백)
+    let cell = ''
+    if (catIdx >= 0 && cols[catIdx + 1] !== undefined) {
+      cell = cols[catIdx + 1]
+    } else {
+      for (const c of cols) if ((c || '').length > cell.length) cell = c || ''
+    }
+    const description = cell.trim() // 전체 = 내용
+    // 제목: 첫 줄 (단, "[퍼블]"처럼 태그만 있는 줄이면 다음 줄까지 합침)
+    const lines = cell.split('\n').map(l => l.trim()).filter(Boolean)
+    let title = lines[0] || ''
+    if (/^\[[^\]]*\]$/.test(title) && lines[1]) title = `${title} ${lines[1]}`
+
+    // 모듈: 번호 다음 ~ 구분 이전 칸들 (화면/메뉴명)
+    let moduleVal = '공통'
+    if (catIdx > 1) {
+      const mods = trimmed.slice(1, catIdx).filter(Boolean)
+      if (mods.length) moduleVal = mods.join(' / ')
+    }
+
+    // 요청일: YY.MM.DD 형식 칸
+    let requestedAt: string | null = null
+    for (const c of trimmed) { const d = parseKDate(c); if (d) { requestedAt = d; break } }
+
+    // 담당자: 자동 배정하지 않음(미배정) — 요청자/담당자 구분이 행마다 달라 오배정 위험이 큼. 생성 후 수동 지정.
+    const assigneeId: number | null = null
+
+    const existing = externalId ? issues.value.find(i => String(i.externalId) === externalId) : null
+    return {
+      externalId,
+      module: moduleVal,
+      category,
+      title,
+      description,
+      requestedAt,
+      assigneeId,
+      assigneeName: '',
+      mode: existing ? '갱신' : '신규',
+      existingId: existing ? existing.id : null,
+      valid: !!description, // 내용 없으면 무시
+    }
+  })
+})
+
+const pasteValidCount = computed(() => pastePreview.value.filter(p => p.valid).length)
+
+// 미리보기 확인 후 일괄 생성/갱신 (externalId 기준 upsert)
+async function doPasteSubmit() {
+  const items = pastePreview.value.filter(p => p.valid)
+  if (items.length === 0) {
+    openToast({ message: '추가할 행이 없습니다. "개선/오류/확인" 구분과 그 다음 내용 칸을 확인하세요.', type: 'error' })
+    return
+  }
+  pasteLoading.value = true
+  let created = 0, updated = 0, failed = 0
+  for (const it of items) {
+    const payload: Record<string, unknown> = {
+      title: it.title,
+      description: it.description,
+      module: it.module,
+      category: it.category,
+      assigneeId: it.assigneeId,
+      externalId: it.externalId || null,
+      status: 'todo', // 붙여넣기로 만든 건 항상 할일
+    }
+    if (it.requestedAt) payload.requestedAt = it.requestedAt
+    try {
+      if (it.existingId) {
+        const { data } = await api.put(`/issues/${it.existingId}`, payload)
+        const idx = issues.value.findIndex(i => i.id === data.id)
+        if (idx > -1) issues.value[idx] = data
+        updated++
+      } else {
+        const { data } = await api.post(`/projects/${projectId}/issues`, payload)
+        issues.value.unshift(data)
+        created++
+      }
+    } catch {
+      failed++
+    }
+  }
+  pasteLoading.value = false
+  openToast({
+    message: `완료 — 신규 ${created} · 갱신 ${updated}${failed ? ` · 실패 ${failed}` : ''}`,
+    type: failed ? 'error' : 'success',
+  })
+  if (!failed) {
+    pasteModalOpen.value = false
+    pasteText.value = ''
+  }
+}
+
 // ── 개요 탭 ──
 // 개요 월 스코프 (등록일 createdAt 기준). scope='all'이면 전 기간
 const overviewScope = ref<'month' | 'all'>('month')
@@ -1219,10 +1377,58 @@ onMounted(async () => {
       </template>
     </UiModal>
 
+    <!-- 엑셀 붙여넣기 추가 버튼 -->
+    <button v-if="!loading" class="fab-paste" @click="pasteModalOpen = true">엑셀 붙여넣기</button>
+
     <!-- FAB: 이슈 추가 -->
     <button v-if="!loading" class="fab" aria-label="이슈 추가" @click="startCreate">
       <UiIcon name="plus" :size="22" />
     </button>
+
+    <!-- 엑셀 붙여넣기 추가 모달 -->
+    <UiModal v-model:open="pasteModalOpen" title="엑셀 붙여넣기로 추가" size="lg">
+      <p class="paste-desc">
+        엑셀/구글시트에서 행을 복사해 붙여넣으세요. 행마다 열 개수가 달라도 <strong>"개선/오류/확인" 구분 칸</strong>을 기준으로 자동 인식합니다.<br>
+        <span class="paste-cols">번호 · 구분(개선/오류/확인) · 내용 · 요청자 · 요청일 · 담당자 순 — 모두 <strong>할일</strong>로 생성됩니다.</span>
+      </p>
+      <UiTextarea v-model="pasteText" :rows="6" placeholder="여기에 붙여넣기 (여러 행 가능)" />
+
+      <div v-if="pastePreview.length" class="paste-preview">
+        <div class="paste-preview-head">
+          미리보기 {{ pastePreview.length }}건 —
+          신규 {{ pastePreview.filter(p => p.mode === '신규' && p.valid).length }} ·
+          갱신 {{ pastePreview.filter(p => p.mode === '갱신' && p.valid).length }}
+          <span v-if="pastePreview.some(p => !p.valid)" class="paste-ignored">· 무시 {{ pastePreview.filter(p => !p.valid).length }}</span>
+        </div>
+        <div class="paste-table-wrap">
+          <table class="paste-table">
+            <thead>
+              <tr><th>처리</th><th>번호</th><th>제목</th><th>모듈</th><th>구분</th><th>담당자</th><th>요청일</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="(p, idx) in pastePreview" :key="idx" :class="{ 'row-invalid': !p.valid }">
+                <td><UiBadge :variant="!p.valid ? 'default' : p.mode === '갱신' ? 'warning' : 'primary'" size="sm">{{ p.valid ? p.mode : '무시' }}</UiBadge></td>
+                <td>{{ p.externalId || '-' }}</td>
+                <td class="td-title">{{ p.title || '(제목 없음)' }}</td>
+                <td>{{ p.module }}</td>
+                <td>{{ categoryLabel(p.category) }}</td>
+                <td>{{ p.assigneeName || '-' }}</td>
+                <td>{{ p.requestedAt || '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <template #footer>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <UiButton variant="secondary" size="sm" @click="pasteModalOpen = false">취소</UiButton>
+          <UiButton variant="primary" size="sm" :loading="pasteLoading" :disabled="pasteValidCount === 0" @click="doPasteSubmit">
+            {{ pasteValidCount }}건 추가/갱신
+          </UiButton>
+        </div>
+      </template>
+    </UiModal>
 
     <!-- 이슈 생성 Drawer -->
     <UiDrawer v-model:open="createDrawerOpen" title="이슈 추가" width="420px" max-width="600px">
@@ -1961,6 +2167,41 @@ onMounted(async () => {
   }
 }
 
+// 엑셀 붙여넣기 버튼 (FAB 위에 배치)
+.fab-paste {
+  position: fixed;
+  bottom: 140px;
+  right: 24px;
+  z-index: 50;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 20px;
+  background: #fff;
+  color: #4f6af6;
+  border: 1px solid #4f6af6;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(79, 106, 246, 0.2);
+  transition: background 0.15s, box-shadow 0.2s;
+  &:hover { background: #f5f7ff; box-shadow: 0 6px 16px rgba(79, 106, 246, 0.3); }
+}
+
+// 엑셀 붙여넣기 모달
+.paste-desc { font-size: 13px; color: #6b7280; margin: 0 0 10px; line-height: 1.5; }
+.paste-cols { font-size: 12px; color: #9ca3af; }
+.paste-preview { margin-top: 14px; }
+.paste-preview-head { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px; }
+.paste-ignored { color: #9ca3af; font-weight: 400; }
+.paste-table-wrap { max-height: 320px; overflow: auto; border: 1px solid #e5e7eb; border-radius: 8px; }
+.paste-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+  th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid #f3f4f6; white-space: nowrap; }
+  th { background: #f9fafb; color: #6b7280; font-weight: 600; position: sticky; top: 0; }
+  .td-title { white-space: normal; max-width: 280px; color: #1f2937; }
+  .row-invalid { opacity: 0.5; }
+}
+
 // ── 댓글 ──
 .panel-comments {
   margin-top: 8px;
@@ -1996,6 +2237,7 @@ onMounted(async () => {
 @media (max-width: 768px) {
   .main { padding: 16px 12px; }
   .fab { bottom: 68px; right: 16px; width: 48px; height: 48px; }
+  .fab-paste { bottom: 124px; right: 16px; }
 }
 </style>
 
