@@ -161,7 +161,7 @@ const assigneeFilterOptions = computed<SelectOption[]>(() => [
   ...members.value.map((m: any) => ({ label: m.user.name, value: String(m.user.id) })),
 ])
 
-const STATUS_ORDER: Record<string, number> = { doing: 0, confirm: 1, todo: 2, done: 3 }
+const STATUS_ORDER: Record<string, number> = { doing: 0, todo: 1, confirm: 2, done: 3 }
 const PRIORITY_ORDER: Record<string, number> = { high: 0, mid: 1, low: 2 }
 
 const filteredIssues = computed(() => {
@@ -195,9 +195,9 @@ const filteredIssues = computed(() => {
       // 2차: 우선순위 (높음 → 보통 → 낮음)
       const p = (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9)
       if (p !== 0) return p
-      // 3차: 마감일 (가까운 순, 없으면 뒤로)
-      const da = a.dueAt ? new Date(a.dueAt).getTime() : Infinity
-      const db = b.dueAt ? new Date(b.dueAt).getTime() : Infinity
+      // 3차: 경과일 (오래된 순)
+      const da = new Date(a.createdAt).getTime()
+      const db = new Date(b.createdAt).getTime()
       return da - db
     })
 })
@@ -218,13 +218,13 @@ function onAssigneeFilter(val: string) {
 }
 
 // ── 날짜 컬럼 모드 (프로젝트별 localStorage) ──
-type DateColumnMode = 'dueAt' | 'updatedAt'
-const dateColumnMode = ref<DateColumnMode>('dueAt')
+type DateColumnMode = 'elapsed' | 'updatedAt'
+const dateColumnMode = ref<DateColumnMode>('elapsed')
 
 function loadDateColumnMode() {
   const saved = localStorage.getItem(`project-${projectId}-dateColumn`)
   if (saved === 'updatedAt') dateColumnMode.value = 'updatedAt'
-  else dateColumnMode.value = 'dueAt'
+  else dateColumnMode.value = 'elapsed'
 }
 
 function saveDateColumnMode(mode: DateColumnMode) {
@@ -232,7 +232,22 @@ function saveDateColumnMode(mode: DateColumnMode) {
   localStorage.setItem(`project-${projectId}-dateColumn`, mode)
 }
 
-const dateColumnLabel = computed(() => dateColumnMode.value === 'updatedAt' ? '수정일' : '마감일')
+const dateColumnLabel = computed(() => dateColumnMode.value === 'updatedAt' ? '수정일' : '경과일')
+
+// 경과일 계산 (생성일 기준)
+function getElapsedDays(createdAt: string): number {
+  const created = new Date(createdAt)
+  const now = new Date()
+  created.setHours(0, 0, 0, 0)
+  now.setHours(0, 0, 0, 0)
+  return Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function getElapsedVariant(days: number): 'danger' | 'warning' | 'default' {
+  if (days >= 15) return 'danger'
+  if (days >= 8) return 'warning'
+  return 'default'
+}
 
 // ── 이슈 테이블 ──
 const issueColumns = computed<TableColumn[]>(() => [
@@ -241,7 +256,7 @@ const issueColumns = computed<TableColumn[]>(() => [
   { key: 'externalId', label: '번호', width: '70px', align: 'center', sortable: true, sortType: 'number', hideBelow: 640 },
   { key: 'title', label: '제목', align: 'left', sortable: true, sortType: 'string' },
   { key: 'priority', label: '우선순위', width: '80px', align: 'center', sortable: true, hideBelow: 640 },
-  { key: dateColumnMode.value, label: dateColumnLabel.value, width: '150px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
+  { key: dateColumnMode.value === 'elapsed' ? 'createdAt' : 'updatedAt', label: dateColumnLabel.value, width: '100px', align: 'center', sortable: true, sortType: 'date', hideBelow: 768 },
   { key: 'assignee', label: '담당자', width: '80px', align: 'center', hideBelow: 768 },
 ])
 
@@ -1185,15 +1200,11 @@ onMounted(async () => {
                   />
                 </div>
               </template>
-              <template #cell-dueAt="{ row }: any">
-                <div @click.stop class="cell-datepicker" :class="{ 'is-overdue': isOverdue(row.dueAt) }">
-                  <UiDatePicker
-                    :model-value="toCalendarDateOrUndef(row.dueAt)"
-                    size="xs"
-                    placeholder="미정"
-                    @update:model-value="(v: DateValue | undefined) => onInlineChange(row, 'dueAt', fromDateValue(v) || '')"
-                  />
-                </div>
+              <template #cell-createdAt="{ row }: any">
+                <UiBadge
+                  :variant="getElapsedVariant(getElapsedDays(row.createdAt))"
+                  size="xs"
+                >{{ getElapsedDays(row.createdAt) }}일</UiBadge>
               </template>
               <template #cell-updatedAt="{ row }: any">
                 <span class="cell-date-text">{{ formatDate(row.updatedAt || row.createdAt) }}</span>
@@ -1335,7 +1346,7 @@ onMounted(async () => {
         <div style="display:flex;gap:8px;margin-top:4px;">
           <UiSelect
             :model-value="dateColumnMode"
-            :options="[{ label: '마감일', value: 'dueAt' }, { label: '수정일', value: 'updatedAt' }]"
+            :options="[{ label: '경과일', value: 'elapsed' }, { label: '수정일', value: 'updatedAt' }]"
             size="sm"
             style="flex:1;"
             @change="(v: string | number) => saveDateColumnMode(v as DateColumnMode)"
