@@ -202,11 +202,24 @@ const filteredIssues = computed(() => {
     })
 })
 
+// ── 오래된 컨펌중 접기 (설정 일수를 넘긴 컨펌중은 기본 숨김) ──
+const STALE_CONFIRM_DAYS = 10
+const showStaleConfirm = ref(false)
+function isStaleConfirm(i: any): boolean {
+  return i.status === 'confirm' && getElapsedDays(i.createdAt) > STALE_CONFIRM_DAYS
+}
+// 현재 필터 스코프 내에서 접힌(숨겨진) 오래된 컨펌중 건수
+const staleConfirmCount = computed(() => filteredIssues.value.filter(isStaleConfirm).length)
+// 표에 실제로 그려지는 목록 (펼침 상태면 전체, 아니면 오래된 컨펌중 제외)
+const visibleIssues = computed(() =>
+  showStaleConfirm.value ? filteredIssues.value : filteredIssues.value.filter((i: any) => !isStaleConfirm(i))
+)
+
 // 더보기 (초기 20건, 이후 20건씩 추가)
 const PAGE_SIZE = 20
 const displayCount = ref(PAGE_SIZE)
-const displayedIssues = computed(() => filteredIssues.value.slice(0, displayCount.value))
-const hasMore = computed(() => displayCount.value < filteredIssues.value.length)
+const displayedIssues = computed(() => visibleIssues.value.slice(0, displayCount.value))
+const hasMore = computed(() => displayCount.value < visibleIssues.value.length)
 function loadMore() { displayCount.value += PAGE_SIZE }
 // 필터 변경 시 표시 건수 리셋
 function resetDisplay() { displayCount.value = PAGE_SIZE }
@@ -243,11 +256,8 @@ function getElapsedDays(createdAt: string): number {
   return Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24))
 }
 
-function getElapsedVariant(days: number): 'danger' | 'warning' | 'default' {
-  if (days >= 15) return 'danger'
-  if (days >= 8) return 'warning'
-  return 'default'
-}
+// 경과일 초과 기준 (이 일수 이상이면 빨강 강조)
+const ELAPSED_OVERDUE_DAYS = 15
 
 // ── 이슈 테이블 ──
 const issueColumns = computed<TableColumn[]>(() => [
@@ -281,7 +291,7 @@ const assigneeMenuItems = computed<DropdownMenuItemDef[]>(() => [
 const priorityMap: Record<string, { label: string; variant: string }> = {
   urgent: { label: '긴급', variant: 'danger' },
   high: { label: '높음', variant: 'warning' },
-  mid: { label: '보통', variant: 'primary' },
+  mid: { label: '보통', variant: 'default' },
   low: { label: '낮음', variant: 'default' },
 }
 
@@ -1088,9 +1098,19 @@ onMounted(async () => {
 
             </div>
 
+            <!-- 오래된 컨펌중 접기 배너 -->
+            <div v-if="staleConfirmCount > 0" class="stale-confirm-bar">
+              <span class="stale-confirm-text">
+                {{ STALE_CONFIRM_DAYS }}일 넘게 컨펌중인 이슈 <strong>{{ staleConfirmCount }}건</strong>이 {{ showStaleConfirm ? '표시됨' : '숨겨짐' }}
+              </span>
+              <button class="stale-confirm-toggle" @click="showStaleConfirm = !showStaleConfirm">
+                {{ showStaleConfirm ? '다시 접기' : '펼쳐 보기' }}
+              </button>
+            </div>
+
             <UiEmpty v-if="filteredIssues.length === 0" title="이슈가 없습니다." />
             <UiTable
-              v-else
+              v-else-if="visibleIssues.length > 0"
               :columns="issueColumns"
               :data="(displayedIssues as any)"
               size="sm"
@@ -1114,7 +1134,7 @@ onMounted(async () => {
               </template>
               <template #cell-category="{ row }: any">
                 <UiBadge
-                  :variant="row.category === 'bug' ? 'danger' : row.category === 'question' ? 'warning' : 'default'"
+                  :variant="row.category === 'bug' ? 'danger' : 'default'"
                   size="sm"
                 >{{ row.category === 'bug' ? '오류' : row.category === 'question' ? '확인' : '개선' }}</UiBadge>
               </template>
@@ -1201,10 +1221,10 @@ onMounted(async () => {
                 </div>
               </template>
               <template #cell-createdAt="{ row }: any">
-                <UiBadge
-                  :variant="getElapsedVariant(getElapsedDays(row.createdAt))"
-                  size="xs"
-                >{{ getElapsedDays(row.createdAt) }}일</UiBadge>
+                <span
+                  class="cell-elapsed"
+                  :class="{ 'cell-elapsed--overdue': getElapsedDays(row.createdAt) >= ELAPSED_OVERDUE_DAYS }"
+                >{{ getElapsedDays(row.createdAt) }}일</span>
               </template>
               <template #cell-updatedAt="{ row }: any">
                 <span class="cell-date-text">{{ formatDate(row.updatedAt || row.createdAt) }}</span>
@@ -1227,7 +1247,7 @@ onMounted(async () => {
             </UiTable>
             <div v-if="hasMore" class="load-more">
               <button class="load-more-btn" @click="loadMore">
-                더보기 ({{ displayedIssues.length }} / {{ filteredIssues.length }})
+                더보기 ({{ displayedIssues.length }} / {{ visibleIssues.length }})
               </button>
             </div>
           </div>
@@ -1912,6 +1932,37 @@ onMounted(async () => {
 .cell-date-text {
   font-size: 13px;
   color: #6b7280;
+}
+.cell-elapsed {
+  font-size: 13px;
+  color: #6b7280;
+  &--overdue {
+    color: #ef4444;
+    font-weight: 600;
+  }
+}
+.stale-confirm-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #6b7280;
+  background: #f9fafb;
+  border: 1px solid #eef0f3;
+  border-radius: 8px;
+}
+.stale-confirm-text { flex: 1; }
+.stale-confirm-toggle {
+  border: none;
+  background: none;
+  color: #4f6af6;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+  &:hover { text-decoration: underline; }
 }
 
 .issue-external-id {
