@@ -328,6 +328,18 @@ export function calculateRanking(stocks: StockInput[]): ScoreBreakdown[] {
     allTurnovers.push(recentTurnover(s.data))
   }
 
+  // 디버그: 회전율 분포 확인 (안정화 후 삭제)
+  if (import.meta.env.DEV) {
+    const sorted = [...allTurnovers].sort((a, b) => a - b)
+    console.log('[SmartScore] 회전율 분포:', {
+      count: allTurnovers.length,
+      min: sorted[0]?.toFixed(6),
+      max: sorted[sorted.length - 1]?.toFixed(6),
+      median: sorted[Math.floor(sorted.length / 2)]?.toFixed(6),
+      allSame: new Set(allTurnovers.map(v => v.toFixed(8))).size === 1,
+    })
+  }
+
   const list: ScoreBreakdown[] = []
 
   for (const s of filtered) {
