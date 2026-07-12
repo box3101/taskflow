@@ -108,12 +108,19 @@ function netBuyRatio(trends: InvestorTrend[], type: 'foreignAmt' | 'institutionA
   return sum / mcap
 }
 
-/** 값의 유니버스 내 백분위 (0~1) */
+/** 값의 유니버스 내 백분위 (0~1) — 동일값은 중간 순위 */
 function percentile(value: number, allValues: number[]): number {
-  if (allValues.length === 0) return 0
+  if (allValues.length <= 1) return 0.5
   const sorted = [...allValues].sort((a, b) => a - b)
-  const rank = sorted.findIndex(v => v >= value)
-  return (rank >= 0 ? rank : sorted.length) / sorted.length
+  // 동일값이 여러 개일 때 중간 순위 사용 (평균 순위)
+  let first = sorted.length
+  let last = -1
+  for (let i = 0; i < sorted.length; i++) {
+    if (sorted[i] >= value && first === sorted.length) first = i
+    if (sorted[i] <= value) last = i
+  }
+  const midRank = (first + last) / 2
+  return midRank / (sorted.length - 1)
 }
 
 /** 수급 점수 (45점) */
@@ -217,7 +224,12 @@ function surgeRatio(data: InvestorData): number {
   const mcap = parseFloat(data.marketCap) || 0
   if (mcap <= 0) return 0
   const short = avgTurnover(data.trends, 5, mcap)
-  const longDays = Math.max(data.trends.length, 5)
+  // 장기: 최소 10일 이상 있어야 의미 있는 비교 가능
+  const longDays = data.trends.length
+  if (longDays <= 5) {
+    // 데이터 부족 시 절대 회전율 자체를 반환 (백분위에서 상대 비교)
+    return short
+  }
   const long = avgTurnover(data.trends, longDays, mcap)
   if (long <= 0) return 0
   return short / long
@@ -285,10 +297,28 @@ function overheatPenalty(chg20: number, chg5: number, foreignRatio: number, inst
 
 // ── 종합 랭킹 ──
 
+/** 종목 코드 기준 dedup — 테마는 "/"로 합침 */
+function dedup(stocks: StockInput[]): StockInput[] {
+  const map = new Map<string, StockInput>()
+  for (const s of stocks) {
+    const existing = map.get(s.code)
+    if (existing) {
+      // 테마 합치기 (중복 방지)
+      if (!existing.theme.includes(s.theme)) {
+        existing.theme += '/' + s.theme
+      }
+    } else {
+      map.set(s.code, { ...s })
+    }
+  }
+  return Array.from(map.values())
+}
+
 /** 메인 엔트리: 종목 배열 → 상위 20 랭킹 */
 export function calculateRanking(stocks: StockInput[]): ScoreBreakdown[] {
-  // 0. 거래대금 필터
-  const filtered = filterByVolume(stocks)
+  // 0. dedup + 거래대금 필터
+  const unique = dedup(stocks)
+  const filtered = filterByVolume(unique)
 
   // 백분위 계산용 유니버스 데이터 수집
   const allForeignRatios: number[] = []
