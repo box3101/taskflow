@@ -95,6 +95,7 @@ export interface InvestorTrend {
   individual: number    // 개인 순매수량
   foreignAmt: number    // 외국인 순매수금액 (백만원)
   institutionAmt: number
+  changePct?: number    // 전일 대비 일간 등락률 (%)
 }
 
 export interface InvestorData {

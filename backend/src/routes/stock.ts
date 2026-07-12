@@ -40,6 +40,8 @@ router.get('/investor/:code', async (req, res) => {
         const price = parseNum(tds[1])
         const foreignVol = parseNum(tds[6])
         const instVol = parseNum(tds[5])
+        // tds[3]: 전일 대비 일간 등락률 (예: "+24.9%" → 24.9, "-13.7%" → -13.7)
+        const changePct = parseFloat(tds[3].replace(/[+%,]/g, '')) || 0
         trends.push({
           date: tds[0].replace(/\./g, ''),
           foreign: foreignVol,
@@ -47,6 +49,7 @@ router.get('/investor/:code', async (req, res) => {
           individual: 0,
           foreignAmt: Math.round(foreignVol * price / 1_000_000), // 백만원 단위
           institutionAmt: Math.round(instVol * price / 1_000_000),
+          changePct,
         })
       }
       if (trends.length >= 20) break

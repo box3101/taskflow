@@ -18,8 +18,8 @@ base = 수급(45) + 등락률(30) + 회전율(10) + PER/PBR(15)
 # 밸류 부분 결측 시 재정규화 (섹션 4 참조)
 normalized = 결측 보정 적용
 
-# 과열감점은 재정규화 후 차감
-종합 = normalized - 과열감점
+# 감점은 재정규화 후 차감
+종합 = normalized - 과열감점 - 변동성감점
 ```
 
 ## 데이터 스키마
@@ -90,7 +90,8 @@ interface StockQuote {
 | 기관 | 유니버스 내 (5일 순매수합 / marketCap) 백분위 × 12.5 | `institutionAmt`, `marketCap` | 12.5점 |
 
 - **백분위 기반**: 상수 튜닝 없이 첫 실행부터 분포가 자동으로 퍼짐
-- 순매수합 = `trends.slice(0,5).reduce(sum, d => sum + Math.max(0, d.foreignAmt))` (음수는 0 처리)
+- 순매수합 = `trends.slice(0,5).reduce((s,d) => s + d.foreignAmt, 0)` (net 합산, 매도 반영)
+  - ※ 설계 오류 정정: 기존 `Math.max(0,...)`는 매도일을 무시해 순매도 종목에 순매수 점수를 부여하는 버그. 피에스케이 사례(외인 5일 순매도 −650억인데 금액 21점)로 발견.
 - `min(12.5, ...)` 클램프 필수 (백분위 1.0 = 12.5점 상한)
 
 ### 외인 연속매도 감점
@@ -205,7 +206,7 @@ PER과 PBR을 **각각 독립적으로** 판정한다.
 | 정상 | NaN | PER = 정상 계산, PBR 제외 → 밸류 만점을 8로 재조정, 나머지 92점→100점 재정규화 |
 | NaN | 정상 | PBR = 정상 계산, PER 제외 → 밸류 만점을 7로 재조정, 나머지 92점→100점 재정규화 |
 | 둘 다 NaN | — | 밸류 15점 전체 제외, 나머지 85점→100점 재정규화 |
-| 적자 | NaN | PER = 2점 고정, PBR 제외, 밸류 만점 = 2+정상PBR범위 없으므로 → 수급+등락+회전+2점, 93점→100점 재정규화 |
+| 적자 | NaN | PER = 2점 고정, PBR 제외 → baseMax = 85+8 = 93 (PER 슬롯 존재), base = 수급+등락+회전+2, normalized = base/93×100 |
 
 - `console.warn`으로 결측 종목 로그 출력 (데이터 문제 가시화)
 - PBR 음수는 자본잠식이 아닌 한 발생하지 않음 → 음수 PBR은 NaN과 동일 처리
@@ -214,7 +215,7 @@ PER과 PBR을 **각각 독립적으로** 판정한다.
 
 ```typescript
 // 밸류 점수가 부분/전체 결측인 경우
-const maxValuation = perAvailable ? 8 : 0 + pbrAvailable ? 7 : 0  // 실제 사용 가능한 밸류 만점
+const maxValuation = (perAvailable ? 8 : 0) + (pbrAvailable ? 7 : 0)  // 실제 사용 가능한 밸류 만점
 const baseMax = 85 + maxValuation  // 이론 만점
 const base = supply + momentum + surge + valuation  // 감점 전 원점수
 const normalized = base / baseMax * 100
@@ -239,6 +240,41 @@ const total = normalized - overheatPenalty
 
 ---
 
+## 6. 변동성 감점 (경로 페널티)
+
+등락률 종모양은 시작점-끝점 차이만 보므로, 경로의 변동성을 별도로 감점한다.
+"20일 +20%인데 하루 ±10~25%씩 롤러코스터"인 종목을 배제하는 축.
+
+### 계산
+
+```
+count = 20일 중 |일간등락률| >= 임계값(%) 인 날 수
+excess = max(0, count - freeCount)
+penalty = min(상한, excess * 계수)
+```
+
+### 파라미터 (초안 — 첫 실행 후 분포 보고 조정)
+
+| 파라미터 | 초기값 | 비고 |
+|----------|--------|------|
+| volatilityThreshold | 10% | 절대 기준. 유니버스 중앙값 보고 13~15로 올릴 수 있음 |
+| volatilityFreeCount | 2 | 이 횟수까지 무감점 |
+| volatilityCoeff | 3 | 초과 1일당 감점 |
+| volatilityMax | 12 | 감점 상한 |
+
+### 과열감점과의 관계
+
+- 이중 적용 가능 (의도적). 20일 >90% 폭등주는 과열+변동성 최대 -24까지.
+- 총점 바닥: `Math.max(0, total)` — 음수 방지.
+- 피에스케이 사례: 20일 +20%(과열 미해당), 일간 ±10% 초과 4~5일 → 변동성만 -9~12
+
+### 데이터 소스
+
+백엔드 `/investor/:code` 크롤링의 `tds[3]` (전일대비 일간 등락률).
+`InvestorTrend.changePct` 필드로 전달.
+
+---
+
 ## 튜닝 대상 파라미터 (v1 운영 후 조정)
 
 실제 데이터 분포를 보기 전에는 확정 불가. 문서에 명시하되 코드에서 상수로 분리.
@@ -249,6 +285,10 @@ const total = normalized - overheatPenalty
 | 등락률 피크 폭 | 넓은 고원 (10~25%) | 감쇠 기울기 포함 |
 | PBR 계수 k | 1.5 | 데이터 분포 확인 후 |
 | 매도감점 시총 대비 임계 | 0.5% | 비율 비례 감점 |
+| volatilityThreshold | 13% | **확정** — 30종목 실측, 감점률 13% 적정 |
+| volatilityFreeCount | 2 | **확정** — 2일까지 무감점 |
+| volatilityCoeff | 3 | 초과 1일당 |
+| volatilityMax | 12 | 상한 |
 
 ---
 

@@ -39,7 +39,24 @@ const stockInputs = computed<StockInput[]>(() => {
 })
 
 // v2 랭킹 계산
-const scoreList = computed<ScoreBreakdown[]>(() => calculateRanking(stockInputs.value))
+const scoreList = computed<ScoreBreakdown[]>(() => {
+  const result = calculateRanking(stockInputs.value)
+  // 디버그: 변동성 감점 결과 확인 (안정화 후 삭제)
+  if (import.meta.env.DEV && result.length > 0) {
+    const withPenalty = result.filter(r => r.volatilityPenalty > 0)
+    if (withPenalty.length > 0) {
+      console.log('[SmartScore] 변동성 감점 적용:', withPenalty.map(r =>
+        `${r.name}: -${r.volatilityPenalty} (${r.volatilityDays}일)`
+      ))
+    }
+    // 피에스케이 changePct 파싱 검증
+    const psk = stockInputs.value.find(s => s.code === '319660')
+    if (psk) {
+      console.log('[SmartScore] 피에스케이 일별 등락률:', psk.data.trends.slice(0, 10).map(t => `${t.date}: ${t.changePct}%`))
+    }
+  }
+  return result
+})
 
 // investor 데이터 로드 (10개씩 배치)
 async function loadInvestorData() {
@@ -220,6 +237,7 @@ loadSnapshotList()
             <template v-if="row.instRatio >= 0.5">기{{ Math.round(row.instRatio * 10) }}/10</template>
           </span>
           <span v-if="row.foreignSellDays >= 3" class="sell-streak-info">외매도{{ row.foreignSellDays }}일</span>
+          <span v-if="row.volatilityPenalty > 0" class="volatility-badge">변동-{{ row.volatilityPenalty }}</span>
           <span v-if="row.overextended" class="overheat-badge">과열</span>
           <span v-if="row.valuationMissing" class="missing-badge">밸류결측</span>
         </span>
@@ -331,6 +349,10 @@ loadSnapshotList()
 }
 .streak-info { font-size: 11px; color: #ef4444; font-weight: 600; }
 .sell-streak-info { font-size: 10px; color: #3b82f6; font-weight: 600; }
+.volatility-badge {
+  font-size: 10px; color: #fff; background: #8b5cf6;
+  padding: 1px 5px; border-radius: 3px; font-weight: 600;
+}
 .overheat-badge {
   font-size: 10px; color: #fff; background: #f97316;
   padding: 1px 5px; border-radius: 3px; font-weight: 600;

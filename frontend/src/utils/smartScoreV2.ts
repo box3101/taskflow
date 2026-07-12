@@ -11,6 +11,11 @@ export const TUNING = {
   momentum20Max: 50,              // 20일 0점 수렴 지점 (%)
   momentum5Peak: [3, 10] as readonly [number, number],    // 5일 피크 구간 (%)
   momentum5Max: 25,               // 5일 0점 수렴 지점 (%)
+  // 변동성 감점 파라미터 (확정: ±10%→67% 전멸, ±13%/free2→13% 적정. 30종목 실측)
+  volatilityThreshold: 13,        // 일간 등락률 절대값 임계 (%)
+  volatilityFreeCount: 2,         // 이 횟수까지는 감점 없음
+  volatilityCoeff: 3,             // 초과 1일당 감점 계수
+  volatilityMax: 12,              // 감점 상한
 } as const
 
 // ── 타입 ──
@@ -57,6 +62,8 @@ export interface ScoreBreakdown {
   foreignRatio: number
   instRatio: number
   foreignSellDays: number
+  volatilityPenalty: number
+  volatilityDays: number        // ±임계 넘은 일수 (디버그용)
   overextended: boolean
   valuationMissing: boolean
 }
@@ -101,10 +108,10 @@ function consecutiveSellDays(trends: InvestorTrend[]): number {
   return count
 }
 
-/** 5일 순매수합 / 시총 비율 (음수는 0 처리) */
+/** 5일 순매수 net합 / 시총 비율 (매도 반영) */
 function netBuyRatio(trends: InvestorTrend[], type: 'foreignAmt' | 'institutionAmt', mcap: number): number {
   if (mcap <= 0) return 0
-  const sum = trends.slice(0, 5).reduce((s, d) => s + Math.max(0, d[type] || 0), 0)
+  const sum = trends.slice(0, 5).reduce((s, d) => s + (d[type] || 0), 0)
   return sum / mcap
 }
 
@@ -281,7 +288,18 @@ function calcValuation(data: InvestorData): ValuationResult {
   }
 }
 
-// ── 5. 과열 감점 ──
+// ── 5. 변동성 감점 (경로 페널티) ──
+
+/** 20일 중 |일간등락률| >= 임계값 인 날 수 → 연속 감점 (상한 있음) */
+function volatilityPenalty(trends: InvestorTrend[]): { penalty: number; days: number } {
+  const slice = trends.slice(0, 20)
+  const days = slice.filter(d => Math.abs(d.changePct || 0) >= TUNING.volatilityThreshold).length
+  const excess = Math.max(0, days - TUNING.volatilityFreeCount)
+  const penalty = Math.min(TUNING.volatilityMax, excess * TUNING.volatilityCoeff)
+  return { penalty, days }
+}
+
+// ── 6. 과열 감점 ──
 
 function overheatPenalty(chg20: number, chg5: number, foreignRatio: number, instRatio: number): number {
   const overextended = chg20 > 90 || chg5 > 40
@@ -340,6 +358,25 @@ export function calculateRanking(stocks: StockInput[]): ScoreBreakdown[] {
     })
   }
 
+  // 디버그: 변동성 분포 확인 — 임계값 ±10% 튜닝용 (안정화 후 삭제)
+  if (import.meta.env.DEV) {
+    const volDaysAll = filtered.map(s => {
+      const days = s.data.trends.slice(0, 20)
+        .filter(d => Math.abs(d.changePct || 0) >= TUNING.volatilityThreshold).length
+      return { name: s.name, days }
+    }).filter(v => v.days > 0).sort((a, b) => b.days - a.days)
+    const dayCounts = filtered.map(s =>
+      s.data.trends.slice(0, 20).filter(d => Math.abs(d.changePct || 0) >= TUNING.volatilityThreshold).length,
+    )
+    const median = [...dayCounts].sort((a, b) => a - b)[Math.floor(dayCounts.length / 2)]
+    console.log(`[SmartScore] 변동성 분포 (±${TUNING.volatilityThreshold}% 기준):`, {
+      총종목: filtered.length,
+      해당종목: volDaysAll.length,
+      중앙값: median,
+      상위5: volDaysAll.slice(0, 5),
+    })
+  }
+
   const list: ScoreBreakdown[] = []
 
   for (const s of filtered) {
@@ -363,9 +400,12 @@ export function calculateRanking(stocks: StockInput[]): ScoreBreakdown[] {
       ? Math.round(base / baseMax * 100)
       : base
 
-    // 5. 과열감점은 재정규화 후 차감
+    // 5. 변동성 감점 (경로 페널티)
+    const vol = volatilityPenalty(s.data.trends)
+
+    // 6. 과열감점은 재정규화 후 차감
     const penalty = overheatPenalty(s.chg20, s.chg5, sup.foreignRatio, sup.instRatio)
-    const total = normalized - penalty
+    const total = Math.max(0, normalized - penalty - vol.penalty)
 
     list.push({
       code: s.code,
@@ -379,6 +419,8 @@ export function calculateRanking(stocks: StockInput[]): ScoreBreakdown[] {
       foreignRatio: sup.foreignRatio,
       instRatio: sup.instRatio,
       foreignSellDays: sup.foreignSellDays,
+      volatilityPenalty: vol.penalty,
+      volatilityDays: vol.days,
       overextended: s.chg20 > 90 || s.chg5 > 40,
       valuationMissing: val.maxPossible < 15,
     })
