@@ -6,6 +6,8 @@ import InvestorTrend from './InvestorTrend.vue'
 import RecommendCard from './RecommendCard.vue'
 import ThemeOverview from './ThemeOverview.vue'
 import SmartScore from './SmartScore.vue'
+import ScoreBacktest from './ScoreBacktest.vue'
+import ScorePortfolio from './ScorePortfolio.vue'
 import StockCalendar from './StockCalendar.vue'
 
 
@@ -84,6 +86,12 @@ onUnmounted(() => {
       :themes="themes"
       :theme-quotes="themeQuotes"
     />
+
+    <!-- 구간 스프레드 분석 -->
+    <ScoreBacktest />
+
+    <!-- 실자금 검증 포트폴리오 -->
+    <ScorePortfolio />
 
   </div>
 </template>

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { UiBadge, UiIcon, UiTable } from '@leechanyong/ispark-ui'
+import { UiBadge, UiButton, UiIcon, UiTable } from '@leechanyong/ispark-ui'
 import type { TableColumn } from '@leechanyong/ispark-ui'
-import { fetchInvestor } from '../../api/stockApi'
-import type { InvestorData, StockQuote } from '../../api/stockApi'
+import { fetchInvestor, saveScoreSnapshot, fetchSnapshotList, fetchSnapshotByDate, deleteSnapshot } from '../../api/stockApi'
+import type { InvestorData, StockQuote, ScoreSnapshotItem, ScoreSnapshotSummary, ScoreSnapshotFull } from '../../api/stockApi'
 import { calculateRanking, type StockInput, type ScoreBreakdown } from '../../utils/smartScoreV2'
 
 type ThemeDef = { label: string; stocks: { code: string; name: string }[] }
@@ -89,13 +89,111 @@ function scoreBadgeVariant(score: number): 'danger' | 'warning' | 'default' {
   if (score >= 60) return 'warning'
   return 'default'
 }
+
+// ── 스냅샷 저장/조회 ──
+const saving = ref(false)
+const savedToday = ref(false)
+const showHistory = ref(false)
+const snapshotList = ref<ScoreSnapshotSummary[]>([])
+const selectedSnapshot = ref<ScoreSnapshotFull | null>(null)
+const loadingHistory = ref(false)
+
+function getTodayStr(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// 다음 거래일 추정 (토→월, 일→월, 평일→다음날)
+function getNextTradingDay(dateStr: string): string {
+  const d = new Date(dateStr + 'T09:00:00')
+  d.setDate(d.getDate() + 1)
+  const dow = d.getDay()
+  if (dow === 6) d.setDate(d.getDate() + 2) // 토→월
+  if (dow === 0) d.setDate(d.getDate() + 1) // 일→월
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+async function handleSaveSnapshot() {
+  if (scoreList.value.length === 0) return
+  saving.value = true
+  try {
+    const today = getTodayStr()
+    const entryDate = getNextTradingDay(today)
+    const items: ScoreSnapshotItem[] = scoreList.value.map((s, i) => ({
+      code: s.code,
+      name: s.name,
+      theme: s.theme,
+      rank: i + 1,
+      total: s.total,
+      supply: s.supply,
+      momentum: s.momentum,
+      surge: s.surge,
+      valuation: s.valuation,
+      entryPrice: props.themeQuotes[s.code]?.price || 0,
+    }))
+    await saveScoreSnapshot(today, entryDate, items)
+    savedToday.value = true
+  } catch (e) {
+    console.error('스냅샷 저장 실패:', e)
+  } finally {
+    saving.value = false
+  }
+}
+
+async function loadSnapshotList() {
+  loadingHistory.value = true
+  try {
+    snapshotList.value = await fetchSnapshotList()
+    // 오늘 이미 저장했는지 확인
+    savedToday.value = snapshotList.value.some(s => s.date === getTodayStr())
+  } catch { /* */ } finally {
+    loadingHistory.value = false
+  }
+}
+
+async function viewSnapshot(date: string) {
+  selectedSnapshot.value = await fetchSnapshotByDate(date)
+}
+
+async function handleDeleteSnapshot(date: string) {
+  if (!confirm(`${date} 스냅샷을 삭제할까요?`)) return
+  await deleteSnapshot(date)
+  snapshotList.value = snapshotList.value.filter(s => s.date !== date)
+  if (selectedSnapshot.value?.date === date) selectedSnapshot.value = null
+  if (date === getTodayStr()) savedToday.value = false
+}
+
+function toggleHistory() {
+  showHistory.value = !showHistory.value
+  if (showHistory.value && snapshotList.value.length === 0) {
+    loadSnapshotList()
+  }
+}
+
+// 초기 로드 시 오늘 저장 여부 확인
+loadSnapshotList()
 </script>
 
 <template>
   <div class="smart-score">
     <div class="section-header">
       <h3><UiIcon name="trophy" :size="18" /> Smart Score 랭킹</h3>
-      <span class="section-desc">수급(45) + 등락률(30) + 회전율(10) + PER/PBR(15) <span v-if="loadedAt" class="loaded-at">{{ loadedAt }} 기준</span></span>
+      <div class="header-actions">
+        <span class="section-desc">수급(45) + 등락률(30) + 회전율(10) + PER/PBR(15) <span v-if="loadedAt" class="loaded-at">{{ loadedAt }} 기준</span></span>
+        <div class="action-buttons">
+          <UiButton
+            size="sm"
+            :variant="savedToday ? 'default' : 'primary'"
+            :disabled="saving || scoreList.length === 0"
+            @click="handleSaveSnapshot"
+          >
+            {{ saving ? '저장중...' : savedToday ? '✓ 저장됨' : '오늘 스코어 저장' }}
+          </UiButton>
+          <UiButton size="sm" variant="secondary" @click="toggleHistory">
+            {{ showHistory ? '닫기' : '히스토리' }}
+          </UiButton>
+        </div>
+      </div>
     </div>
 
     <div v-if="loading && scoreList.length === 0" class="loading-msg">
@@ -133,6 +231,67 @@ function scoreBadgeVariant(score: number): 'danger' | 'warning' | 'default' {
         <UiBadge :variant="scoreBadgeVariant(row.total)" size="sm">{{ row.total }}점</UiBadge>
       </template>
     </UiTable>
+
+    <!-- 스냅샷 히스토리 -->
+    <div v-if="showHistory" class="snapshot-history">
+      <h4>📊 스코어 스냅샷 히스토리</h4>
+
+      <div v-if="loadingHistory" class="loading-msg">불러오는 중...</div>
+
+      <div v-else-if="snapshotList.length === 0" class="loading-msg">저장된 스냅샷이 없습니다.</div>
+
+      <div v-else class="history-content">
+        <div class="history-list">
+          <div
+            v-for="snap in snapshotList"
+            :key="snap.date"
+            class="history-item"
+            :class="{ active: selectedSnapshot?.date === snap.date }"
+            @click="viewSnapshot(snap.date)"
+          >
+            <span class="hist-date">{{ snap.date }}</span>
+            <span v-if="snap.entryDate" class="hist-entry">진입: {{ snap.entryDate }}</span>
+            <button class="hist-delete" @click.stop="handleDeleteSnapshot(snap.date)">×</button>
+          </div>
+        </div>
+
+        <!-- 선택된 스냅샷 상세 -->
+        <div v-if="selectedSnapshot" class="snapshot-detail">
+          <div class="detail-header">
+            <strong>{{ selectedSnapshot.date }}</strong> 스코어
+            <span v-if="selectedSnapshot.entryDate" class="detail-entry">(진입기준: {{ selectedSnapshot.entryDate }} 시가)</span>
+          </div>
+          <table class="snapshot-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>종목</th>
+                <th>테마</th>
+                <th>종합</th>
+                <th>수급</th>
+                <th>등락률</th>
+                <th>회전율</th>
+                <th>밸류</th>
+                <th>기준가</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in (selectedSnapshot.data as ScoreSnapshotItem[])" :key="item.code">
+                <td>{{ item.rank }}</td>
+                <td>{{ item.name }}</td>
+                <td>{{ item.theme }}</td>
+                <td class="score-cell">{{ item.total }}</td>
+                <td>{{ item.supply }}</td>
+                <td>{{ item.momentum }}</td>
+                <td>{{ item.surge }}</td>
+                <td>{{ item.valuation }}</td>
+                <td>{{ item.entryPrice?.toLocaleString() }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -146,11 +305,19 @@ function scoreBadgeVariant(score: number): 'danger' | 'warning' | 'default' {
 
 .section-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 16px;
-  h3 { font-size: 16px; font-weight: 700; margin: 0; }
+  gap: 12px;
+  h3 { font-size: 16px; font-weight: 700; margin: 0; white-space: nowrap; }
 }
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.action-buttons { display: flex; gap: 6px; }
 .section-desc { font-size: 12px; color: #9ca3af; display: flex; align-items: center; gap: 6px; }
 .loaded-at { font-size: 11px; color: #6b7280; font-weight: 500; }
 
@@ -177,7 +344,96 @@ function scoreBadgeVariant(score: number): 'danger' | 'warning' | 'default' {
   text-align: center; padding: 24px; color: #9ca3af; font-size: 14px;
 }
 
+// 스냅샷 히스토리
+.snapshot-history {
+  margin-top: 20px;
+  border-top: 1px solid #e6e8ec;
+  padding-top: 16px;
+
+  h4 { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
+}
+
+.history-content {
+  display: flex;
+  gap: 16px;
+}
+
+.history-list {
+  min-width: 160px;
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  background: #f9fafb;
+  transition: background 0.15s;
+
+  &:hover { background: #f3f4f6; }
+  &.active { background: #eff6ff; border: 1px solid #bfdbfe; }
+}
+
+.hist-date { font-weight: 600; color: #374151; }
+.hist-entry { font-size: 11px; color: #9ca3af; }
+.hist-delete {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: #d1d5db;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  &:hover { color: #ef4444; }
+}
+
+.snapshot-detail {
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-header {
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: #374151;
+}
+.detail-entry { color: #6b7280; font-size: 12px; }
+
+.snapshot-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+
+  th, td {
+    padding: 4px 8px;
+    text-align: center;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  th {
+    background: #f9fafb;
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 11px;
+  }
+  td:nth-child(2) { text-align: left; font-weight: 500; }
+  .score-cell { font-weight: 700; color: #374151; }
+}
+
 @media (max-width: 640px) {
   .smart-score { padding: 14px; }
+  .section-header { flex-direction: column; gap: 8px; }
+  .header-actions { align-items: flex-start; }
+  .history-content { flex-direction: column; }
+  .history-list { max-height: 150px; flex-direction: row; flex-wrap: wrap; }
+  .snapshot-table { font-size: 11px; th, td { padding: 3px 4px; } }
 }
 </style>

@@ -1,4 +1,5 @@
 import type { StockPrice, StockQuote, TopValueStock, NewsItem } from '../types/stock'
+export type { StockPrice, StockQuote }
 
 // Average Apps Script 프록시
 const API_URL = 'https://script.google.com/macros/s/AKfycbwhUT0rUyUwZdjCqGP9dYCjfn2JBT7isV5m9KWxU6PPZappVe4fwz9QqQru0k8npvi0jQ/exec'
@@ -330,4 +331,59 @@ export async function saveEventResult(
 
 export async function unlinkKakao(): Promise<void> {
   await api.delete('/stock/guard/kakao')
+}
+
+// ── 스코어 스냅샷 ──
+
+export interface ScoreSnapshotItem {
+  code: string
+  name: string
+  theme: string
+  rank: number
+  total: number
+  supply: number
+  momentum: number
+  surge: number
+  valuation: number
+  entryPrice: number
+}
+
+export interface ScoreSnapshotSummary {
+  id: number
+  date: string
+  entryDate: string | null
+  memo: string | null
+  createdAt: string
+}
+
+export interface ScoreSnapshotFull extends ScoreSnapshotSummary {
+  data: ScoreSnapshotItem[]
+}
+
+export async function saveScoreSnapshot(
+  date: string,
+  entryDate: string | null,
+  data: ScoreSnapshotItem[],
+  memo?: string
+): Promise<ScoreSnapshotFull> {
+  const res = await api.post('/score-snapshots', { date, entryDate, data, memo })
+  return res.data.data
+}
+
+export async function fetchSnapshotList(): Promise<ScoreSnapshotSummary[]> {
+  const { data } = await api.get('/score-snapshots')
+  return data.data || []
+}
+
+export async function fetchSnapshotByDate(date: string): Promise<ScoreSnapshotFull | null> {
+  try {
+    const { data } = await api.get(`/score-snapshots/${date}`)
+    return data.data || null
+  } catch {
+    return null
+  }
+}
+
+export async function deleteSnapshot(date: string): Promise<void> {
+  await api.delete(`/score-snapshots/${date}`)
 }

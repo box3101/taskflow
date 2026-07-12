@@ -21,6 +21,8 @@ import workoutRouter from './routes/workouts'
 import marketEventRouter from './routes/marketEvents'
 import marketJournalRouter from './routes/marketJournal'
 import preferencesRouter from './routes/preferences'
+import scoreSnapshotRouter from './routes/scoreSnapshots'
+import scorePortfolioRouter from './routes/scorePortfolio'
 import { startStockGuardCron } from './services/stockGuardCron'
 
 const app = express()
@@ -82,6 +84,8 @@ app.use('/trade-logs', tradeLogRouter)
 app.use('/market-events', marketEventRouter)
 app.use('/market-journal', marketJournalRouter)
 app.use('/preferences', preferencesRouter)
+app.use('/score-snapshots', scoreSnapshotRouter)
+app.use('/score-portfolio', scorePortfolioRouter)
 
 // 헬스체크
 app.get('/health', (_req, res) => {

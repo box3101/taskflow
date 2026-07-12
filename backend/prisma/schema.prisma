@@ -31,6 +31,8 @@ model User {
   issueComments     IssueComment[]
   kakaoToken        KakaoToken?
   marketJournals    MarketJournal[]
+  scoreSnapshots    ScoreSnapshot[]
+  scorePortfolio    ScorePortfolio?
   preference        UserPreference?
 
   @@map("users")
@@ -389,6 +391,58 @@ model MarketJournal {
 
   @@unique([userId, date])
   @@map("market_journals")
+}
+
+// 스마트스코어 일별 스냅샷
+model ScoreSnapshot {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  date      String   @db.VarChar(10)   // "YYYY-MM-DD" (스코어 계산일)
+  entryDate String?  @map("entry_date") @db.VarChar(10) // 진입기준일 (다음 거래일)
+  data      Json     // [{code, name, theme, rank, total, supply, momentum, surge, valuation, entryPrice}]
+  memo      String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("score_snapshots")
+}
+
+// 스코어 검증 포트폴리오
+model ScorePortfolio {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique @map("user_id")
+  initialCash  Int      @default(3000000) @map("initial_cash") // 초기 자금
+  maxStocks    Int      @default(3) @map("max_stocks")          // 최대 보유 종목수
+  maxHoldDays  Int      @default(20) @map("max_hold_days")      // 최대 보유일
+  rules        String?  @db.Text                                 // 매매 규칙 메모
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trades ScoreTrade[]
+
+  @@map("score_portfolios")
+}
+
+// 스코어 검증 매매 기록
+model ScoreTrade {
+  id          Int      @id @default(autoincrement())
+  portfolioId Int      @map("portfolio_id")
+  stockCode   String   @map("stock_code") @db.VarChar(10)
+  stockName   String   @map("stock_name") @db.VarChar(50)
+  action      String   @db.VarChar(10) // buy | sell
+  price       Int                       // 체결가
+  quantity    Int                       // 수량
+  scoreAtBuy  Int?     @map("score_at_buy")  // 매수 시점 스마트스코어
+  reason      String?  @db.VarChar(200)       // 매매 사유
+  date        String   @db.VarChar(10)        // YYYY-MM-DD
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  portfolio ScorePortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@map("score_trades")
 }
 
 // 이슈 댓글
