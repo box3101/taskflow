@@ -91,6 +91,7 @@ async function saveSettings() {
       rules: portfolio.value.rules,
     })
     showSettings.value = false
+    await loadPortfolio()
   } catch (e) {
     console.error('설정 저장 실패:', e)
   }
