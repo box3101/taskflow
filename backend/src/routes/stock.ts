@@ -59,10 +59,22 @@ router.get('/investor/:code', async (req, res) => {
         headers: { 'User-Agent': 'Mozilla/5.0' },
       })
       const mobileData = await mobileRes.json()
-      const totalInfos = mobileData?.totalInfos || []
-      per = mobileData?.per || totalInfos.find((i: any) => i.key === 'PER')?.value || '-'
-      pbr = mobileData?.pbr || totalInfos.find((i: any) => i.key === 'PBR')?.value || '-'
-      marketCap = mobileData?.marketCap || totalInfos.find((i: any) => i.key === '시가총액')?.value || '-'
+      const totalInfos: any[] = mobileData?.totalInfos || []
+      const findInfo = (key: string) => totalInfos.find((i: any) => i.key === key)?.value || '-'
+      // PER/PBR: "23.04배" → "23.04" (숫자만 추출)
+      const stripUnit = (v: string) => v.replace(/[^0-9.\-]/g, '') || '-'
+      per = stripUnit(findInfo('PER'))
+      pbr = stripUnit(findInfo('PBR'))
+      // 시총: "1,666조 1,894억" → 백만원 단위로 변환
+      const rawCap = findInfo('시총')
+      if (rawCap !== '-') {
+        let capMillion = 0
+        const joMatch = rawCap.match(/([\d,]+)조/)
+        const eokMatch = rawCap.match(/([\d,]+)억/)
+        if (joMatch) capMillion += parseFloat(joMatch[1].replace(/,/g, '')) * 1_000_000  // 1조 = 100만 백만원
+        if (eokMatch) capMillion += parseFloat(eokMatch[1].replace(/,/g, '')) * 100      // 1억 = 100 백만원
+        marketCap = String(capMillion)
+      }
     } catch { /* 기본값 유지 */ }
 
     res.json({ trends, per, pbr, marketCap })
