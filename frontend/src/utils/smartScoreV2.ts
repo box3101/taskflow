@@ -219,30 +219,22 @@ function avgTurnover(trends: InvestorTrend[], days: number, mcap: number): numbe
   return totalAmt / slice.length / mcap
 }
 
-/** surge 비율: 5일 회전율 / 장기 회전율 */
-function surgeRatio(data: InvestorData): number {
+/** 5일 절대 회전율 (외인+기관 거래금액 / 시총) */
+function recentTurnover(data: InvestorData): number {
   const mcap = parseFloat(data.marketCap) || 0
   if (mcap <= 0) return 0
-  const short = avgTurnover(data.trends, 5, mcap)
-  const longDays = data.trends.length
-  if (longDays <= 5) return 0  // 장기 비교 데이터 부족 → 0점
-  const long = avgTurnover(data.trends, longDays, mcap)
-  if (long <= 0) return 0
-  return short / long
+  return avgTurnover(data.trends, 5, mcap)
 }
 
 /**
- * 회전율 점수 (10점): surge 비율의 절대 기준
- * ratio 1.0 = 평소와 같음 → 0점
- * ratio 1.5 = 50% 증가 → 5점
- * ratio 2.0+ = 100%+ 증가 → 10점
- * 데이터 부족(ratio=0)이면 0점
+ * 회전율 점수 (10점): 유니버스 내 5일 회전율 백분위
+ * 절대 회전율로 "이 종목에 외인·기관 거래가 얼마나 몰리나" 측정
+ * surge(평소 대비)가 아닌 절대 관심도 — 데이터 20일로는 surge 변별 불가
  */
-function calcSurge(data: InvestorData): number {
-  const ratio = surgeRatio(data)
-  if (ratio <= 1) return 0
-  // 1.0~2.0 구간을 0~10으로 선형, 2.0+ 만점
-  return Math.min(10, Math.round((ratio - 1) * 10))
+function calcSurge(data: InvestorData, allTurnovers: number[]): number {
+  const turnover = recentTurnover(data)
+  if (turnover <= 0) return 0
+  return Math.round(percentile(turnover, allTurnovers) * 10)
 }
 
 // ── 4. PER/PBR 15점 — 선형 보간 ──
@@ -327,11 +319,13 @@ export function calculateRanking(stocks: StockInput[]): ScoreBreakdown[] {
   // 백분위 계산용 유니버스 데이터 수집
   const allForeignRatios: number[] = []
   const allInstRatios: number[] = []
+  const allTurnovers: number[] = []
 
   for (const s of filtered) {
     const mcap = parseFloat(s.data.marketCap) || 0
     allForeignRatios.push(netBuyRatio(s.data.trends, 'foreignAmt', mcap))
     allInstRatios.push(netBuyRatio(s.data.trends, 'institutionAmt', mcap))
+    allTurnovers.push(recentTurnover(s.data))
   }
 
   const list: ScoreBreakdown[] = []
@@ -344,7 +338,7 @@ export function calculateRanking(stocks: StockInput[]): ScoreBreakdown[] {
     const mom = calcMomentum(s.chg20, s.chg5)
 
     // 3. 회전율 10점
-    const srg = calcSurge(s.data)
+    const srg = calcSurge(s.data, allTurnovers)
 
     // 4. 밸류 15점
     const val = calcValuation(s.data)
