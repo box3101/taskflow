@@ -224,21 +224,25 @@ function surgeRatio(data: InvestorData): number {
   const mcap = parseFloat(data.marketCap) || 0
   if (mcap <= 0) return 0
   const short = avgTurnover(data.trends, 5, mcap)
-  // 장기: 최소 10일 이상 있어야 의미 있는 비교 가능
   const longDays = data.trends.length
-  if (longDays <= 5) {
-    // 데이터 부족 시 절대 회전율 자체를 반환 (백분위에서 상대 비교)
-    return short
-  }
+  if (longDays <= 5) return 0  // 장기 비교 데이터 부족 → 0점
   const long = avgTurnover(data.trends, longDays, mcap)
   if (long <= 0) return 0
   return short / long
 }
 
-/** 회전율 점수 (10점): surge 비율의 유니버스 백분위 */
-function calcSurge(data: InvestorData, allSurgeRatios: number[]): number {
+/**
+ * 회전율 점수 (10점): surge 비율의 절대 기준
+ * ratio 1.0 = 평소와 같음 → 0점
+ * ratio 1.5 = 50% 증가 → 5점
+ * ratio 2.0+ = 100%+ 증가 → 10점
+ * 데이터 부족(ratio=0)이면 0점
+ */
+function calcSurge(data: InvestorData): number {
   const ratio = surgeRatio(data)
-  return Math.round(percentile(ratio, allSurgeRatios) * 10)
+  if (ratio <= 1) return 0
+  // 1.0~2.0 구간을 0~10으로 선형, 2.0+ 만점
+  return Math.min(10, Math.round((ratio - 1) * 10))
 }
 
 // ── 4. PER/PBR 15점 — 선형 보간 ──
@@ -323,13 +327,11 @@ export function calculateRanking(stocks: StockInput[]): ScoreBreakdown[] {
   // 백분위 계산용 유니버스 데이터 수집
   const allForeignRatios: number[] = []
   const allInstRatios: number[] = []
-  const allSurgeRatios: number[] = []
 
   for (const s of filtered) {
     const mcap = parseFloat(s.data.marketCap) || 0
     allForeignRatios.push(netBuyRatio(s.data.trends, 'foreignAmt', mcap))
     allInstRatios.push(netBuyRatio(s.data.trends, 'institutionAmt', mcap))
-    allSurgeRatios.push(surgeRatio(s.data))
   }
 
   const list: ScoreBreakdown[] = []
@@ -342,7 +344,7 @@ export function calculateRanking(stocks: StockInput[]): ScoreBreakdown[] {
     const mom = calcMomentum(s.chg20, s.chg5)
 
     // 3. 회전율 10점
-    const srg = calcSurge(s.data, allSurgeRatios)
+    const srg = calcSurge(s.data)
 
     // 4. 밸류 15점
     const val = calcValuation(s.data)
