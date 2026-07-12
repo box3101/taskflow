@@ -12,5 +12,8 @@
     "db:seed": "cd backend && npx ts-node-dev src/seed.ts",
     "start": "cd backend && node dist/src/app.js",
     "postinstall": "npm run install:all && npm run db:generate && npm run db:migrate && npm run build"
+  },
+  "dependencies": {
+    "@leechanyong/ispark-ui": "^0.5.14"
   }
 }
