@@ -347,6 +347,16 @@ export interface ScoreSnapshotItem {
   surge: number
   valuation: number
   entryPrice: number
+  // ── 만기 확정 시 채워짐 (D+3 종가) ──
+  exitPrice?: number
+  returnPct?: number
+  exitDate?: string
+}
+
+// 만기 스냅샷 수동 확정 트리거
+export async function matureSnapshots(): Promise<{ checked: number; matured: number }> {
+  const { data } = await api.post('/score-snapshots/mature')
+  return data
 }
 
 export interface ScoreSnapshotSummary {

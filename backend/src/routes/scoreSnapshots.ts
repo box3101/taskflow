@@ -1,9 +1,21 @@
 import { Router } from 'express'
 import prisma from '../prisma'
 import { authenticate } from '../middleware/auth'
+import { matureSnapshots } from '../services/scoreMaturity'
 
 const router = Router()
 router.use(authenticate)
+
+// POST /mature — 만기 도래 스냅샷 즉시 확정 (cron 수동 트리거)
+router.post('/mature', async (_req, res) => {
+  try {
+    const result = await matureSnapshots()
+    res.json({ message: '확정 완료', ...result })
+  } catch (err) {
+    console.error('POST /score-snapshots/mature error:', err)
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
+  }
+})
 
 // POST / — 오늘 스코어 스냅샷 저장 (upsert)
 router.post('/', async (req, res) => {

@@ -24,6 +24,7 @@ import preferencesRouter from './routes/preferences'
 import scoreSnapshotRouter from './routes/scoreSnapshots'
 import scorePortfolioRouter from './routes/scorePortfolio'
 import { startStockGuardCron } from './services/stockGuardCron'
+import { startScoreMaturityCron } from './services/scoreMaturityCron'
 
 const app = express()
 
@@ -104,4 +105,5 @@ const PORT = process.env.PORT || 4000
 app.listen(PORT, () => {
   console.log(`서버 실행: http://localhost:${PORT}`)
   startStockGuardCron()
+  startScoreMaturityCron()
 })
