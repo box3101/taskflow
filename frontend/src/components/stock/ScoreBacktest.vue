@@ -60,51 +60,45 @@ async function loadBacktestData() {
   }
 }
 
-// 구간 스프레드 계산: 점수 상위 20% / 중위 / 하위 20%
-interface QuintileStats {
-  label: string
-  avgReturn: number
-  count: number
-  color: string
+// ── 진입일 이후 보유 거래일 수 (주말 제외, 공휴일 무시 · 최소 1) ──
+// 히스토리 가격 API가 없어 진짜 고정기간(D+N 종가) 백테스트가 불가 →
+// "1일당 수익률"로 정규화해 스냅샷 나이(보유기간) 차이를 상쇄한다.
+function heldTradingDays(entryDate: string | null): number {
+  if (!entryDate) return 1
+  const start = new Date(entryDate + 'T00:00:00')
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  let count = 0
+  const cur = new Date(start)
+  while (cur < now) {
+    cur.setDate(cur.getDate() + 1)
+    const dow = cur.getDay()
+    if (dow !== 0 && dow !== 6) count++
+  }
+  return Math.max(1, count)
 }
 
-const quintileStats = computed<QuintileStats[]>(() => {
-  // 모든 스냅샷의 종목을 풀어서 하나로 합침
-  const allItems = snapshotReturns.value.flatMap(s => s.items.filter(i => i.entryPrice > 0 && i.currentPrice > 0))
-  if (allItems.length < 5) return []
-
-  // 점수 기준으로 정렬
-  const sorted = [...allItems].sort((a, b) => b.total - a.total)
+// ── 버킷 분할: 상·하위 20% (소표본 최소 2종목 가드, 겹침 방지) ──
+function splitBuckets<T>(sorted: T[]): { top: T[]; mid: T[]; bottom: T[]; size: number } {
   const n = sorted.length
-  const top20 = sorted.slice(0, Math.ceil(n * 0.2))
-  const mid = sorted.slice(Math.ceil(n * 0.3), Math.ceil(n * 0.7))
-  const bottom20 = sorted.slice(Math.floor(n * 0.8))
+  const size = Math.max(2, Math.ceil(n * 0.2))
+  const top = sorted.slice(0, size)
+  const bottom = sorted.slice(n - size)
+  const mid = sorted.slice(size, Math.max(size, n - size))
+  return { top, mid, bottom, size }
+}
 
-  const avg = (arr: typeof sorted) =>
-    arr.length > 0 ? arr.reduce((s, i) => s + i.returnPct, 0) / arr.length : 0
-
-  return [
-    { label: '상위 20%', avgReturn: avg(top20), count: top20.length, color: '#ef4444' },
-    { label: '중위 40%', avgReturn: avg(mid), count: mid.length, color: '#6b7280' },
-    { label: '하위 20%', avgReturn: avg(bottom20), count: bottom20.length, color: '#3b82f6' },
-  ]
-})
-
-// 스프레드: 상위 - 하위
-const spread = computed(() => {
-  if (quintileStats.value.length < 3) return 0
-  return quintileStats.value[0].avgReturn - quintileStats.value[2].avgReturn
-})
-
-// 날짜별 요약
+// ── 날짜별 요약 (스냅샷 하나 = 동일 진입일 = 동일 기간, 내부적으로 공정) ──
 interface DailySummary {
   date: string
   entryDate: string | null
-  topAvg: number
-  midAvg: number
-  bottomAvg: number
-  spread: number
+  heldDays: number
+  // 누적 수익률 (표 표시용)
+  topRaw: number; midRaw: number; bottomRaw: number; spreadRaw: number
+  // 1일당 수익률 (집계용)
+  topDaily: number; midDaily: number; bottomDaily: number; spreadDaily: number
   totalStocks: number
+  bucketSize: number
 }
 
 const dailySummaries = computed<DailySummary[]>(() => {
@@ -113,27 +107,57 @@ const dailySummaries = computed<DailySummary[]>(() => {
     if (valid.length < 5) return null
 
     const sorted = [...valid].sort((a, b) => b.total - a.total)
-    const n = sorted.length
-    const top20 = sorted.slice(0, Math.ceil(n * 0.2))
-    const mid = sorted.slice(Math.ceil(n * 0.3), Math.ceil(n * 0.7))
-    const bottom20 = sorted.slice(Math.floor(n * 0.8))
+    const { top, mid, bottom, size } = splitBuckets(sorted)
+    const heldDays = heldTradingDays(snap.entryDate)
 
-    const avg = (arr: typeof sorted) =>
+    const rawAvg = (arr: typeof sorted) =>
       arr.length > 0 ? arr.reduce((s, i) => s + i.returnPct, 0) / arr.length : 0
 
-    const topAvg = avg(top20)
-    const bottomAvg = avg(bottom20)
+    const topRaw = rawAvg(top)
+    const midRaw = rawAvg(mid)
+    const bottomRaw = rawAvg(bottom)
 
     return {
       date: snap.date,
       entryDate: snap.entryDate,
-      topAvg,
-      midAvg: avg(mid),
-      bottomAvg,
-      spread: topAvg - bottomAvg,
+      heldDays,
+      topRaw, midRaw, bottomRaw, spreadRaw: topRaw - bottomRaw,
+      topDaily: topRaw / heldDays,
+      midDaily: midRaw / heldDays,
+      bottomDaily: bottomRaw / heldDays,
+      spreadDaily: (topRaw - bottomRaw) / heldDays,
       totalStocks: valid.length,
+      bucketSize: size,
     }
   }).filter(Boolean) as DailySummary[]
+})
+
+// ── 집계: 일자 동일가중 평균 (풀링 X) · 1일당 수익률 ──
+// 종목 많은 날이 지배하지 않도록 "날짜별 스프레드의 평균"으로 계산
+interface QuintileStats {
+  label: string
+  avgReturn: number
+  days: number
+  color: string
+}
+
+const quintileStats = computed<QuintileStats[]>(() => {
+  const days = dailySummaries.value
+  if (days.length === 0) return []
+  const mean = (sel: (d: DailySummary) => number) =>
+    days.reduce((s, d) => s + sel(d), 0) / days.length
+  return [
+    { label: '상위 20%', avgReturn: mean(d => d.topDaily), days: days.length, color: '#ef4444' },
+    { label: '중위 40%', avgReturn: mean(d => d.midDaily), days: days.length, color: '#6b7280' },
+    { label: '하위 20%', avgReturn: mean(d => d.bottomDaily), days: days.length, color: '#3b82f6' },
+  ]
+})
+
+// 스프레드: 날짜별 1일당 스프레드의 평균
+const spread = computed(() => {
+  const days = dailySummaries.value
+  if (days.length === 0) return 0
+  return days.reduce((s, d) => s + d.spreadDaily, 0) / days.length
 })
 
 function formatPct(v: number): string {
@@ -160,7 +184,10 @@ loadBacktestData()
       </UiButton>
     </div>
 
-    <p class="desc">점수 구간별 forward 수익률 비교 — 상위가 하위를 이기면 스코어에 정보가 있는 것</p>
+    <p class="desc">
+      점수 구간별 수익률 비교 — 상위가 하위를 이기면 스코어에 정보가 있는 것<br />
+      집계는 <b>일자 동일가중 · 1일당(÷보유거래일) 평균</b> (오래된 스냅샷 지배 방지)
+    </p>
 
     <div v-if="loading" class="loading-msg">스냅샷 분석 중...</div>
     <div v-else-if="error" class="loading-msg">{{ error }}</div>
@@ -171,33 +198,34 @@ loadBacktestData()
         <div class="spread-card" v-for="q in quintileStats" :key="q.label">
           <div class="q-label">{{ q.label }}</div>
           <div class="q-return" :style="{ color: pctColor(q.avgReturn) }">{{ formatPct(q.avgReturn) }}</div>
-          <div class="q-count">{{ q.count }}종목</div>
+          <div class="q-count">{{ q.days }}일 평균</div>
         </div>
         <div class="spread-card spread-highlight">
           <div class="q-label">스프레드</div>
           <div class="q-return" :style="{ color: spread > 0 ? '#16a34a' : '#ef4444' }">
             {{ formatPct(spread) }}
           </div>
-          <div class="q-count">상위-하위</div>
+          <div class="q-count">상위-하위 (1일당)</div>
         </div>
       </div>
 
       <!-- 스프레드 판정 -->
       <div class="verdict">
-        <UiBadge :variant="spread > 2 ? 'danger' : spread > 0 ? 'warning' : 'default'" size="sm">
-          {{ spread > 2 ? '유의미한 신호' : spread > 0 ? '약한 신호' : '노이즈 (스코어 개선 필요)' }}
+        <UiBadge :variant="spread > 0.3 ? 'danger' : spread > 0 ? 'warning' : 'default'" size="sm">
+          {{ spread > 0.3 ? '유의미한 신호' : spread > 0 ? '약한 신호' : '노이즈 (스코어 개선 필요)' }}
         </UiBadge>
-        <span class="verdict-note">* 최소 5일 이상 스냅샷이 쌓여야 의미있는 판단 가능</span>
+        <span class="verdict-note">* 1일당 스프레드 기준 · 최소 5일 이상 스냅샷이 쌓여야 판단 신뢰</span>
       </div>
 
       <!-- 날짜별 스프레드 -->
       <div v-if="dailySummaries.length > 0" class="daily-section">
-        <h4>날짜별 스프레드</h4>
+        <h4>날짜별 스프레드 <span class="h4-note">(누적 수익률 · 보유기간 반영)</span></h4>
         <table class="daily-table">
           <thead>
             <tr>
               <th>스코어일</th>
               <th>진입기준</th>
+              <th>보유일</th>
               <th>상위20%</th>
               <th>중위</th>
               <th>하위20%</th>
@@ -209,10 +237,11 @@ loadBacktestData()
             <tr v-for="d in dailySummaries" :key="d.date">
               <td>{{ d.date.slice(5) }}</td>
               <td>{{ d.entryDate?.slice(5) || '-' }}</td>
-              <td :style="{ color: pctColor(d.topAvg) }">{{ formatPct(d.topAvg) }}</td>
-              <td :style="{ color: pctColor(d.midAvg) }">{{ formatPct(d.midAvg) }}</td>
-              <td :style="{ color: pctColor(d.bottomAvg) }">{{ formatPct(d.bottomAvg) }}</td>
-              <td :style="{ color: d.spread > 0 ? '#16a34a' : '#ef4444', fontWeight: 700 }">{{ formatPct(d.spread) }}</td>
+              <td>{{ d.heldDays }}일</td>
+              <td :style="{ color: pctColor(d.topRaw) }">{{ formatPct(d.topRaw) }}</td>
+              <td :style="{ color: pctColor(d.midRaw) }">{{ formatPct(d.midRaw) }}</td>
+              <td :style="{ color: pctColor(d.bottomRaw) }">{{ formatPct(d.bottomRaw) }}</td>
+              <td :style="{ color: d.spreadRaw > 0 ? '#16a34a' : '#ef4444', fontWeight: 700 }">{{ formatPct(d.spreadRaw) }}</td>
               <td>{{ d.totalStocks }}</td>
             </tr>
           </tbody>
@@ -282,6 +311,7 @@ loadBacktestData()
   padding-top: 16px;
 
   h4 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+  .h4-note { font-size: 11px; font-weight: 400; color: #9ca3af; }
 }
 
 .daily-table {
