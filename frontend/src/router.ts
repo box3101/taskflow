@@ -21,6 +21,10 @@ const router = createRouter({
           component: () => import('./views/CalendarView.vue'),
         },
         {
+          path: 'screenings',
+          component: () => import('./views/ScreeningCalendarView.vue'),
+        },
+        {
           path: 'ai-tools',
           component: () => import('./views/AiToolsView.vue'),
         },

@@ -445,6 +445,29 @@ model ScoreTrade {
   @@map("score_trades")
 }
 
+// 상영 캘린더 — KOBIS 영화 (크론 1일 1회 동기화, 프론트는 DB만 조회)
+model Movie {
+  id           Int       @id @default(autoincrement())
+  movieCd      String    @unique @map("movie_cd")            // KOBIS 영화코드 (upsert 기준)
+  movieNm      String    @map("movie_nm")                     // 한글 제목
+  movieNmEn    String?   @map("movie_nm_en")                  // 영문 제목
+  openDt       DateTime? @map("open_dt") @db.Date             // 개봉일 (캘린더 배치 기준, null이면 캘린더 제외)
+  prdtStatNm   String?   @map("prdt_stat_nm") @db.VarChar(20) // 제작상태 (개봉 / 개봉예정 등)
+  genreNm      String?   @map("genre_nm") @db.VarChar(100)    // 장르 (상세 드로어용)
+  nationNm     String?   @map("nation_nm") @db.VarChar(100)   // 제작국가 (상세 드로어용)
+  directors    String?   @db.VarChar(200)                     // 감독명(들) 콤마 조인
+  boxRank      Int?      @map("box_rank")                     // 최신 박스오피스 순위 (없으면 박스오피스 밖)
+  audiCnt      Int?      @map("audi_cnt")                     // 박스오피스 기준일 관객수
+  audiAcc      Int?      @map("audi_acc")                     // 누적 관객수
+  boxUpdatedAt DateTime? @map("box_updated_at")               // 박스오피스 기준일
+  syncedAt     DateTime  @default(now()) @map("synced_at")    // 마지막 동기화 시각
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([openDt])
+  @@index([boxRank])
+  @@map("movies")
+}
+
 // 이슈 댓글
 model IssueComment {
   id        Int      @id @default(autoincrement())

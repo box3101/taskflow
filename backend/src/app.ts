@@ -23,8 +23,10 @@ import marketJournalRouter from './routes/marketJournal'
 import preferencesRouter from './routes/preferences'
 import scoreSnapshotRouter from './routes/scoreSnapshots'
 import scorePortfolioRouter from './routes/scorePortfolio'
+import movieRouter from './routes/movies'
 import { startStockGuardCron } from './services/stockGuardCron'
 import { startScoreMaturityCron } from './services/scoreMaturityCron'
+import { startSyncMoviesCron } from './services/syncMoviesCron'
 
 const app = express()
 
@@ -87,6 +89,7 @@ app.use('/market-journal', marketJournalRouter)
 app.use('/preferences', preferencesRouter)
 app.use('/score-snapshots', scoreSnapshotRouter)
 app.use('/score-portfolio', scorePortfolioRouter)
+app.use('/movies', movieRouter)
 
 // 헬스체크
 app.get('/health', (_req, res) => {
@@ -106,4 +109,5 @@ app.listen(PORT, () => {
   console.log(`서버 실행: http://localhost:${PORT}`)
   startStockGuardCron()
   startScoreMaturityCron()
+  startSyncMoviesCron()
 })

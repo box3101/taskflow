@@ -24,6 +24,7 @@ onMounted(() => { loadPrefs() })
 const allMenuItems = [
   { label: '홈', value: '', icon: 'home', path: '/', pinned: true },
   { label: '캘린더', value: 'calendar', icon: 'calendar', path: '/calendar', pinned: true },
+  { label: '상영 캘린더', value: 'screenings', icon: 'film', path: '/screenings', pinned: false },
   { label: 'AI Tools', value: 'ai-tools', icon: 'bot', path: '/ai-tools', pinned: false },
   { label: '프로젝트', value: 'projects', icon: 'folder', path: '/projects', pinned: true },
   { label: '할일', value: 'todos', icon: 'check-square', path: '/todos', pinned: true },
