@@ -66,14 +66,16 @@ KOBIS API ──(매일 새벽 크론)──▶ Movie 테이블(DB) ──▶ /m
 
 ## 5. 백엔드
 
-### 5.1 KOBIS 클라이언트 — `backend/src/services/kobis.ts`
+### 5.1 KOBIS 클라이언트 — `backend/src/services/kobis.ts` (신규)
 KOBIS 호출 래퍼 + 응답 파싱. API 키는 `KOBIS_API_KEY` 환경변수에서 읽는다.
 - `fetchMovieList({ openYear, curPage })` → `searchMovieList.json` (개봉작 목록; openStartDt/openEndDt는 연도 단위 필터, 월 필터는 `openDt`로 후처리)
 - `fetchDailyBoxOffice({ targetDt })` → `searchDailyBoxOfficeList.json` (일별 박스오피스)
 - `fetchMovieInfo({ movieCd })` → `searchMovieInfo.json` (상세; 필요 시 사용)
 
-### 5.2 동기화 크론 — `backend/src/cron/syncMovies.ts`
-기존 스코어 크론 패턴을 따른다. 매일 1회 실행:
+### 5.2 동기화 크론 — `backend/src/services/syncMoviesCron.ts` (신규)
+기존 크론 패턴(`stockGuardCron.ts` / `scoreMaturityCron.ts`)을 따른다. `node-cron`의 `cron.schedule`을
+사용하고 `startSyncMoviesCron()` 함수를 export하며, `backend/src/app.ts` 하단(`startStockGuardCron()`
+등이 호출되는 위치)에서 기동한다. 매일 1회 실행:
 1. **박스오피스**: "어제"자 `fetchDailyBoxOffice` 호출(KOBIS는 당일 데이터가 다음날 확정). 비어 있으면
    하루씩 뒤로 폴백(최대 며칠). 결과로 `boxRank`/`audiCnt`/`audiAcc`/`boxUpdatedAt` 갱신.
 2. **개봉작 목록**: 당해 연도(필요 시 ±1년) `fetchMovieList`로 페이지 순회. `openDt`/`prdtStatNm`/
@@ -81,25 +83,44 @@ KOBIS 호출 래퍼 + 응답 파싱. API 키는 `KOBIS_API_KEY` 환경변수에�
 3. `movieCd` 기준으로 `Movie` upsert(멱등). 박스오피스에서 사라진 영화의 `boxRank`는 이번 동기화에서
    갱신되지 않은 경우 null 처리(현재상영작에서 빠지도록).
 
-### 5.3 API 라우트 — `backend/src/routes/movies.ts` (`authenticate` 적용)
+### 5.3 API 라우트 — `backend/src/routes/movies.ts` (신규, `authenticate` 적용)
 - `GET /movies?year&month` → 해당 월에 `openDt`가 속하는 개봉작 목록 (캘린더용)
 - `GET /movies/now-showing` → 최신 박스오피스 리스트 (현재상영작), `boxRank` 오름차순
 - `GET /movies/:movieCd` → 단일 영화 상세 (드로어용)
 
-라우트는 `backend/src/index`(또는 app 엔트리)에 `/api/movies`로 등록한다.
+라우트는 `backend/src/app.ts`에 `app.use('/movies', movieRouter)`로 등록한다(기존 `/calendar` 등과
+동일 컨벤션 — `/api` 프리픽스 없음).
 
 ## 6. 프론트엔드
 
-### 6.1 화면 — `frontend/src/views/ScreeningCalendarView.vue`
+### 6.0 재사용 자산 실재 확인 (코드베이스 대조)
+
+| 자산 | 상태 | 경로 / 출처 |
+|------|------|-------------|
+| `UiCalendarMonth`, `CalendarMonthEvent` | ✅ 존재 | `@leechanyong/ispark-ui` (현 `CalendarView.vue`에서 사용 중) |
+| `CalendarEventList` | ✅ 존재 | `frontend/src/components/calendar/CalendarEventList.vue` |
+| `useCachedFetch` (`getCached`/`setCached`) | ✅ 존재 | `frontend/src/composables/useCachedFetch.ts` |
+| API 클라이언트 `api` | ✅ 존재 | `frontend/src/api/client.ts` |
+| `UiDrawer` | ✅ 존재 | `@leechanyong/ispark-ui` (드로어 패턴 사용 중) |
+| `ScreeningCalendarView.vue` | 🆕 신규 작성 | `frontend/src/views/` |
+| `MovieDetailDrawer.vue` | 🆕 신규 작성 | `frontend/src/components/screening/` |
+| `services/kobis.ts`, `services/syncMoviesCron.ts`, `routes/movies.ts` | 🆕 신규 작성 | `backend/src/` |
+| `Movie` Prisma 모델 | 🆕 신규 작성 | `backend/prisma/schema.prisma` |
+
+> 참고: `CalendarEventList`는 기존 캘린더의 일정/할일/이슈 모델에 맞춰져 있으므로, 그날 개봉작 표시에는
+> "패턴을 재사용"하되 필요 시 얇은 래퍼(또는 별도 리스트 컴포넌트)로 감싼다. 그대로 꽂히지 않으면
+> 신규 리스트 컴포넌트로 작성한다.
+
+### 6.1 화면 — `frontend/src/views/ScreeningCalendarView.vue` (신규)
 - 라우트: `/screenings` (`frontend/src/router.ts`의 `AppLayout` children에 추가)
 - 메뉴: `frontend/src/layouts/AppLayout.vue` 사이드바에 "상영 캘린더" 항목 추가
 - 레이아웃: 좌측 `UiCalendarMonth`(개봉작 배지, 2색) / 우측 "현재상영작" 리스트(박스오피스 순위)
-- 날짜 클릭 시: 그날 개봉작 리스트 표시(기존 `CalendarEventList` 패턴 재사용)
+- 날짜 클릭 시: 그날 개봉작 리스트 표시(기존 `CalendarEventList` 패턴 재사용, 6.0 참고)
 - 데이터 매핑: `movie → CalendarMonthEvent { id: movieCd, start: openDt, end: null, color: 상태색, title: movieNm, meta: movie }`
-- 월별 캐시는 기존 `frontend/src/composables/useCachedFetch` 패턴 재사용
-- API 호출은 기존 `frontend/src/api/client` 사용
+- 월별 캐시는 기존 `frontend/src/composables/useCachedFetch.ts` 재사용
+- API 호출은 기존 `frontend/src/api/client.ts` 사용
 
-### 6.2 상세 드로어 — `frontend/src/components/screening/MovieDetailDrawer.vue`
+### 6.2 상세 드로어 — `frontend/src/components/screening/MovieDetailDrawer.vue` (신규)
 - 캘린더 배지 또는 현재상영작 리스트 항목 클릭 → `UiDrawer`로 상세 표시(텍스트만)
 - 표시 항목: 제목, 개봉일, 제작상태, 감독, 장르, 제작국가, 박스오피스 순위/관객수/누적관객수
 - 포스터 이미지는 없음(KOBIS 미제공). 향후 확장 여지로만 남김
@@ -133,3 +154,38 @@ KOBIS 오픈API **키 발급 필요** (kobis.or.kr → 오픈API 신청, 무료)
 - 포스터 이미지 (TMDB 등 보조 소스 연동)
 - 상영기간(종영일) 막대 표시 — KOBIS가 종영일을 제공하지 않아 추정이 필요하므로 제외
 - 개인 관람 계획/즐겨찾기, 알림 등 부가 기능
+
+## 11. 구현 순서 (마일스톤)
+
+마일스톤 단위로 끊어서 진행한다. 각 마일스톤 끝에서 **멈추고 동작 확인** 후 다음으로 넘어간다.
+
+### M1 — 데이터 파이프라인 (백엔드 하부)
+- 대상: `Movie` Prisma 모델 + `services/kobis.ts` + `services/syncMoviesCron.ts`(+`app.ts` 기동)
+- 작업: 스키마 추가 → `prisma db push` + `generate`(memory 규칙: migrate 금지) → KOBIS 클라이언트 →
+  크론 동기화(박스오피스 + 개봉작 목록 upsert)
+- ✅ 동작 확인:
+  - `KOBIS_API_KEY` 설정 후 크론 함수를 1회 수동 실행 → `Movie` 테이블에 실제 행이 쌓인다.
+  - `openDt`/`prdtStatNm`/`boxRank`/`audiAcc`가 채워지고, 재실행해도 중복 없이 upsert 된다(멱등).
+  - KOBIS 키가 없거나 장애일 때 크론이 앱을 죽이지 않고 에러 로깅 후 지나간다.
+
+### M2 — API 3개 (`routes/movies.ts`)
+- 대상: `GET /movies?year&month`, `GET /movies/now-showing`, `GET /movies/:movieCd` + `app.ts` 등록
+- 작업: M1이 채운 `Movie` 테이블을 읽어 응답. `authenticate` 적용.
+- ✅ 동작 확인:
+  - `/movies?year=2026&month=7` → 그 달 `openDt` 영화만 반환.
+  - `/movies/now-showing` → `boxRank` 오름차순 리스트 반환.
+  - `/movies/:movieCd` → 단일 상세 반환, 없는 코드는 404.
+  - 미인증 요청은 차단된다.
+
+### M3 — 캘린더 화면 + 드로어 (프론트)
+- 대상: `ScreeningCalendarView.vue` + `MovieDetailDrawer.vue` + `router.ts`/`AppLayout.vue` 메뉴
+- 작업: M2 API 연동, `UiCalendarMonth`에 개봉작 배지(2색) 매핑, 현재상영작 리스트, 날짜 클릭 리스트,
+  배지/항목 클릭 시 상세 드로어.
+- ✅ 동작 확인:
+  - 좌측 메뉴 "상영 캘린더" 진입 → 이번 달 개봉작이 배지로 뜨고, 예정=파랑/개봉=초록으로 구분된다.
+  - 우측 현재상영작 리스트가 순위순으로 뜬다.
+  - 같은 날 다수 개봉 시 "더보기" → 날짜 클릭으로 전체 리스트 확인.
+  - 배지/리스트 클릭 → 드로어에 개봉일·감독·장르·박스오피스 수치가 텍스트로 표시된다.
+
+> 원칙: "한 번에 다 만들기"보다 M1(데이터) 확인 → M2(API) → M3(화면) 순으로 끊어서 간다.
+> 중간에 틀어지면 해당 마일스톤만 고치면 된다.
