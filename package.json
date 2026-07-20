@@ -14,6 +14,6 @@
     "postinstall": "npm run install:all && npm run db:generate && npm run db:migrate && npm run build"
   },
   "dependencies": {
-    "@leechanyong/ispark-ui": "^0.5.14"
+    "@leechanyong/ispark-ui": "github:box3101/ispark-ui#9b278e6e44bad955ab316f79258e10c726881a5b"
   }
 }
