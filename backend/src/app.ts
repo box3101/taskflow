@@ -53,7 +53,7 @@ const clientPath = path.join(__dirname, '../../../frontend/dist')
 // → 프론트 라우트면 index.html(SPA) 반환. XHR/API 호출은 Accept에 text/html이 없어 그대로 통과한다.
 const FRONTEND_ROUTES = [
   '/', '/login', '/settings', '/main',
-  '/projects', '/todos', '/calendar', '/ai-tools', '/memos', '/stock', '/health',
+  '/projects', '/todos', '/calendar', '/screenings', '/ai-tools', '/memos', '/stock', '/health',
 ]
 app.use((req, res, next) => {
   if (req.method !== 'GET') return next()

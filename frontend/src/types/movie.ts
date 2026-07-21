@@ -14,4 +14,10 @@ export interface Movie {
   audiAcc: number | null
   boxUpdatedAt: string | null
   syncedAt: string
+  productionYear: number | null
+  isRerelease: boolean
+  tmdbId: number | null
+  overview: string | null
+  posterPath: string | null
+  tmdbCheckedAt: string | null
 }

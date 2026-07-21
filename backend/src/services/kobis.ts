@@ -15,6 +15,7 @@ export interface KobisMovie {
   movieNm: string
   movieNmEn?: string
   openDt?: string // searchMovieList는 "YYYYMMDD" (미정이면 "")
+  prdtYear?: string
   prdtStatNm?: string
   genreAlt?: string
   nationAlt?: string

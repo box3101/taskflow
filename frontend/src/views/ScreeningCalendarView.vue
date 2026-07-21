@@ -5,11 +5,15 @@ import type { CalendarMonthEvent } from '@leechanyong/ispark-ui'
 import api from '../api/client'
 import { getCached, setCached } from '../composables/useCachedFetch'
 import type { Movie } from '../types/movie'
+import { movieCalendarColor, movieCalendarTitle } from '../utils/movieDisplay'
 import MovieDetailDrawer from '../components/screening/MovieDetailDrawer.vue'
+
+type BookmarkChange = { movieCd: string; bookmarked: boolean }
 
 const loading = ref(true)
 const monthMovies = ref<Movie[]>([]) // 선택 월 개봉작 (캘린더 배지 + 그날 개봉작)
 const nowShowing = ref<Movie[]>([])  // 현재상영작 (박스오피스)
+const bookmarkedCodes = ref<Set<string>>(new Set())
 
 const now = new Date()
 const currentYear = ref(now.getFullYear())
@@ -30,10 +34,6 @@ function dateOf(m: Movie): string {
 function isUpcoming(dateStr: string): boolean {
   return !!dateStr && dateStr > todayStr
 }
-// 예정(미래)=파랑 / 개봉(오늘 이하)=초록
-function colorOf(dateStr: string): string {
-  return isUpcoming(dateStr) ? '#3b82f6' : '#22c55e'
-}
 
 // ===== 캘린더 배지 매핑 (movie → CalendarMonthEvent) =====
 const calendarMonthEvents = computed<CalendarMonthEvent[]>(() =>
@@ -41,7 +41,15 @@ const calendarMonthEvents = computed<CalendarMonthEvent[]>(() =>
     .filter(m => m.openDt)
     .map(m => {
       const d = dateOf(m)
-      return { id: m.movieCd, start: d, end: null, title: m.movieNm, color: colorOf(d), allDay: true, meta: m }
+      return {
+        id: m.movieCd,
+        start: d,
+        end: null,
+        title: movieCalendarTitle(m),
+        color: movieCalendarColor(m, bookmarkedCodes.value, todayStr),
+        allDay: true,
+        meta: m,
+      }
     }),
 )
 
@@ -96,6 +104,15 @@ async function fetchNowShowing() {
   }
 }
 
+async function fetchBookmarks() {
+  try {
+    const { data } = await api.get<{ data: string[] }>('/movies/bookmarks')
+    bookmarkedCodes.value = new Set(data.data)
+  } catch {
+    bookmarkedCodes.value = new Set()
+  }
+}
+
 // ===== 월 이동 =====
 function prevMonth() {
   if (currentMonth.value === 1) { currentYear.value--; currentMonth.value = 12 }
@@ -131,9 +148,25 @@ function onSelectEvent(cm: CalendarMonthEvent) {
   openDrawer(cm.meta as Movie)
 }
 
+function syncMovie(updated: Movie) {
+  monthMovies.value = monthMovies.value.map(m => m.movieCd === updated.movieCd ? updated : m)
+  nowShowing.value = nowShowing.value.map(m => m.movieCd === updated.movieCd ? updated : m)
+  if (selectedMovie.value?.movieCd === updated.movieCd) selectedMovie.value = updated
+
+  setCached(`screenings-${currentYear.value}-${currentMonth.value}`, monthMovies.value)
+  setCached('screenings-now-showing', nowShowing.value)
+}
+
+function onBookmarkChanged({ movieCd, bookmarked }: BookmarkChange) {
+  const next = new Set(bookmarkedCodes.value)
+  bookmarked ? next.add(movieCd) : next.delete(movieCd)
+  bookmarkedCodes.value = next
+}
+
 onMounted(() => {
   fetchMonth()
   fetchNowShowing()
+  fetchBookmarks()
 })
 </script>
 
@@ -161,6 +194,9 @@ onMounted(() => {
             <span class="screening-page__legend-item">
               <span class="screening-page__dot" style="background:#22c55e;" />개봉
             </span>
+            <span class="screening-page__legend-item">
+              <span class="screening-page__dot" style="background:#f59e0b;" />보고싶은 영화
+            </span>
           </div>
         </div>
         <UiCalendarMonth v-model:year="currentYear" v-model:month="currentMonth"
@@ -179,9 +215,12 @@ onMounted(() => {
           <div v-if="selectedDayMovies.length === 0" class="screening-list__empty">이 날 개봉작이 없습니다</div>
           <div v-else class="screening-list__items">
             <button v-for="m in selectedDayMovies" :key="m.movieCd" class="screening-item"
-              :style="{ borderLeftColor: colorOf(dateOf(m)) }" @click="openDrawer(m)">
+              :style="{ borderLeftColor: movieCalendarColor(m, bookmarkedCodes, todayStr) }" @click="openDrawer(m)">
               <div class="screening-item__body">
-                <div class="screening-item__title">{{ m.movieNm }}</div>
+                <div class="screening-item__title">
+                  {{ m.movieNm }}
+                  <span v-if="m.isRerelease" class="screening-item__rerelease">재개봉</span>
+                </div>
                 <div v-if="m.genreNm" class="screening-item__meta">{{ m.genreNm }}</div>
               </div>
             </button>
@@ -200,7 +239,10 @@ onMounted(() => {
               @click="openDrawer(m)">
               <span class="screening-item__rank">{{ m.boxRank }}</span>
               <div class="screening-item__body">
-                <div class="screening-item__title">{{ m.movieNm }}</div>
+                <div class="screening-item__title">
+                  {{ m.movieNm }}
+                  <span v-if="m.isRerelease" class="screening-item__rerelease">재개봉</span>
+                </div>
                 <div v-if="m.audiAcc" class="screening-item__meta">누적 {{ fmtAcc(m.audiAcc) }}</div>
               </div>
             </button>
@@ -209,7 +251,13 @@ onMounted(() => {
       </div>
     </div>
 
-    <MovieDetailDrawer v-model:open="drawerOpen" :movie="selectedMovie" />
+    <MovieDetailDrawer
+      v-model:open="drawerOpen"
+      :movie="selectedMovie"
+      :bookmarked="selectedMovie ? bookmarkedCodes.has(selectedMovie.movieCd) : false"
+      @movie-updated="syncMovie"
+      @bookmark-changed="onBookmarkChanged"
+    />
   </div>
 </template>
 
@@ -259,7 +307,8 @@ onMounted(() => {
   display: flex; align-items: center; justify-content: center;
 }
 .screening-item__body { flex: 1; min-width: 0; }
-.screening-item__title { font-size: 13px; font-weight: 600; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.screening-item__title { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.screening-item__rerelease { flex-shrink: 0; padding: 1px 5px; border: 1px solid #f59e0b; border-radius: 999px; color: #b45309; background: #fffbeb; font-size: 10px; font-weight: 600; }
 .screening-item__meta { font-size: 11px; color: #6b7280; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 @media (max-width: 1024px) {
@@ -278,6 +327,7 @@ onMounted(() => {
   .screening-page__month, .screening-list__title { color: #f3f4f6; }
   .screening-item { background: #1f2937; &:hover { background: #374151; } }
   .screening-item__title { color: #e5e7eb; }
+  .screening-item__rerelease { border-color: #fbbf24; color: #fcd34d; background: #3f3216; }
   .screening-item__rank { background: #374151; color: #a5b4fc; }
 }
 </style>

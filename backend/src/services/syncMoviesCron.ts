@@ -1,6 +1,7 @@
 import cron from 'node-cron'
 import prisma from '../prisma'
 import { fetchMovieList, fetchDailyBoxOffice, parseKobisDate, type KobisMovie } from './kobis'
+import { isAdultGenre, isLikelyRerelease } from './movieMetadata'
 
 // ===== 헬퍼 =====
 // N일 전 날짜를 "YYYYMMDD"로
@@ -67,10 +68,16 @@ async function syncBoxOffice(): Promise<number> {
 // ===== 2. 개봉작 목록 동기화 =====
 // 캘린더는 openDt 기준으로 배치하므로 openDt가 있는 행만 upsert (미정작은 제외)
 async function upsertMovieMeta(m: KobisMovie): Promise<void> {
+  const openDt = parseKobisDate(m.openDt)
+  const productionYear = /^\d{4}$/.test(m.prdtYear || '') ? Number(m.prdtYear) : null
+  if (isAdultGenre(m.genreAlt || m.repGenreNm)) return
+
   const data = {
     movieNm: m.movieNm,
     movieNmEn: m.movieNmEn || null,
-    openDt: parseKobisDate(m.openDt),
+    openDt,
+    productionYear,
+    isRerelease: isLikelyRerelease(openDt, productionYear),
     prdtStatNm: m.prdtStatNm || null,
     genreNm: m.genreAlt || m.repGenreNm || null,
     nationNm: m.nationAlt || m.repNationNm || null,
@@ -103,6 +110,24 @@ async function syncMovieListForYear(year: number): Promise<number> {
   return count
 }
 
+async function removeAdultMovies(): Promise<number> {
+  const movies = await prisma.movie.findMany({
+    where: { genreNm: { not: null } },
+    select: { id: true, genreNm: true },
+  })
+  const adultMovieIds = movies
+    .filter(movie => isAdultGenre(movie.genreNm))
+    .map(movie => movie.id)
+
+  if (adultMovieIds.length === 0) return 0
+
+  const { count } = await prisma.movie.deleteMany({
+    where: { id: { in: adultMovieIds } },
+  })
+  console.log(`[sync-movies] 성인물 ${count}건 정리`)
+  return count
+}
+
 // ===== 전체 동기화 (수동 실행 / 크론 공용) =====
 // KOBIS 장애·키 미설정에도 앱을 죽이지 않도록 각 단계를 개별 try로 감싼다.
 export async function syncMovies(): Promise<{ boxOffice: number; movies: number }> {
@@ -125,6 +150,7 @@ export async function syncMovies(): Promise<{ boxOffice: number; movies: number 
     for (const y of [year, year + 1]) {
       movies += await syncMovieListForYear(y)
     }
+    await removeAdultMovies()
   } catch (e) {
     console.error('[sync-movies] 개봉작 목록 동기화 실패:', e)
   }

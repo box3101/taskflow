@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import prisma from '../prisma'
 import { authenticate } from '../middleware/auth'
+import { findTmdbMovie } from '../services/tmdb'
+import { isAdultGenre } from '../services/movieMetadata'
 
 const router = Router()
 router.use(authenticate)
@@ -26,9 +28,27 @@ router.get('/', async (req, res) => {
       orderBy: [{ openDt: 'asc' }, { movieNm: 'asc' }],
     })
 
-    res.json({ data: movies })
+    // 동기화 단계에서 걸러지지만, 상영 캘린더에는 성인물이 절대 노출되지 않도록 방어적으로 재확인
+    res.json({ data: movies.filter(movie => !isAdultGenre(movie.genreNm)) })
   } catch (err) {
     console.error('GET /movies error:', err)
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
+  }
+})
+
+// ===== 내 북마크: 영화코드 목록 =====
+// GET /movies/bookmarks → 로그인 사용자가 북마크한 movieCd 배열
+// 주의: /:movieCd 보다 먼저 정의해야 파라미터 라우트에 잡히지 않음
+router.get('/bookmarks', async (req, res) => {
+  try {
+    const bookmarks = await prisma.movieBookmark.findMany({
+      where: { userId: req.user!.id },
+      select: { movieCd: true },
+    })
+
+    res.json({ data: bookmarks.map(bookmark => bookmark.movieCd) })
+  } catch (err) {
+    console.error('GET /movies/bookmarks error:', err)
     res.status(500).json({ message: '서버 오류가 발생했습니다.' })
   }
 })
@@ -43,16 +63,16 @@ router.get('/now-showing', async (_req, res) => {
       orderBy: { boxRank: 'asc' },
     })
 
-    res.json({ data: movies })
+    res.json({ data: movies.filter(movie => !isAdultGenre(movie.genreNm)) })
   } catch (err) {
     console.error('GET /movies/now-showing error:', err)
     res.status(500).json({ message: '서버 오류가 발생했습니다.' })
   }
 })
 
-// ===== 상세: 단일 영화 =====
-// GET /movies/:movieCd → 드로어용 상세, 없으면 404
-router.get('/:movieCd', async (req, res) => {
+// ===== 북마크 추가 =====
+// POST /movies/:movieCd/bookmark → 영화 존재 확인 후 멱등 upsert
+router.post('/:movieCd/bookmark', async (req, res) => {
   try {
     const movie = await prisma.movie.findUnique({
       where: { movieCd: req.params.movieCd },
@@ -61,6 +81,61 @@ router.get('/:movieCd', async (req, res) => {
     if (!movie) {
       res.status(404).json({ message: '영화를 찾을 수 없습니다.' })
       return
+    }
+
+    const userId = req.user!.id
+    await prisma.movieBookmark.upsert({
+      where: { userId_movieCd: { userId, movieCd: req.params.movieCd } },
+      create: { userId, movieCd: req.params.movieCd },
+      update: {},
+    })
+
+    res.json({ data: { movieCd: req.params.movieCd } })
+  } catch (err) {
+    console.error('POST /movies/:movieCd/bookmark error:', err)
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
+  }
+})
+
+// ===== 북마크 삭제 =====
+// DELETE /movies/:movieCd/bookmark → 없어도 성공하는 멱등 삭제
+router.delete('/:movieCd/bookmark', async (req, res) => {
+  try {
+    await prisma.movieBookmark.deleteMany({
+      where: { userId: req.user!.id, movieCd: req.params.movieCd },
+    })
+
+    res.json({ data: { movieCd: req.params.movieCd } })
+  } catch (err) {
+    console.error('DELETE /movies/:movieCd/bookmark error:', err)
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
+  }
+})
+
+// ===== 상세: 단일 영화 =====
+// GET /movies/:movieCd → 드로어용 상세, 없으면 404. 미조회 상태면 TMDB로 지연 보강
+router.get('/:movieCd', async (req, res) => {
+  try {
+    let movie = await prisma.movie.findUnique({
+      where: { movieCd: req.params.movieCd },
+    })
+
+    if (!movie) {
+      res.status(404).json({ message: '영화를 찾을 수 없습니다.' })
+      return
+    }
+
+    if (movie.tmdbCheckedAt === null && process.env.TMDB_API_KEY) {
+      try {
+        const metadata = await findTmdbMovie(movie)
+        const data = metadata
+          ? { ...metadata, tmdbCheckedAt: new Date() }
+          : { tmdbCheckedAt: new Date() }
+        movie = await prisma.movie.update({ where: { movieCd: req.params.movieCd }, data })
+      } catch (error) {
+        // 네트워크 등 일시 오류는 tmdbCheckedAt을 기록하지 않아 다음 요청에서 재시도한다.
+        console.error('TMDB enrichment failed:', error)
+      }
     }
 
     res.json({ data: movie })
