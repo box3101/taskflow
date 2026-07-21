@@ -6,6 +6,8 @@ export interface TechNote {
   tags: string[]
   summary: string
   content: string
+  isPublic: boolean
+  user?: { name: string } // 목록/상세 조회 시 포함되는 작성자 정보
   createdAt: string
   updatedAt: string
 }

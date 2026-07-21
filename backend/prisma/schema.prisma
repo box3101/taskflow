@@ -344,6 +344,7 @@ model TechNote {
   tags      String[]
   summary   String   @db.VarChar(500)
   content   String   @db.Text
+  isPublic  Boolean  @default(false) @map("is_public") // true면 모든 로그인 사용자가 읽기 가능 (수정/삭제는 작성자만)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
