@@ -18,7 +18,7 @@ export interface InvestorRow {
 // ===== 크롤링 =====
 
 const PAGE_DELAY_MS = 350   // 네이버 연속 요청 방어
-const MAX_PAGES = 30        // 안전 상한 (페이지당 20행 → 최대 600일)
+const MAX_PAGES = 120       // 안전 상한 (페이지당 20행 → 최대 2400일). 실제 종료는 days 도달/데이터 소진
 const CACHE_TTL_MS = 10 * 60_000   // 캐시 신선도 10분 (장중 당일 데이터 갱신 대응)
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
