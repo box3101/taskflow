@@ -36,17 +36,19 @@ router.get('/', async (req, res) => {
   }
 })
 
-// ===== 내 북마크: 영화코드 목록 =====
-// GET /movies/bookmarks → 로그인 사용자가 북마크한 movieCd 배열
+// ===== 내 북마크: 영화 전체 정보 =====
+// GET /movies/bookmarks → 로그인 사용자가 북마크한 영화 목록(Movie[]), 개봉일 오름차순(미정작은 뒤로)
 // 주의: /:movieCd 보다 먼저 정의해야 파라미터 라우트에 잡히지 않음
 router.get('/bookmarks', async (req, res) => {
   try {
     const bookmarks = await prisma.movieBookmark.findMany({
       where: { userId: req.user!.id },
-      select: { movieCd: true },
+      include: { movie: true },
+      orderBy: { movie: { openDt: 'asc' } },
     })
 
-    res.json({ data: bookmarks.map(bookmark => bookmark.movieCd) })
+    const movies = bookmarks.map(bookmark => bookmark.movie).filter(movie => !isAdultGenre(movie.genreNm))
+    res.json({ data: movies })
   } catch (err) {
     console.error('GET /movies/bookmarks error:', err)
     res.status(500).json({ message: '서버 오류가 발생했습니다.' })

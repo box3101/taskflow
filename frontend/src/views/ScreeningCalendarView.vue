@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { UiButton, UiIcon, UiLoading, UiCalendarMonth, openToast } from '@leechanyong/ispark-ui'
+import { UiButton, UiIcon, UiLoading, UiCalendarMonth, UiDrawer, openToast } from '@leechanyong/ispark-ui'
 import type { CalendarMonthEvent } from '@leechanyong/ispark-ui'
 import api from '../api/client'
 import { getCached, setCached } from '../composables/useCachedFetch'
 import type { Movie } from '../types/movie'
-import { movieCalendarColor, movieCalendarTitle } from '../utils/movieDisplay'
+import { movieCalendarColor } from '../utils/movieDisplay'
 import MovieDetailDrawer from '../components/screening/MovieDetailDrawer.vue'
 
 type BookmarkChange = { movieCd: string; bookmarked: boolean }
@@ -13,7 +13,10 @@ type BookmarkChange = { movieCd: string; bookmarked: boolean }
 const loading = ref(true)
 const monthMovies = ref<Movie[]>([]) // 선택 월 개봉작 (캘린더 배지 + 그날 개봉작)
 const nowShowing = ref<Movie[]>([])  // 현재상영작 (박스오피스)
+const bookmarkedMovies = ref<Movie[]>([]) // 보고싶은 영화 목록 (드로어용 전체 정보)
 const bookmarkedCodes = ref<Set<string>>(new Set())
+const bookmarkPending = ref<Set<string>>(new Set()) // 토글 진행 중인 movieCd (중복 클릭 방지)
+const bookmarkListOpen = ref(false)
 
 const now = new Date()
 const currentYear = ref(now.getFullYear())
@@ -35,17 +38,30 @@ function isUpcoming(dateStr: string): boolean {
   return !!dateStr && dateStr > todayStr
 }
 
+// 같은 날짜 안에서는 북마크한 영화를 먼저 (캘린더 바·사이드 목록 공통)
+function compareMoviesForDisplay(a: Movie, b: Movie): number {
+  const da = dateOf(a)
+  const db = dateOf(b)
+  if (da !== db) return da.localeCompare(db)
+  const aBook = bookmarkedCodes.value.has(a.movieCd) ? 0 : 1
+  const bBook = bookmarkedCodes.value.has(b.movieCd) ? 0 : 1
+  if (aBook !== bBook) return aBook - bBook
+  return a.movieNm.localeCompare(b.movieNm)
+}
+
 // ===== 캘린더 배지 매핑 (movie → CalendarMonthEvent) =====
 const calendarMonthEvents = computed<CalendarMonthEvent[]>(() =>
   monthMovies.value
     .filter(m => m.openDt)
+    .slice()
+    .sort(compareMoviesForDisplay)
     .map(m => {
       const d = dateOf(m)
       return {
         id: m.movieCd,
         start: d,
         end: null,
-        title: movieCalendarTitle(m),
+        title: m.movieNm,
         color: movieCalendarColor(m, bookmarkedCodes.value, todayStr),
         allDay: true,
         meta: m,
@@ -53,9 +69,12 @@ const calendarMonthEvents = computed<CalendarMonthEvent[]>(() =>
     }),
 )
 
-// 선택한 날짜의 개봉작
+// 선택한 날짜의 개봉작 (북마크 우선)
 const selectedDayMovies = computed(() =>
-  monthMovies.value.filter(m => dateOf(m) === selectedDate.value),
+  monthMovies.value
+    .filter(m => dateOf(m) === selectedDate.value)
+    .slice()
+    .sort(compareMoviesForDisplay),
 )
 
 const dayNames = ['일', '월', '화', '수', '목', '금', '토']
@@ -106,9 +125,11 @@ async function fetchNowShowing() {
 
 async function fetchBookmarks() {
   try {
-    const { data } = await api.get<{ data: string[] }>('/movies/bookmarks')
-    bookmarkedCodes.value = new Set(data.data)
+    const { data } = await api.get<{ data: Movie[] }>('/movies/bookmarks')
+    bookmarkedMovies.value = data.data
+    bookmarkedCodes.value = new Set(data.data.map(m => m.movieCd))
   } catch {
+    bookmarkedMovies.value = []
     bookmarkedCodes.value = new Set()
   }
 }
@@ -157,10 +178,53 @@ function syncMovie(updated: Movie) {
   setCached('screenings-now-showing', nowShowing.value)
 }
 
-function onBookmarkChanged({ movieCd, bookmarked }: BookmarkChange) {
+function sortByOpenDt(movies: Movie[]): Movie[] {
+  return [...movies].sort((a, b) => {
+    const da = dateOf(a) || '9999'
+    const db = dateOf(b) || '9999'
+    return da === db ? a.movieNm.localeCompare(b.movieNm) : da.localeCompare(db)
+  })
+}
+
+function onBookmarkChanged({ movieCd, bookmarked }: BookmarkChange, movie?: Movie) {
   const next = new Set(bookmarkedCodes.value)
   bookmarked ? next.add(movieCd) : next.delete(movieCd)
   bookmarkedCodes.value = next
+
+  if (bookmarked) {
+    if (bookmarkedMovies.value.some(m => m.movieCd === movieCd)) return
+    const target = movie
+      ?? monthMovies.value.find(m => m.movieCd === movieCd)
+      ?? nowShowing.value.find(m => m.movieCd === movieCd)
+      ?? (selectedMovie.value?.movieCd === movieCd ? selectedMovie.value : null)
+    if (target) bookmarkedMovies.value = sortByOpenDt([...bookmarkedMovies.value, target])
+  } else {
+    bookmarkedMovies.value = bookmarkedMovies.value.filter(m => m.movieCd !== movieCd)
+  }
+}
+
+// 캘린더 카드/북마크 목록에서 바로 토글 (드로어를 열지 않고 별 클릭만으로 처리)
+async function toggleBookmark(movie: Movie) {
+  if (bookmarkPending.value.has(movie.movieCd)) return
+
+  const bookmarked = !bookmarkedCodes.value.has(movie.movieCd)
+  bookmarkPending.value = new Set(bookmarkPending.value).add(movie.movieCd)
+  try {
+    if (bookmarked) await api.post(`/movies/${movie.movieCd}/bookmark`)
+    else await api.delete(`/movies/${movie.movieCd}/bookmark`)
+    onBookmarkChanged({ movieCd: movie.movieCd, bookmarked }, movie)
+  } catch {
+    openToast({ message: bookmarked ? '북마크 추가에 실패했습니다.' : '북마크 해제에 실패했습니다.', type: 'error' })
+  } finally {
+    const next = new Set(bookmarkPending.value)
+    next.delete(movie.movieCd)
+    bookmarkPending.value = next
+  }
+}
+
+function openFromBookmarkList(m: Movie) {
+  bookmarkListOpen.value = false
+  openDrawer(m)
 }
 
 onMounted(() => {
@@ -187,6 +251,15 @@ onMounted(() => {
             </UiButton>
             <UiButton class="screening-page__today" variant="ghost" size="sm" @click="goToday">오늘</UiButton>
           </div>
+          <UiButton
+            class="screening-page__bookmark-list"
+            variant="outline"
+            size="sm"
+            @click="bookmarkListOpen = true"
+          >
+            <template #icon-left><UiIcon name="star" :size="16" /></template>
+            북마크 목록
+          </UiButton>
           <div class="screening-page__legend">
             <span class="screening-page__legend-item">
               <span class="screening-page__dot" style="background:#3b82f6;" />예정
@@ -214,16 +287,23 @@ onMounted(() => {
           </div>
           <div v-if="selectedDayMovies.length === 0" class="screening-list__empty">이 날 개봉작이 없습니다</div>
           <div v-else class="screening-list__items">
-            <button v-for="m in selectedDayMovies" :key="m.movieCd" class="screening-item"
-              :style="{ borderLeftColor: movieCalendarColor(m, bookmarkedCodes, todayStr) }" @click="openDrawer(m)">
+            <div v-for="m in selectedDayMovies" :key="m.movieCd" class="screening-item" role="button" tabindex="0"
+              :style="{ borderLeftColor: movieCalendarColor(m, bookmarkedCodes, todayStr) }"
+              @click="openDrawer(m)" @keydown.enter="openDrawer(m)">
               <div class="screening-item__body">
-                <div class="screening-item__title">
-                  {{ m.movieNm }}
-                  <span v-if="m.isRerelease" class="screening-item__rerelease">재개봉</span>
-                </div>
+                <div class="screening-item__title">{{ m.movieNm }}</div>
                 <div v-if="m.genreNm" class="screening-item__meta">{{ m.genreNm }}</div>
               </div>
-            </button>
+              <button
+                class="screening-item__star"
+                type="button"
+                :aria-label="bookmarkedCodes.has(m.movieCd) ? '북마크 해제' : '북마크 추가'"
+                :disabled="bookmarkPending.has(m.movieCd)"
+                @click.stop="toggleBookmark(m)"
+              >
+                <UiIcon name="star" :size="16" :class="{ 'screening-item__star-icon--active': bookmarkedCodes.has(m.movieCd) }" />
+              </button>
+            </div>
           </div>
         </section>
 
@@ -235,17 +315,23 @@ onMounted(() => {
           </div>
           <div v-if="nowShowing.length === 0" class="screening-list__empty">데이터가 없습니다</div>
           <div v-else class="screening-list__items">
-            <button v-for="m in nowShowing" :key="m.movieCd" class="screening-item screening-item--rank"
-              @click="openDrawer(m)">
+            <div v-for="m in nowShowing" :key="m.movieCd" class="screening-item screening-item--rank" role="button" tabindex="0"
+              @click="openDrawer(m)" @keydown.enter="openDrawer(m)">
               <span class="screening-item__rank">{{ m.boxRank }}</span>
               <div class="screening-item__body">
-                <div class="screening-item__title">
-                  {{ m.movieNm }}
-                  <span v-if="m.isRerelease" class="screening-item__rerelease">재개봉</span>
-                </div>
+                <div class="screening-item__title">{{ m.movieNm }}</div>
                 <div v-if="m.audiAcc" class="screening-item__meta">누적 {{ fmtAcc(m.audiAcc) }}</div>
               </div>
-            </button>
+              <button
+                class="screening-item__star"
+                type="button"
+                :aria-label="bookmarkedCodes.has(m.movieCd) ? '북마크 해제' : '북마크 추가'"
+                :disabled="bookmarkPending.has(m.movieCd)"
+                @click.stop="toggleBookmark(m)"
+              >
+                <UiIcon name="star" :size="16" :class="{ 'screening-item__star-icon--active': bookmarkedCodes.has(m.movieCd) }" />
+              </button>
+            </div>
           </div>
         </section>
       </div>
@@ -258,6 +344,28 @@ onMounted(() => {
       @movie-updated="syncMovie"
       @bookmark-changed="onBookmarkChanged"
     />
+
+    <UiDrawer :open="bookmarkListOpen" @update:open="bookmarkListOpen = $event" position="left" width="360px" title="북마크 목록">
+      <div v-if="bookmarkedMovies.length === 0" class="bookmark-list__empty">북마크한 영화가 없습니다</div>
+      <div v-else class="bookmark-list__items">
+        <div v-for="m in bookmarkedMovies" :key="m.movieCd" class="bookmark-list__item" role="button" tabindex="0"
+          @click="openFromBookmarkList(m)" @keydown.enter="openFromBookmarkList(m)">
+          <div class="bookmark-list__body">
+            <div class="bookmark-list__title">{{ m.movieNm }}</div>
+            <div class="bookmark-list__meta">{{ m.openDt ? dateOf(m) : '개봉일 미정' }}</div>
+          </div>
+          <button
+            class="bookmark-list__star"
+            type="button"
+            aria-label="북마크 해제"
+            :disabled="bookmarkPending.has(m.movieCd)"
+            @click.stop="toggleBookmark(m)"
+          >
+            <UiIcon name="star" :size="16" class="bookmark-list__star-icon--active" />
+          </button>
+        </div>
+      </div>
+    </UiDrawer>
   </div>
 </template>
 
@@ -279,6 +387,7 @@ onMounted(() => {
   :deep(.ui-button) { min-width: 36px; min-height: 36px; }
 }
 .screening-page__month { font-size: 18px; font-weight: 700; color: #1f2937; min-width: 120px; text-align: center; }
+.screening-page__bookmark-list { position: absolute; right: 0; flex-shrink: 0; }
 .screening-page__legend {
   display: flex; gap: 12px; flex-shrink: 0; position: absolute; left: 0;
   font-size: 12px; color: #6b7280;
@@ -308,17 +417,44 @@ onMounted(() => {
 }
 .screening-item__body { flex: 1; min-width: 0; }
 .screening-item__title { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.screening-item__rerelease { flex-shrink: 0; padding: 1px 5px; border: 1px solid #f59e0b; border-radius: 999px; color: #b45309; background: #fffbeb; font-size: 10px; font-weight: 600; }
 .screening-item__meta { font-size: 11px; color: #6b7280; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.screening-item__star {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border: none; border-radius: 6px; background: transparent;
+  color: #9ca3af; cursor: pointer; transition: background 0.15s, color 0.15s;
+  &:hover { background: #e5e7eb; color: #6b7280; }
+  &:disabled { cursor: default; opacity: 0.6; }
+}
+.screening-item__star-icon--active { color: #f59e0b; fill: currentColor; }
+
+.bookmark-list__empty { text-align: center; padding: 32px 16px; color: #9ca3af; font-size: 13px; }
+.bookmark-list__items { display: flex; flex-direction: column; gap: 6px; }
+.bookmark-list__item {
+  display: flex; align-items: center; gap: 10px; padding: 10px;
+  background: #f9fafb; border-radius: 8px; cursor: pointer; transition: background 0.15s;
+  &:hover { background: #f3f4f6; }
+}
+.bookmark-list__body { flex: 1; min-width: 0; }
+.bookmark-list__title { font-size: 14px; font-weight: 600; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bookmark-list__meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+.bookmark-list__star {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border: none; border-radius: 6px; background: transparent;
+  cursor: pointer; transition: background 0.15s;
+  &:hover { background: #e5e7eb; }
+  &:disabled { cursor: default; opacity: 0.6; }
+}
+.bookmark-list__star-icon--active { color: #f59e0b; fill: currentColor; }
 
 @media (max-width: 1024px) {
   .screening-page__body { flex-direction: column; gap: 20px; }
   .screening-page__side { width: 100%; position: static; max-height: none; }
 }
 @media (max-width: 768px) {
-  .screening-page__header { gap: 8px; }
-  .screening-page__legend { position: static; margin-left: auto; }
-  .screening-page__nav { gap: 4px; }
+  .screening-page__header { gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .screening-page__nav { gap: 4px; order: 1; }
+  .screening-page__bookmark-list { position: static; order: 2; }
+  .screening-page__legend { position: static; order: 3; flex-basis: 100%; justify-content: center; margin-left: 0; }
   .screening-page__today { display: none !important; }
   .screening-page__month { font-size: 16px; min-width: 100px; }
 }
@@ -327,7 +463,11 @@ onMounted(() => {
   .screening-page__month, .screening-list__title { color: #f3f4f6; }
   .screening-item { background: #1f2937; &:hover { background: #374151; } }
   .screening-item__title { color: #e5e7eb; }
-  .screening-item__rerelease { border-color: #fbbf24; color: #fcd34d; background: #3f3216; }
+  .screening-item__star { color: #6b7280; &:hover { background: #374151; color: #9ca3af; } }
+  .screening-item__star-icon--active { color: #f59e0b; }
   .screening-item__rank { background: #374151; color: #a5b4fc; }
+  .bookmark-list__item { background: #1f2937; &:hover { background: #374151; } }
+  .bookmark-list__title { color: #e5e7eb; }
+  .bookmark-list__star:hover { background: #374151; }
 }
 </style>

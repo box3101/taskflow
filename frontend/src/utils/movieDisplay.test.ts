@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Movie } from '../types/movie'
-import { movieCalendarColor, movieCalendarTitle } from './movieDisplay'
+import { movieCalendarColor } from './movieDisplay'
 
 const baseMovie: Movie = {
   id: 1,
@@ -46,16 +46,5 @@ describe('movieCalendarColor', () => {
 
   it('개봉일이 오늘 이하면 초록', () => {
     expect(movieCalendarColor(baseMovie, new Set(), today)).toBe('#22c55e')
-  })
-})
-
-describe('movieCalendarTitle', () => {
-  it('재개봉 제목에 접두어를 붙인다', () => {
-    expect(movieCalendarTitle({ ...baseMovie, isRerelease: true }))
-      .toBe('[재개봉] 영화명')
-  })
-
-  it('일반 개봉작은 제목만 반환한다', () => {
-    expect(movieCalendarTitle(baseMovie)).toBe('영화명')
   })
 })

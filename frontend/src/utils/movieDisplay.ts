@@ -23,7 +23,3 @@ export function movieCalendarColor(
   return COLOR_RELEASED
 }
 
-export function movieCalendarTitle(movie: Movie): string {
-  if (movie.isRerelease) return `[재개봉] ${movie.movieNm}`
-  return movie.movieNm
-}

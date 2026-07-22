@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { UiButton, UiDrawer, UiIcon, UiLoading, openToast } from '@leechanyong/ispark-ui'
+import { UiDrawer, UiIcon, UiLoading, openToast } from '@leechanyong/ispark-ui'
 import api from '../../api/client'
 import type { Movie } from '../../types/movie'
 
@@ -86,7 +86,7 @@ async function fetchMovieDetails() {
 }
 
 async function toggleBookmark() {
-  const movie = detailMovie.value
+  const movie = detailMovie.value || props.movie
   if (!movie || bookmarkLoading.value) return
 
   const bookmarked = !props.bookmarked
@@ -118,19 +118,16 @@ watch(() => props.open, (open, wasOpen) => {
     <div v-else-if="detailMovie" class="movie-detail">
       <div class="movie-detail__head">
         <span class="movie-detail__status" :style="{ background: status.color }">{{ status.label }}</span>
-        <span v-if="detailMovie.isRerelease" class="movie-detail__rerelease">재개봉</span>
         <h2 class="movie-detail__title">{{ detailMovie.movieNm }}</h2>
-        <UiButton
+        <button
           class="movie-detail__bookmark"
-          variant="ghost"
-          size="sm"
-          iconOnly
-          :loading="bookmarkLoading"
+          type="button"
+          :disabled="bookmarkLoading"
           :aria-label="bookmarked ? '북마크 해제' : '북마크 추가'"
           @click="toggleBookmark"
         >
-          <UiIcon name="star" :size="18" :class="{ 'movie-detail__bookmark-icon--active': bookmarked }" />
-        </UiButton>
+          <UiIcon name="star" :size="20" :class="{ 'movie-detail__bookmark-icon--active': bookmarked }" />
+        </button>
       </div>
 
       <div class="movie-detail__content">
@@ -174,12 +171,16 @@ watch(() => props.open, (open, wasOpen) => {
   flex-shrink: 0; padding: 3px 10px; border-radius: 999px;
   font-size: 12px; font-weight: 600; color: #fff;
 }
-.movie-detail__rerelease {
-  flex-shrink: 0; padding: 3px 8px; border: 1px solid #f59e0b; border-radius: 999px;
-  color: #b45309; background: #fffbeb; font-size: 12px; font-weight: 600;
-}
 .movie-detail__title { font-size: 20px; font-weight: 700; color: #1f2937; margin: 0; }
-.movie-detail__bookmark { margin-left: auto; }
+.movie-detail__bookmark {
+  margin-left: auto; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border: none; border-radius: 8px;
+  background: transparent; color: #9ca3af; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  &:hover { background: #f3f4f6; color: #6b7280; }
+  &:disabled { cursor: default; opacity: 0.6; }
+}
 .movie-detail__bookmark-icon--active { color: #f59e0b; fill: currentColor; }
 .movie-detail__content { display: flex; gap: 16px; align-items: flex-start; }
 .movie-detail__poster {
@@ -205,9 +206,10 @@ watch(() => props.open, (open, wasOpen) => {
 
 :global([data-theme="dark"]) {
   .movie-detail__title { color: #f3f4f6; }
+  .movie-detail__bookmark { color: #6b7280; &:hover { background: #374151; color: #9ca3af; } }
+  .movie-detail__bookmark-icon--active { color: #f59e0b; }
   .movie-detail__section { color: #9ca3af; border-top-color: #374151; }
   .movie-detail__row dd { color: #e5e7eb; }
   .movie-detail__overview { color: #d1d5db; }
-  .movie-detail__rerelease { border-color: #fbbf24; color: #fcd34d; background: #3f3216; }
 }
 </style>

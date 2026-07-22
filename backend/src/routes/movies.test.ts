@@ -55,17 +55,32 @@ beforeEach(() => {
 })
 
 describe('GET /movies/bookmarks', () => {
-  it('내 북마크 코드만 반환한다', async () => {
-    prismaMock.movieBookmark.findMany.mockResolvedValue([{ movieCd: 'A1' }, { movieCd: 'A2' }])
+  it('내 북마크 영화 전체 정보를 반환한다', async () => {
+    prismaMock.movieBookmark.findMany.mockResolvedValue([
+      { movieCd: 'A1', movie: { movieCd: 'A1', movieNm: '영화1', genreNm: '드라마' } },
+      { movieCd: 'A2', movie: { movieCd: 'A2', movieNm: '영화2', genreNm: null } },
+    ])
 
     const res = await request(buildApp()).get('/movies/bookmarks').set(authHeader)
 
     expect(res.status).toBe(200)
-    expect(res.body).toEqual({ data: ['A1', 'A2'] })
+    expect(res.body.data.map((m: { movieCd: string }) => m.movieCd)).toEqual(['A1', 'A2'])
     expect(prismaMock.movieBookmark.findMany).toHaveBeenCalledWith({
       where: { userId: 1 },
-      select: { movieCd: true },
+      include: { movie: true },
+      orderBy: { movie: { openDt: 'asc' } },
     })
+  })
+
+  it('성인 장르 영화는 제외한다', async () => {
+    prismaMock.movieBookmark.findMany.mockResolvedValue([
+      { movieCd: 'A1', movie: { movieCd: 'A1', movieNm: '영화1', genreNm: '성인물(에로)' } },
+    ])
+
+    const res = await request(buildApp()).get('/movies/bookmarks').set(authHeader)
+
+    expect(res.status).toBe(200)
+    expect(res.body.data).toEqual([])
   })
 })
 
