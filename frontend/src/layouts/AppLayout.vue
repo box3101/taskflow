@@ -323,7 +323,7 @@ async function handleQuickMemoSaved(memo: MemoEntry) {
 .overlay-fade-enter-from,
 .overlay-fade-leave-to { opacity: 0; }
 
-.main { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+.main { max-width: 1200px; margin: 0 auto; padding: 30px 24px 24px; }
 
 @media (max-width: 768px) {
   .header { padding: 0 12px; }

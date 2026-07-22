@@ -375,7 +375,7 @@ onMounted(() => {
 .screening-page__grid { flex: 1; min-width: 0; }
 .screening-page__side {
   flex-shrink: 0; width: 280px; position: sticky; top: 80px;
-  max-height: calc(100vh - 140px); overflow-y: auto;
+  max-height: calc(100vh - 166px); overflow-y: auto;
   display: flex; flex-direction: column; gap: 20px;
 }
 .screening-page__header {
