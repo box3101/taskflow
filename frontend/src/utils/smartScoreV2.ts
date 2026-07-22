@@ -61,6 +61,8 @@ export interface ScoreBreakdown {
   valuation: number
   foreignRatio: number
   instRatio: number
+  foreignAmtScore: number       // 외인 금액 백분위 점수 (12.5 만점)
+  instAmtScore: number          // 기관 금액 백분위 점수 (12.5 만점)
   foreignSellDays: number
   volatilityPenalty: number
   volatilityDays: number        // ±임계 넘은 일수 (디버그용)
@@ -328,8 +330,11 @@ function dedup(stocks: StockInput[]): StockInput[] {
   return Array.from(map.values())
 }
 
-/** 메인 엔트리: 종목 배열 → 상위 20 랭킹 */
-export function calculateRanking(stocks: StockInput[]): ScoreBreakdown[] {
+/**
+ * 메인 엔트리: 종목 배열 → 점수 내림차순 상위 topN
+ * @param topN 반환 개수 (기본 20 — 과거 재현 백테스트는 전체 단면이 필요해 Infinity를 넘긴다)
+ */
+export function calculateRanking(stocks: StockInput[], topN = 20): ScoreBreakdown[] {
   // 0. dedup + 거래대금 필터
   const unique = dedup(stocks)
   const filtered = filterByVolume(unique)
@@ -344,37 +349,6 @@ export function calculateRanking(stocks: StockInput[]): ScoreBreakdown[] {
     allForeignRatios.push(netBuyRatio(s.data.trends, 'foreignAmt', mcap))
     allInstRatios.push(netBuyRatio(s.data.trends, 'institutionAmt', mcap))
     allTurnovers.push(recentTurnover(s.data))
-  }
-
-  // 디버그: 회전율 분포 확인 (안정화 후 삭제)
-  if (import.meta.env.DEV) {
-    const sorted = [...allTurnovers].sort((a, b) => a - b)
-    console.log('[SmartScore] 회전율 분포:', {
-      count: allTurnovers.length,
-      min: sorted[0]?.toFixed(6),
-      max: sorted[sorted.length - 1]?.toFixed(6),
-      median: sorted[Math.floor(sorted.length / 2)]?.toFixed(6),
-      allSame: new Set(allTurnovers.map(v => v.toFixed(8))).size === 1,
-    })
-  }
-
-  // 디버그: 변동성 분포 확인 — 임계값 ±10% 튜닝용 (안정화 후 삭제)
-  if (import.meta.env.DEV) {
-    const volDaysAll = filtered.map(s => {
-      const days = s.data.trends.slice(0, 20)
-        .filter(d => Math.abs(d.changePct || 0) >= TUNING.volatilityThreshold).length
-      return { name: s.name, days }
-    }).filter(v => v.days > 0).sort((a, b) => b.days - a.days)
-    const dayCounts = filtered.map(s =>
-      s.data.trends.slice(0, 20).filter(d => Math.abs(d.changePct || 0) >= TUNING.volatilityThreshold).length,
-    )
-    const median = [...dayCounts].sort((a, b) => a - b)[Math.floor(dayCounts.length / 2)]
-    console.log(`[SmartScore] 변동성 분포 (±${TUNING.volatilityThreshold}% 기준):`, {
-      총종목: filtered.length,
-      해당종목: volDaysAll.length,
-      중앙값: median,
-      상위5: volDaysAll.slice(0, 5),
-    })
   }
 
   const list: ScoreBreakdown[] = []
@@ -418,6 +392,8 @@ export function calculateRanking(stocks: StockInput[]): ScoreBreakdown[] {
       valuation: valScore,
       foreignRatio: sup.foreignRatio,
       instRatio: sup.instRatio,
+      foreignAmtScore: sup.foreignAmtScore,
+      instAmtScore: sup.instAmtScore,
       foreignSellDays: sup.foreignSellDays,
       volatilityPenalty: vol.penalty,
       volatilityDays: vol.days,
@@ -426,5 +402,5 @@ export function calculateRanking(stocks: StockInput[]): ScoreBreakdown[] {
     })
   }
 
-  return list.sort((a, b) => b.total - a.total).slice(0, 20)
+  return list.sort((a, b) => b.total - a.total).slice(0, topN)
 }
