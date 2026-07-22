@@ -70,12 +70,22 @@ export async function fetchDailyBoxOffice(params: {
 }
 
 // ===== 상세 (필요 시 사용) =====
-export async function fetchMovieInfo(params: { movieCd: string }): Promise<any> {
+export interface KobisMovieInfo {
+  movieCd: string
+  audits?: { watchGradeNm?: string }[]
+}
+
+export async function fetchMovieInfo(params: { movieCd: string }): Promise<KobisMovieInfo | null> {
   const url = `${BASE}/movie/searchMovieInfo.json?key=${getKey()}&movieCd=${params.movieCd}`
   const res = await fetch(url)
   if (!res.ok) throw new Error(`KOBIS searchMovieInfo ${res.status}`)
   const data: any = await res.json()
   return data?.movieInfoResult?.movieInfo ?? null
+}
+
+// 상세 응답의 audits 배열에서 관람등급명 하나를 뽑는다 (여러 개면 첫 값 사용)
+export function extractWatchGrade(info: KobisMovieInfo | null): string | null {
+  return info?.audits?.find(a => a.watchGradeNm)?.watchGradeNm ?? null
 }
 
 // ===== 날짜 파싱 =====

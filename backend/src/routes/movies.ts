@@ -2,7 +2,7 @@ import { Router } from 'express'
 import prisma from '../prisma'
 import { authenticate } from '../middleware/auth'
 import { findTmdbMovie } from '../services/tmdb'
-import { isAdultGenre } from '../services/movieMetadata'
+import { isAdultMovie } from '../services/movieMetadata'
 
 const router = Router()
 router.use(authenticate)
@@ -29,7 +29,7 @@ router.get('/', async (req, res) => {
     })
 
     // 동기화 단계에서 걸러지지만, 상영 캘린더에는 성인물이 절대 노출되지 않도록 방어적으로 재확인
-    res.json({ data: movies.filter(movie => !isAdultGenre(movie.genreNm)) })
+    res.json({ data: movies.filter(movie => !isAdultMovie(movie)) })
   } catch (err) {
     console.error('GET /movies error:', err)
     res.status(500).json({ message: '서버 오류가 발생했습니다.' })
@@ -47,7 +47,7 @@ router.get('/bookmarks', async (req, res) => {
       orderBy: { movie: { openDt: 'asc' } },
     })
 
-    const movies = bookmarks.map(bookmark => bookmark.movie).filter(movie => !isAdultGenre(movie.genreNm))
+    const movies = bookmarks.map(bookmark => bookmark.movie).filter(movie => !isAdultMovie(movie))
     res.json({ data: movies })
   } catch (err) {
     console.error('GET /movies/bookmarks error:', err)
@@ -65,7 +65,7 @@ router.get('/now-showing', async (_req, res) => {
       orderBy: { boxRank: 'asc' },
     })
 
-    res.json({ data: movies.filter(movie => !isAdultGenre(movie.genreNm)) })
+    res.json({ data: movies.filter(movie => !isAdultMovie(movie)) })
   } catch (err) {
     console.error('GET /movies/now-showing error:', err)
     res.status(500).json({ message: '서버 오류가 발생했습니다.' })

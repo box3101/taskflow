@@ -1,7 +1,7 @@
 import cron from 'node-cron'
 import prisma from '../prisma'
-import { fetchMovieList, fetchDailyBoxOffice, parseKobisDate, type KobisMovie } from './kobis'
-import { isAdultGenre, isLikelyRerelease } from './movieMetadata'
+import { fetchMovieList, fetchDailyBoxOffice, fetchMovieInfo, extractWatchGrade, parseKobisDate, type KobisMovie } from './kobis'
+import { isAdultMovie, isLikelyRerelease } from './movieMetadata'
 
 // ===== 헬퍼 =====
 // N일 전 날짜를 "YYYYMMDD"로
@@ -70,7 +70,9 @@ async function syncBoxOffice(): Promise<number> {
 async function upsertMovieMeta(m: KobisMovie): Promise<void> {
   const openDt = parseKobisDate(m.openDt)
   const productionYear = /^\d{4}$/.test(m.prdtYear || '') ? Number(m.prdtYear) : null
-  if (isAdultGenre(m.genreAlt || m.repGenreNm)) return
+  const genreNm = m.genreAlt || m.repGenreNm || null
+  const nationNm = m.nationAlt || m.repNationNm || null
+  if (isAdultMovie({ genreNm, movieNm: m.movieNm })) return
 
   const data = {
     movieNm: m.movieNm,
@@ -79,8 +81,8 @@ async function upsertMovieMeta(m: KobisMovie): Promise<void> {
     productionYear,
     isRerelease: isLikelyRerelease(openDt, productionYear),
     prdtStatNm: m.prdtStatNm || null,
-    genreNm: m.genreAlt || m.repGenreNm || null,
-    nationNm: m.nationAlt || m.repNationNm || null,
+    genreNm,
+    nationNm,
     directors: (m.directors || []).map(d => d.peopleNm).filter(Boolean).join(', ') || null,
     syncedAt: new Date(),
   }
@@ -110,13 +112,39 @@ async function syncMovieListForYear(year: number): Promise<number> {
   return count
 }
 
+// ===== 3. 관람등급 보강 (멜로/로맨스만) =====
+// 목록 API에는 등급이 없어 상세 API를 별도로 조회해야 한다. 호출량을 줄이기 위해
+// "멜로/로맨스" 장르 + 아직 조회하지 않은(gradeCheckedAt이 없는) 영화만 대상으로 한다.
+async function backfillWatchGrades(): Promise<number> {
+  const targets = await prisma.movie.findMany({
+    where: { genreNm: { contains: '멜로' }, gradeCheckedAt: null },
+    select: { movieCd: true },
+  })
+
+  let checked = 0
+  await inChunks(targets, 10, async ({ movieCd }) => {
+    try {
+      const info = await fetchMovieInfo({ movieCd })
+      await prisma.movie.update({
+        where: { movieCd },
+        data: { watchGradeNm: extractWatchGrade(info), gradeCheckedAt: new Date() },
+      })
+    } catch (e) {
+      console.error(`[sync-movies] 관람등급 조회 실패 (${movieCd}):`, e)
+    }
+    checked++
+  })
+
+  console.log(`[sync-movies] 관람등급 보강 ${checked}건`)
+  return checked
+}
+
 async function removeAdultMovies(): Promise<number> {
   const movies = await prisma.movie.findMany({
-    where: { genreNm: { not: null } },
-    select: { id: true, genreNm: true },
+    select: { id: true, genreNm: true, movieNm: true, watchGradeNm: true },
   })
   const adultMovieIds = movies
-    .filter(movie => isAdultGenre(movie.genreNm))
+    .filter(movie => isAdultMovie(movie))
     .map(movie => movie.id)
 
   if (adultMovieIds.length === 0) return 0
@@ -150,9 +178,21 @@ export async function syncMovies(): Promise<{ boxOffice: number; movies: number 
     for (const y of [year, year + 1]) {
       movies += await syncMovieListForYear(y)
     }
-    await removeAdultMovies()
   } catch (e) {
     console.error('[sync-movies] 개봉작 목록 동기화 실패:', e)
+  }
+
+  // 등급 보강과 성인물 정리는 목록 동기화 실패와 무관하게 항상 시도한다 (별도 try로 분리)
+  try {
+    await backfillWatchGrades()
+  } catch (e) {
+    console.error('[sync-movies] 관람등급 보강 실패:', e)
+  }
+
+  try {
+    await removeAdultMovies()
+  } catch (e) {
+    console.error('[sync-movies] 성인물 정리 실패:', e)
   }
 
   console.log(`[sync-movies] 완료: 박스오피스 ${boxOffice}건, 개봉작 ${movies}건`)

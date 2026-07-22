@@ -460,6 +460,8 @@ model Movie {
   genreNm      String?   @map("genre_nm") @db.VarChar(100)    // 장르 (상세 드로어용)
   nationNm     String?   @map("nation_nm") @db.VarChar(100)   // 제작국가 (상세 드로어용)
   directors    String?   @db.VarChar(200)                     // 감독명(들) 콤마 조인
+  watchGradeNm String?   @map("watch_grade_nm") @db.VarChar(20) // 관람등급 (멜로+청불 성인물 판별용); KOBIS 상세 API로만 조회 가능
+  gradeCheckedAt DateTime? @map("grade_checked_at")            // 관람등급 조회 시도 시각 (반복 호출 방지)
   tmdbId       Int?      @map("tmdb_id")
   overview     String?   @db.Text
   posterPath   String?   @map("poster_path")
