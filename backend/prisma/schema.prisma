@@ -493,6 +493,27 @@ model MovieBookmark {
   @@map("movie_bookmarks")
 }
 
+// 외인/기관 일별 매매동향 캐시 (네이버 frgn 크롤링 결과 — 과거 재현 백테스트용)
+// 과거 데이터는 불변이므로 한 번 수집하면 재크롤링 불필요
+model InvestorDaily {
+  id           Int      @id @default(autoincrement())
+  code         String   @db.VarChar(10)
+  date         String   @db.VarChar(8)          // "YYYYMMDD"
+  close        Int                               // 종가
+  changePct    Float    @map("change_pct")       // 일간 등락률 (%)
+  volume       Int                               // 거래량 (전체, 개인 포함)
+  foreignVol   Int      @map("foreign_vol")      // 외국인 순매매량 (주, 음수=순매도)
+  instVol      Int      @map("inst_vol")         // 기관 순매매량 (주)
+  foreignHold  Float?   @map("foreign_hold")     // 외국인 보유주수
+  foreignRatio Float?   @map("foreign_ratio")    // 외국인 보유율 (%)
+  listedShares Float?   @map("listed_shares")    // 역산 상장주식수 = 보유주수 / (보유율/100)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@unique([code, date])
+  @@index([code, date])
+  @@map("investor_daily")
+}
+
 // 이슈 댓글
 model IssueComment {
   id        Int      @id @default(autoincrement())

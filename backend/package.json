@@ -9,6 +9,7 @@
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "ts-node-dev src/seed.ts",
     "sync:movies": "ts-node-dev --transpile-only src/scripts/syncMoviesOnce.ts",
+    "backfill:investor": "ts-node --transpile-only src/scripts/backfillInvestor.ts",
     "test": "vitest run"
   },
   "keywords": [],
