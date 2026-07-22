@@ -75,3 +75,23 @@ export interface MarketEvent {
   impact?: string
   country: 'US' | 'KR' | 'EU' | 'JP' | 'CN' | 'GLOBAL'
 }
+
+// 외인/기관 일별 매매동향
+// 스코어링 모듈(utils/smartScoreV2)이 API 클라이언트 계층에 의존하지 않도록
+// 여기 두고 stockApi가 재export 한다 (백엔드 백테스트에서도 같은 모듈을 쓴다)
+export interface InvestorTrend {
+  date: string
+  foreign: number       // 외국인 순매수량
+  institution: number   // 기관 순매수량
+  individual: number    // 개인 순매수량
+  foreignAmt: number    // 외국인 순매수금액 (백만원)
+  institutionAmt: number
+  changePct?: number    // 전일 대비 일간 등락률 (%)
+}
+
+export interface InvestorData {
+  trends: InvestorTrend[]
+  per: string
+  pbr: string
+  marketCap: string
+}

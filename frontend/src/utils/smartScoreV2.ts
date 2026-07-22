@@ -1,4 +1,4 @@
-import type { InvestorData, InvestorTrend } from '../api/stockApi'
+import type { InvestorData, InvestorTrend } from '../types/stock'
 
 // ── 튜닝 대상 파라미터 (데이터 분포 확인 후 조정) ──
 export const TUNING = {
