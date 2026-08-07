@@ -232,6 +232,7 @@ router.post('/:id/issues', async (req, res) => {
         category: req.body.category || 'improvement',
         module: req.body.module || '개인성과',
         externalId,
+        externalUrl: req.body.externalUrl || null,
         requestedAt: requestedAt ? new Date(requestedAt) : null,
         dueAt: dueAt ? new Date(dueAt) : null,
         assigneeId: assigneeId || null,

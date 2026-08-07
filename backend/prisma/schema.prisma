@@ -83,6 +83,7 @@ model Issue {
   category    String   @default("improvement") @db.VarChar(20) // bug | improvement | question
   module      String   @default("개인성과") @db.VarChar(30)     // 개인성과 | 업무 | 인사평가
   externalId  String?  @map("external_id") @db.VarChar(20)    // 엑셀 관리 번호
+  externalUrl String?  @map("external_url") @db.Text          // 제목 클릭 시 이동할 외부 링크
   requestedAt DateTime? @map("requested_at")
   dueAt       DateTime? @map("due_at")
   order       Int      @default(0)
