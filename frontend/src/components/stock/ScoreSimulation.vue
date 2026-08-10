@@ -1,0 +1,197 @@
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+import { UiButton, UiIcon, UiTab, UiSelect, UiEmpty } from '@leechanyong/ispark-ui'
+import type { TabItem, SelectOption } from '@leechanyong/ispark-ui'
+import { useScoreSnapshots } from '../../composables/useScoreSnapshots'
+import { simulate, HORIZON_DAYS } from '../../utils/scoreSimulation'
+
+const STORAGE_COUNT = 'taskflow.scoreSim.stockCount'
+const STORAGE_SEED = 'taskflow.scoreSim.seedCash'
+
+const { snapshots, prices, loading, handleLoadSnapshots, handleRefreshSnapshots } = useScoreSnapshots()
+
+// ===== 설정 (localStorage 저장) =====
+const stockCount = ref(Number(localStorage.getItem(STORAGE_COUNT)) || 3)
+const seedCash = ref(Number(localStorage.getItem(STORAGE_SEED)) || 10000000)
+
+watch(stockCount, v => localStorage.setItem(STORAGE_COUNT, String(v)))
+watch(seedCash, v => localStorage.setItem(STORAGE_SEED, String(v)))
+
+const countTabs: TabItem[] = [
+  { label: '상위 1', value: '1' },
+  { label: '상위 3', value: '3' },
+  { label: '상위 5', value: '5' },
+  { label: '상위 10', value: '10' },
+]
+const countTab = computed({
+  get: () => String(stockCount.value),
+  set: (v: string) => { stockCount.value = Number(v) },
+})
+
+const seedOptions: SelectOption[] = [
+  { label: '500만원', value: '5000000' },
+  { label: '1,000만원', value: '10000000' },
+  { label: '3,000만원', value: '30000000' },
+  { label: '5,000만원', value: '50000000' },
+]
+const seedSelect = computed({
+  get: () => String(seedCash.value),
+  set: (v: string | number) => { seedCash.value = Number(v) },
+})
+
+// ===== 시뮬레이션 =====
+const result = computed(() => simulate({
+  snapshots: snapshots.value,
+  prices: prices.value,
+  stockCount: stockCount.value,
+  seedCash: seedCash.value,
+}))
+
+const hasCycles = computed(() => result.value.cycles.length > 0)
+const noEntryCount = computed(() => result.value.skipped.filter(s => s.reason === 'no-entry-date').length)
+
+// ===== 표시 헬퍼 =====
+const won = (v: number) => Math.round(v).toLocaleString()
+const pct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
+const pctColor = (v: number) => (v > 0 ? '#ef4444' : v < 0 ? '#3b82f6' : '#6b7280')
+
+handleLoadSnapshots()
+</script>
+
+<template>
+  <div class="score-simulation">
+    <div class="section-header">
+      <h3><UiIcon name="trending-up" :size="18" /> 가상매매 수익률</h3>
+      <UiButton size="sm" variant="secondary" :disabled="loading" @click="handleRefreshSnapshots">
+        {{ loading ? '로딩...' : '새로고침' }}
+      </UiButton>
+    </div>
+
+    <p class="desc">
+      스코어 상위 N종목을 진입일 종가로 사서 <b>D+{{ HORIZON_DAYS }}</b>에 파는 것을 반복했을 때의 실제 돈 흐름<br />
+      보유 중에 저장된 스냅샷은 건너뛰고 자금 한 줄만 순차로 굴린다 (논오버랩 복리)
+    </p>
+
+    <!-- 설정 -->
+    <div class="sim-controls">
+      <UiTab v-model="countTab" :tabs="countTabs" align="left" size="sm" />
+      <div class="seed-wrap">
+        <span class="seed-label">종자금</span>
+        <UiSelect v-model="seedSelect" :options="seedOptions" size="sm" />
+      </div>
+    </div>
+
+    <div v-if="loading" class="loading-msg">시뮬레이션 계산 중...</div>
+
+    <UiEmpty
+      v-else-if="!hasCycles"
+      title="계산할 사이클이 없습니다."
+      description="Smart Score에서 스코어를 저장하고 3거래일 이상 모아주세요."
+    />
+
+    <template v-else>
+      <!-- 요약 4칸 -->
+      <div class="sim-summary">
+        <div class="sum-card">
+          <div class="s-label">최종자산</div>
+          <div class="s-value">{{ won(result.finalAsset) }}원</div>
+          <div class="s-sub">종자금 {{ won(result.seedCash) }}원</div>
+        </div>
+        <div class="sum-card">
+          <div class="s-label">누적수익률</div>
+          <div class="s-value" :style="{ color: pctColor(result.totalReturnPct) }">
+            {{ pct(result.totalReturnPct) }}
+          </div>
+          <div class="s-sub">비용전 {{ pct(result.totalReturnPctGross) }}</div>
+        </div>
+        <div class="sum-card">
+          <div class="s-label">승률</div>
+          <div class="s-value">
+            {{ result.winRate === null ? '-' : `${result.winCount}/${result.maturedCount}` }}
+          </div>
+          <div class="s-sub">
+            {{ result.winRate === null ? '확정 회차 없음' : `${result.winRate.toFixed(0)}%` }}
+          </div>
+        </div>
+        <div class="sum-card">
+          <div class="s-label">MDD</div>
+          <div class="s-value" :style="{ color: result.mdd < 0 ? '#3b82f6' : '#6b7280' }">
+            {{ result.mdd === 0 ? '-' : `${result.mdd.toFixed(2)}%` }}
+          </div>
+          <div class="s-sub">확정 회차 기준 최대낙폭</div>
+        </div>
+      </div>
+
+      <p v-if="result.avgReturnPct !== null && result.bestCycle && result.worstCycle" class="stat-note">
+        회차 평균 <b :style="{ color: pctColor(result.avgReturnPct) }">{{ pct(result.avgReturnPct) }}</b>
+        · 최고 {{ result.bestCycle.index }}회차 {{ pct(result.bestCycle.returnPct) }}
+        · 최악 {{ result.worstCycle.index }}회차 {{ pct(result.worstCycle.returnPct) }}
+      </p>
+
+      <p class="cost-note">
+        비용 합계 <b>-{{ won(result.totalCost) }}원</b>
+        (수수료 0.015%×2 + 증권거래세 0.15%)
+        <template v-if="result.pendingCount"> · 진행중 {{ result.pendingCount }}회차</template>
+        <template v-if="noEntryCount"> · 진입일 미기록 {{ noEntryCount }}건 제외</template>
+      </p>
+    </template>
+  </div>
+</template>
+
+<style lang="scss" scoped>
+.score-simulation {
+  background: #fff;
+  border: 1px solid #e6e8ec;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  h3 { font-size: 16px; font-weight: 700; margin: 0; }
+}
+
+.desc { font-size: 12px; color: #9ca3af; margin: 0 0 16px; }
+
+.sim-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.seed-wrap { display: flex; align-items: center; gap: 8px; }
+.seed-label { font-size: 12px; color: #6b7280; font-weight: 600; white-space: nowrap; }
+
+.loading-msg { text-align: center; padding: 24px; color: #9ca3af; font-size: 14px; }
+
+.sim-summary {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.sum-card {
+  flex: 1;
+  text-align: center;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+.s-label { font-size: 12px; color: #6b7280; font-weight: 600; margin-bottom: 4px; }
+.s-value { font-size: 20px; font-weight: 700; }
+.s-sub { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+
+.stat-note { font-size: 12px; color: #6b7280; margin: 0 0 6px; }
+.cost-note { font-size: 11px; color: #9ca3af; margin: 0 0 16px; }
+
+@media (max-width: 640px) {
+  .score-simulation { padding: 14px; }
+  .sim-summary { flex-wrap: wrap; }
+  .sum-card { min-width: calc(50% - 8px); }
+  .s-value { font-size: 16px; }
+}
+</style>

@@ -7,6 +7,7 @@ import RecommendCard from './RecommendCard.vue'
 import ThemeOverview from './ThemeOverview.vue'
 import SmartScore from './SmartScore.vue'
 import ScoreBacktest from './ScoreBacktest.vue'
+import ScoreSimulation from './ScoreSimulation.vue'
 import ScorePortfolio from './ScorePortfolio.vue'
 import StockCalendar from './StockCalendar.vue'
 
@@ -89,6 +90,9 @@ onUnmounted(() => {
 
     <!-- 구간 스프레드 분석 -->
     <ScoreBacktest />
+
+    <!-- 가상매매 수익률 -->
+    <ScoreSimulation />
 
     <!-- 실자금 검증 포트폴리오 -->
     <ScorePortfolio />
