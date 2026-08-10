@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { UiButton, UiIcon, UiTab, UiSelect, UiEmpty } from '@leechanyong/ispark-ui'
+import { UiButton, UiIcon, UiTab, UiSelect, UiEmpty, UiChart } from '@leechanyong/ispark-ui'
 import type { TabItem, SelectOption } from '@leechanyong/ispark-ui'
 import { useScoreSnapshots } from '../../composables/useScoreSnapshots'
 import { simulate, HORIZON_DAYS } from '../../utils/scoreSimulation'
@@ -49,6 +49,29 @@ const result = computed(() => simulate({
 
 const hasCycles = computed(() => result.value.cycles.length > 0)
 const noEntryCount = computed(() => result.value.skipped.filter(s => s.reason === 'no-entry-date').length)
+
+// ===== 자산곡선 =====
+// 라인차트 config 계약: { categories, datasets } — datasets는 Chart.js 데이터셋을 그대로 받는다
+const assetChart = computed(() => {
+  const cycles = result.value.cycles
+  return {
+    categories: ['시작', ...cycles.map(c => c.entryDate.slice(5))],
+    datasets: [
+      {
+        label: '비용후',
+        data: [result.value.seedCash, ...cycles.map(c => c.endAsset)],
+        borderColor: '#ef4444',
+      },
+      {
+        label: '비용전',
+        data: [result.value.seedCash, ...cycles.map(c => c.endAssetGross)],
+        borderColor: '#9ca3af',
+        borderDash: [4, 4],
+      },
+    ],
+    tooltipValueSuffix: '원',
+  }
+})
 
 // ===== 표시 헬퍼 =====
 const won = (v: number) => Math.round(v).toLocaleString()
@@ -122,6 +145,11 @@ handleLoadSnapshots()
         </div>
       </div>
 
+      <!-- 자산곡선 -->
+      <div class="chart-wrap">
+        <UiChart type="line" :config="assetChart" :show-legend="true" />
+      </div>
+
       <p v-if="result.avgReturnPct !== null && result.bestCycle && result.worstCycle" class="stat-note">
         회차 평균 <b :style="{ color: pctColor(result.avgReturnPct) }">{{ pct(result.avgReturnPct) }}</b>
         · 최고 {{ result.bestCycle.index }}회차 {{ pct(result.bestCycle.returnPct) }}
@@ -184,6 +212,12 @@ handleLoadSnapshots()
 .s-label { font-size: 12px; color: #6b7280; font-weight: 600; margin-bottom: 4px; }
 .s-value { font-size: 20px; font-weight: 700; }
 .s-sub { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+
+.chart-wrap {
+  height: 220px;
+  margin-bottom: 12px;
+  :deep(.ui-chart-canvas-wrap) { min-height: 0; }
+}
 
 .stat-note { font-size: 12px; color: #6b7280; margin: 0 0 6px; }
 .cost-note { font-size: 11px; color: #9ca3af; margin: 0 0 16px; }
