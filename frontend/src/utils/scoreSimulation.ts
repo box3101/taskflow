@@ -357,3 +357,8 @@ export function buildDailySeries(cycles: SimCycle[], marks: ScoreDailyMark[]): D
 
   return points.sort((a, b) => a.date.localeCompare(b.date))
 }
+
+/** 일별 자산 시계열로 잰 최대 낙폭(%). 회차 기준보다 대체로 깊게 나온다 */
+export function computeDailyMdd(seedCash: number, series: DailyPoint[]): number {
+  return computeMdd(seedCash, series.map(p => p.asset))
+}

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import type { ScoreSnapshotFull, ScoreSnapshotItem, ScoreDailyMark } from '../api/stockApi'
 import {
   tradingDaysBetween, addTradingDays, selectCycles, simulate, computeMdd,
-  buildDailySeries,
+  buildDailySeries, computeDailyMdd,
   HORIZON_DAYS, FEE_RATE, TAX_RATE,
 } from './scoreSimulation'
 import type { SimCycle } from './scoreSimulation'
@@ -400,5 +400,30 @@ describe('일별 자산 시계열', () => {
 
   it('사이클이 없으면 빈 배열을 반환한다', () => {
     expect(buildDailySeries([], [])).toEqual([])
+  })
+})
+
+describe('일별 기준 MDD', () => {
+  it('회차 중간의 저점을 반영해 회차 기준 MDD보다 깊게 나온다', () => {
+    // 100주@1,000원 전액 투입, 매수비용 round(100,000×0.00015)=15, 잔돈 0
+    // 회차 중간 마크: 800원으로 급락 → 79,985
+    // 청산일: 110,000으로 회복 (회차 기준으로는 고점 경신, 낙폭 없음)
+    const cycle: SimCycle = {
+      index: 1, date: '2026-08-05', entryDate: '2026-08-06', exitDate: '2026-08-11',
+      matured: true, noTrade: false,
+      holdings: [holding({ code: 'A', entryPrice: 1000, quantity: 100 })],
+      investAmount: 100000, startAsset: 100000,
+      endAsset: 110000, endAssetGross: 111000,
+      profit: 10000, returnPct: 10, tradeCost: 30,
+    }
+    const marks = [mark('2026-08-05', 'A', '2026-08-07', 800)]
+    const series = buildDailySeries([cycle], marks)
+
+    const cycleMdd = computeMdd(100000, [cycle.endAsset])
+    const dailyMdd = computeDailyMdd(100000, series)
+
+    expect(cycleMdd).toBe(0)
+    expect(dailyMdd).toBeCloseTo(-20.015, 3)
+    expect(dailyMdd).toBeLessThan(cycleMdd)
   })
 })
