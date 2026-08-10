@@ -12,8 +12,8 @@ const STORAGE_SEED = 'taskflow.scoreSim.seedCash'
 const { snapshots, prices, loading, error, handleLoadSnapshots, handleRefreshSnapshots } = useScoreSnapshots()
 
 // ===== 설정 (localStorage 저장) =====
-const stockCount = ref(Number(localStorage.getItem(STORAGE_COUNT)) || 3)
-const seedCash = ref(Number(localStorage.getItem(STORAGE_SEED)) || 10000000)
+const stockCount = ref(Math.max(1, Number(localStorage.getItem(STORAGE_COUNT)) || 3))
+const seedCash = ref(Math.max(1, Number(localStorage.getItem(STORAGE_SEED)) || 10000000))
 
 watch(stockCount, v => localStorage.setItem(STORAGE_COUNT, String(v)))
 watch(seedCash, v => localStorage.setItem(STORAGE_SEED, String(v)))
@@ -98,12 +98,12 @@ const cycleRows = computed(() =>
     date: c.date.slice(5),
     entry: c.entryDate.slice(5),
     stocks: c.holdings.filter(h => h.quantity > 0).length,
-    status: c.matured ? '확정' : '진행중',
+    status: c.noTrade ? '매매없음' : c.matured ? '확정' : '진행중',
     invest: c.investAmount,
     endAsset: c.endAsset,
     profit: c.profit,
     returnPct: c.returnPct,
-    matured: c.matured,
+    badge: c.noTrade ? 'default' : c.matured ? 'success' : 'default',
     cycle: c,
   }))
 )
@@ -216,7 +216,7 @@ handleLoadSnapshots()
           @row-click="(row: any) => openCycleDetail(row)"
         >
           <template #cell-status="{ row }: any">
-            <UiBadge :variant="row.matured ? 'success' : 'default'" size="sm">{{ row.status }}</UiBadge>
+            <UiBadge :variant="row.badge" size="sm">{{ row.status }}</UiBadge>
           </template>
           <template #cell-invest="{ row }: any">{{ won(row.invest) }}</template>
           <template #cell-endAsset="{ row }: any">{{ won(row.endAsset) }}</template>
@@ -242,8 +242,8 @@ handleLoadSnapshots()
       <div v-if="selectedCycle" class="detail-body">
         <p class="detail-meta">
           스코어일 {{ selectedCycle.date }} · 진입 {{ selectedCycle.entryDate }} · 청산 {{ selectedCycle.exitDate }}
-          <UiBadge :variant="selectedCycle.matured ? 'success' : 'default'" size="sm">
-            {{ selectedCycle.matured ? '확정' : '진행중' }}
+          <UiBadge :variant="selectedCycle.noTrade ? 'default' : selectedCycle.matured ? 'success' : 'default'" size="sm">
+            {{ selectedCycle.noTrade ? '매매없음' : selectedCycle.matured ? '확정' : '진행중' }}
           </UiBadge>
         </p>
         <table class="detail-table">
