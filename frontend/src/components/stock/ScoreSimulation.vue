@@ -82,7 +82,7 @@ const won = (v: number) => Math.round(v).toLocaleString()
 const cycleColumns: TableColumn[] = [
   { key: 'no', label: '회차', width: '52px', align: 'center' },
   { key: 'date', label: '스코어일', width: '72px', align: 'center' },
-  { key: 'entry', label: '진입', width: '64px', align: 'center', hideBelow: 640 },
+  { key: 'entry', label: '기산일', width: '64px', align: 'center', hideBelow: 640 },
   { key: 'stocks', label: '종목', width: '48px', align: 'center' },
   { key: 'status', label: '상태', width: '64px', align: 'center' },
   { key: 'invest', label: '투입금', width: '96px', align: 'right', hideBelow: 480 },
@@ -132,7 +132,7 @@ handleLoadSnapshots()
     </div>
 
     <p class="desc">
-      스코어 상위 N종목을 진입일 종가로 사서 <b>D+{{ HORIZON_DAYS }}</b>에 파는 것을 반복했을 때의 실제 돈 흐름<br />
+      스코어 상위 N종목을 <b>스코어일 종가</b>로 사서 만기 기산일부터 <b>D+{{ HORIZON_DAYS }}</b>에 파는 것을 반복했을 때의 실제 돈 흐름<br />
       보유 중에 저장된 스냅샷은 건너뛰고 자금 한 줄만 순차로 굴린다 (논오버랩 복리)
     </p>
 
@@ -240,7 +240,7 @@ handleLoadSnapshots()
     <UiDrawer v-model:open="drawerOpen" :title="`${selectedCycle?.index ?? 0}회차 종목 상세`" width="520px">
       <div v-if="selectedCycle" class="detail-body">
         <p class="detail-meta">
-          스코어일 {{ selectedCycle.date }} · 진입 {{ selectedCycle.entryDate }} · 청산 {{ selectedCycle.exitDate }}
+          스코어일 {{ selectedCycle.date }} · 기산 {{ selectedCycle.entryDate }} · 청산 {{ selectedCycle.exitDate }}
           <UiBadge :variant="selectedCycle.noTrade ? 'default' : selectedCycle.matured ? 'success' : 'default'" size="sm">
             {{ selectedCycle.noTrade ? '매매없음' : selectedCycle.matured ? '확정' : '진행중' }}
           </UiBadge>

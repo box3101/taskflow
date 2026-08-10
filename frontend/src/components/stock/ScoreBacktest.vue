@@ -180,7 +180,7 @@ loadBacktestData()
 
     <p class="desc">
       점수 구간별 <b>D+{{ HORIZON_DAYS }} 고정기간</b> 수익률 — 상위가 하위를 이기면 스코어에 정보가 있는 것<br />
-      집계는 <b>확정된 스냅샷만 · 일자 동일가중 평균</b> (진입 후 {{ HORIZON_DAYS }}거래일 경과 시 종가로 확정)
+      집계는 <b>확정된 스냅샷만 · 일자 동일가중 평균</b> (기산일 후 {{ HORIZON_DAYS }}거래일 경과 시 종가로 확정)
     </p>
 
     <div v-if="loading" class="loading-msg">스냅샷 분석 중...</div>
@@ -227,7 +227,7 @@ loadBacktestData()
           <thead>
             <tr>
               <th>스코어일</th>
-              <th>진입기준</th>
+              <th>기산일</th>
               <th>상태</th>
               <th>보유일</th>
               <th>상위20%</th>
