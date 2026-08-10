@@ -224,7 +224,7 @@ function runTrack(
       startAsset,
       endAsset,
       tradeCost,
-      matured: holdings.every(h => h.isMatured),
+      matured: holdings.filter(h => h.quantity > 0).every(h => h.isMatured),
       noTrade: holdings.every(h => h.quantity === 0),
     })
     asset = endAsset

@@ -183,6 +183,20 @@ describe('사이클 손익 계산', () => {
     expect(r.cycles[0].endAsset).toBe(1000000)
   })
 
+  it('한 주도 못 산 종목은 확정 판정에서 제외한다', () => {
+    // 종자금 100만, N=2 → 종목당 50만
+    // CHEAP: floor(500000/1000)=500주 매수, 확정됨
+    // PRICEY: floor(500000/2000000)=0주 미매수, 미확정 → 판정에서 빠져야 함
+    const s = snap('2026-08-05', '2026-08-06', [
+      item({ code: 'CHEAP', total: 90, entryPrice: 1000, exitPrice: 1100, exitDate: '2026-08-11' }),
+      item({ code: 'PRICEY', total: 80, entryPrice: 2000000 }),
+    ])
+    const r = simulate({ snapshots: [s], prices: {}, stockCount: 2, seedCash: 1000000 })
+    expect(r.cycles[0].holdings.map(h => h.quantity)).toEqual([500, 0])
+    expect(r.cycles[0].matured).toBe(true)
+    expect(r.maturedCount).toBe(1)
+  })
+
   it('사이클이 없으면 종자금 그대로 반환한다', () => {
     const r = simulate({ snapshots: [], prices: {}, stockCount: 3, seedCash: 1000000 })
     expect(r.cycles).toEqual([])
@@ -232,6 +246,11 @@ describe('지표 집계', () => {
     expect(r.cycles[0].tradeCost).toBe(1965)
     expect(r.cycles[1].endAsset).toBe(986439)
     expect(r.finalAsset).toBe(986439)
+    // 비용전 트랙은 자기 잔액으로 복리 — 회차2에서 수량이 갈린다 (1,100주 vs 비용후 1,098주)
+    expect(r.cycles[0].endAssetGross).toBe(1100000)
+    expect(r.cycles[1].endAssetGross).toBe(990000)
+    expect(r.finalAssetGross).toBe(990000)
+    expect(r.totalReturnPctGross).toBeCloseTo(-1.0, 4)
   })
 
   it('진행중 사이클은 승률 분모에서 제외한다', () => {
