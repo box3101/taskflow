@@ -24,14 +24,13 @@ interface SnapshotReturn {
 const { snapshots, prices: snapPrices, loading, error, handleLoadSnapshots, handleRefreshSnapshots } = useScoreSnapshots()
 
 const maturing = ref(false)
-const snapshotReturns = ref<SnapshotReturn[]>([])
 
 function todayStr(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-// 스냅샷이 없을 때 보여줄 안내 (에러보다 우선)
+// 로드 실패 메시지 우선, 실패가 아니면 빈 스냅샷 안내
 const emptyNotice = computed(() => {
   if (error.value) return error.value
   if (!loading.value && snapshots.value.length === 0) {
@@ -40,8 +39,8 @@ const emptyNotice = computed(() => {
   return ''
 })
 
-function buildReturns() {
-  snapshotReturns.value = snapshots.value.map(full => {
+const snapshotReturns = computed<SnapshotReturn[]>(() =>
+  snapshots.value.map(full => {
     const items = full.data as ScoreSnapshotItem[]
     const scored: ScoredItem[] = items.map(item => {
       const isMatured = item.exitPrice != null && item.exitPrice > 0
@@ -61,16 +60,14 @@ function buildReturns() {
       items: scored,
     }
   })
-}
+)
 
 async function loadBacktestData() {
   await handleLoadSnapshots()
-  buildReturns()
 }
 
 async function refreshBacktestData() {
   await handleRefreshSnapshots()
-  buildReturns()
 }
 
 // 만기 스냅샷 즉시 확정 (수동 트리거)

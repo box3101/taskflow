@@ -9,7 +9,7 @@ import type { SimCycle } from '../../utils/scoreSimulation'
 const STORAGE_COUNT = 'taskflow.scoreSim.stockCount'
 const STORAGE_SEED = 'taskflow.scoreSim.seedCash'
 
-const { snapshots, prices, loading, handleLoadSnapshots, handleRefreshSnapshots } = useScoreSnapshots()
+const { snapshots, prices, loading, error, handleLoadSnapshots, handleRefreshSnapshots } = useScoreSnapshots()
 
 // ===== 설정 (localStorage 저장) =====
 const stockCount = ref(Number(localStorage.getItem(STORAGE_COUNT)) || 3)
@@ -147,6 +147,7 @@ handleLoadSnapshots()
     </div>
 
     <div v-if="loading" class="loading-msg">시뮬레이션 계산 중...</div>
+    <div v-else-if="error" class="loading-msg">{{ error }}</div>
 
     <UiEmpty
       v-else-if="!hasCycles"
