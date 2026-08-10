@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import type { ScoreSnapshotFull, ScoreSnapshotItem } from '../api/stockApi'
+import type { ScoreSnapshotFull, ScoreSnapshotItem, ScoreDailyMark } from '../api/stockApi'
 import {
   tradingDaysBetween, addTradingDays, selectCycles, simulate, computeMdd,
+  buildDailySeries,
   HORIZON_DAYS, FEE_RATE, TAX_RATE,
 } from './scoreSimulation'
+import type { SimCycle } from './scoreSimulation'
 
 // ===== 테스트 픽스처 =====
 function item(over: Partial<ScoreSnapshotItem> & { code: string; total: number; entryPrice: number }): ScoreSnapshotItem {
@@ -282,5 +284,121 @@ describe('지표 집계', () => {
     expect(r.cycles.length).toBe(1)
     expect(r.maturedCount).toBe(0)
     expect(r.winRate).toBeNull()
+  })
+})
+
+// 픽스처 헬퍼 — SimCycle을 직접 리터럴로 만든다 (숫자를 손계산해 넣기 쉬움)
+function holding(over: Partial<SimCycle['holdings'][number]> & { code: string; entryPrice: number; quantity: number }) {
+  return {
+    name: over.code,
+    score: 80,
+    cost: over.entryPrice * over.quantity,
+    exitPrice: over.entryPrice,
+    proceeds: over.entryPrice * over.quantity,
+    profit: 0,
+    returnPct: 0,
+    isMatured: true,
+    ...over,
+  }
+}
+
+function mark(snapshotDate: string, code: string, date: string, close: number): ScoreDailyMark {
+  return { snapshotDate, code, date, close }
+}
+
+describe('일별 자산 시계열', () => {
+  it('마크 2일 + 청산일 → 3포인트, 날짜 오름차순 (매수비용 차감·매도비용 미차감·잔돈 매일 반영)', () => {
+    // 종목 A 10주 @1000원, 투입 10,000 / 매수비용 round(10,000×0.00015)=round(1.4999...)=1
+    // 잔돈 = 100,000 - 10,000 = 90,000
+    const cycle: SimCycle = {
+      index: 1, date: '2026-08-05', entryDate: '2026-08-06', exitDate: '2026-08-11',
+      matured: true, noTrade: false,
+      holdings: [holding({ code: 'A', entryPrice: 1000, quantity: 10 })],
+      investAmount: 10000, startAsset: 100000,
+      endAsset: 105000, endAssetGross: 106000,
+      profit: 5000, returnPct: 5, tradeCost: 20,
+    }
+    const marks = [
+      mark('2026-08-05', 'A', '2026-08-07', 1100),
+      mark('2026-08-05', 'A', '2026-08-10', 1200),
+    ]
+    const series = buildDailySeries([cycle], marks)
+
+    expect(series.map(p => p.date)).toEqual(['2026-08-07', '2026-08-10', '2026-08-11'])
+    // 90,000 + 10×1,100 - 1 = 100,999
+    expect(series[0]).toEqual({ date: '2026-08-07', asset: 100999, cycleIndex: 1, isCycleEnd: false })
+    // 90,000 + 10×1,200 - 1 = 101,999 (매도비용 없이 잔돈만 매일 더해짐)
+    expect(series[1]).toEqual({ date: '2026-08-10', asset: 101999, cycleIndex: 1, isCycleEnd: false })
+    // 청산일 포인트는 endAsset 그대로
+    expect(series[2]).toEqual({ date: '2026-08-11', asset: 105000, cycleIndex: 1, isCycleEnd: true })
+  })
+
+  it('특정 종목의 마크가 빠진 날은 그 종목만 진입가로 평가한다', () => {
+    // A 10주@1000(투입10,000) + B 5주@2000(투입10,000) = 투입 20,000, 매수비용 round(20,000×0.00015)=3
+    // 잔돈 = 100,000 - 20,000 = 80,000
+    const cycle: SimCycle = {
+      index: 1, date: '2026-08-05', entryDate: '2026-08-06', exitDate: '2026-08-11',
+      matured: false, noTrade: false,
+      holdings: [
+        holding({ code: 'A', entryPrice: 1000, quantity: 10 }),
+        holding({ code: 'B', entryPrice: 2000, quantity: 5 }),
+      ],
+      investAmount: 20000, startAsset: 100000,
+      endAsset: 0, endAssetGross: 0, profit: 0, returnPct: 0, tradeCost: 0,
+    }
+    // B는 그날 마크가 없다 → 진입가(2000)로 평가
+    const marks = [mark('2026-08-05', 'A', '2026-08-07', 1100)]
+    const series = buildDailySeries([cycle], marks)
+
+    // 80,000 + (10×1,100 + 5×2,000) - 3 = 80,000 + 21,000 - 3 = 100,997
+    expect(series).toEqual([{ date: '2026-08-07', asset: 100997, cycleIndex: 1, isCycleEnd: false }])
+  })
+
+  it('마크 날짜가 청산일과 같으면 중복 없이 endAsset으로 덮어쓴다', () => {
+    const cycle: SimCycle = {
+      index: 1, date: '2026-08-05', entryDate: '2026-08-06', exitDate: '2026-08-11',
+      matured: true, noTrade: false,
+      holdings: [holding({ code: 'A', entryPrice: 1000, quantity: 10 })],
+      investAmount: 10000, startAsset: 100000,
+      endAsset: 105000, endAssetGross: 106000,
+      profit: 5000, returnPct: 5, tradeCost: 20,
+    }
+    const marks = [mark('2026-08-05', 'A', '2026-08-11', 1300)]
+    const series = buildDailySeries([cycle], marks)
+
+    expect(series).toEqual([{ date: '2026-08-11', asset: 105000, cycleIndex: 1, isCycleEnd: true }])
+  })
+
+  it('진행중 사이클은 청산일 포인트를 붙이지 않는다', () => {
+    const cycle: SimCycle = {
+      index: 1, date: '2026-08-05', entryDate: '2026-08-06', exitDate: '2026-08-11',
+      matured: false, noTrade: false,
+      holdings: [holding({ code: 'A', entryPrice: 1000, quantity: 10 })],
+      investAmount: 10000, startAsset: 100000,
+      endAsset: 0, endAssetGross: 0, profit: 0, returnPct: 0, tradeCost: 0,
+    }
+    const marks = [mark('2026-08-05', 'A', '2026-08-07', 1100)]
+    const series = buildDailySeries([cycle], marks)
+
+    expect(series.length).toBe(1)
+    expect(series.every(p => !p.isCycleEnd)).toBe(true)
+  })
+
+  it('마크가 0건이고 확정 사이클이면 청산일 포인트 1개만 남는다', () => {
+    const cycle: SimCycle = {
+      index: 1, date: '2026-08-05', entryDate: '2026-08-06', exitDate: '2026-08-11',
+      matured: true, noTrade: false,
+      holdings: [holding({ code: 'A', entryPrice: 1000, quantity: 10 })],
+      investAmount: 10000, startAsset: 100000,
+      endAsset: 105000, endAssetGross: 106000,
+      profit: 5000, returnPct: 5, tradeCost: 20,
+    }
+    const series = buildDailySeries([cycle], [])
+
+    expect(series).toEqual([{ date: '2026-08-11', asset: 105000, cycleIndex: 1, isCycleEnd: true }])
+  })
+
+  it('사이클이 없으면 빈 배열을 반환한다', () => {
+    expect(buildDailySeries([], [])).toEqual([])
   })
 })

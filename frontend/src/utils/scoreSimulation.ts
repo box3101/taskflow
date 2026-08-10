@@ -1,7 +1,7 @@
 // 스코어 랭킹 가상매매 시뮬레이션 — Vue 의존성 없는 순수 계산 모듈
 // 스펙: docs/superpowers/specs/2026-08-10-score-simulation-design.md
 
-import type { ScoreSnapshotFull, ScoreSnapshotItem } from '../api/stockApi'
+import type { ScoreSnapshotFull, ScoreSnapshotItem, ScoreDailyMark } from '../api/stockApi'
 
 // ===== 상수 =====
 export const HORIZON_DAYS = 3       // D+3 고정 청산
@@ -299,4 +299,61 @@ export function simulate(input: SimInput): SimResult {
     bestCycle: scored.length > 0 ? scored.reduce((a, b) => (b.returnPct > a.returnPct ? b : a)) : null,
     worstCycle: scored.length > 0 ? scored.reduce((a, b) => (b.returnPct < a.returnPct ? b : a)) : null,
   }
+}
+
+// ===== 일별 자산 시계열 =====
+export interface DailyPoint {
+  date: string        // 거래일
+  asset: number        // 그날 종가 기준 평가자산 (비용후)
+  cycleIndex: number   // 어느 회차에 속한 날인지
+  isCycleEnd: boolean  // 그 회차의 청산일인지
+}
+
+/**
+ * 각 사이클의 자산을 일 단위로 펼친 시계열을 만든다.
+ * 마크는 종가만 담고 있으므로 자산금액은 그때그때 다시 계산한다 (수량은 회차 매수 수량 그대로).
+ * 매도비용은 아직 팔지 않았으므로 빼지 않고, 매수비용만 차감한다.
+ */
+export function buildDailySeries(cycles: SimCycle[], marks: ScoreDailyMark[]): DailyPoint[] {
+  const points: DailyPoint[] = []
+
+  for (const cycle of cycles) {
+    const cycleMarks = marks.filter(m => m.snapshotDate === cycle.date)
+    const dates = [...new Set(cycleMarks.map(m => m.date))].sort()
+    const leftover = cycle.startAsset - cycle.investAmount
+    const buyCost = Math.round(cycle.investAmount * FEE_RATE)
+
+    const cyclePoints: DailyPoint[] = dates.map(date => {
+      const holdingsValue = cycle.holdings.reduce((sum, h) => {
+        const found = cycleMarks.find(m => m.code === h.code && m.date === date)
+        const close = found ? found.close : h.entryPrice
+        return sum + h.quantity * close
+      }, 0)
+      return {
+        date,
+        asset: leftover + holdingsValue - buyCost,
+        cycleIndex: cycle.index,
+        isCycleEnd: false,
+      }
+    })
+
+    if (cycle.matured) {
+      const existing = cyclePoints.find(p => p.date === cycle.exitDate)
+      if (existing) {
+        existing.asset = cycle.endAsset
+        existing.isCycleEnd = true
+      } else {
+        cyclePoints.push({
+          date: cycle.exitDate,
+          asset: cycle.endAsset,
+          cycleIndex: cycle.index,
+          isCycleEnd: true,
+        })
+      }
+    }
+
+    points.push(...cyclePoints)
+  }
+
+  return points.sort((a, b) => a.date.localeCompare(b.date))
 }
