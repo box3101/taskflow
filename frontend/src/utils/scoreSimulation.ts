@@ -233,6 +233,18 @@ function runTrack(
   return result
 }
 
+/** 고점 대비 최대 낙폭(%). 반환값은 0 이하 */
+export function computeMdd(seedCash: number, assets: number[]): number {
+  let peak = seedCash
+  let mdd = 0
+  for (const a of assets) {
+    if (a > peak) peak = a
+    const dd = ((a - peak) / peak) * 100
+    if (dd < mdd) mdd = dd
+  }
+  return mdd
+}
+
 // ===== 진입점 =====
 export function simulate(input: SimInput): SimResult {
   const { snapshots, prices, stockCount, seedCash } = input
@@ -264,6 +276,10 @@ export function simulate(input: SimInput): SimResult {
   const finalAsset = cycles.length > 0 ? cycles[cycles.length - 1].endAsset : seedCash
   const finalAssetGross = cycles.length > 0 ? cycles[cycles.length - 1].endAssetGross : seedCash
 
+  // 확정 + 실매매 사이클만 지표 분모로 쓴다
+  const scored = cycles.filter(c => c.matured && !c.noTrade)
+  const winCount = scored.filter(c => c.profit > 0).length
+
   return {
     cycles,
     skipped,
@@ -273,13 +289,14 @@ export function simulate(input: SimInput): SimResult {
     totalReturnPct: ((finalAsset - seedCash) / seedCash) * 100,
     totalReturnPctGross: ((finalAssetGross - seedCash) / seedCash) * 100,
     totalCost: cycles.reduce((s, c) => s + c.tradeCost, 0),
-    maturedCount: 0,
-    pendingCount: 0,
-    winCount: 0,
-    winRate: null,
-    mdd: 0,
-    avgReturnPct: null,
-    bestCycle: null,
-    worstCycle: null,
+    maturedCount: scored.length,
+    pendingCount: cycles.filter(c => !c.matured).length,
+    winCount,
+    winRate: scored.length > 0 ? (winCount / scored.length) * 100 : null,
+    mdd: computeMdd(seedCash, scored.map(c => c.endAsset)),
+    avgReturnPct:
+      scored.length > 0 ? scored.reduce((s, c) => s + c.returnPct, 0) / scored.length : null,
+    bestCycle: scored.length > 0 ? scored.reduce((a, b) => (b.returnPct > a.returnPct ? b : a)) : null,
+    worstCycle: scored.length > 0 ? scored.reduce((a, b) => (b.returnPct < a.returnPct ? b : a)) : null,
   }
 }

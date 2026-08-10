@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { ScoreSnapshotFull, ScoreSnapshotItem } from '../api/stockApi'
 import {
-  tradingDaysBetween, addTradingDays, selectCycles, simulate,
+  tradingDaysBetween, addTradingDays, selectCycles, simulate, computeMdd,
   HORIZON_DAYS, FEE_RATE, TAX_RATE,
 } from './scoreSimulation'
 
@@ -188,5 +188,80 @@ describe('사이클 손익 계산', () => {
     expect(r.cycles).toEqual([])
     expect(r.finalAsset).toBe(1000000)
     expect(r.totalReturnPct).toBe(0)
+  })
+})
+
+describe('MDD 계산', () => {
+  it('고점 대비 최대 낙폭을 퍼센트로 낸다', () => {
+    expect(computeMdd(1000000, [1100000, 990000, 1050000])).toBeCloseTo(-10, 6)
+  })
+
+  it('한 번도 고점을 깨지 않으면 0이다', () => {
+    expect(computeMdd(1000000, [1100000, 1200000])).toBe(0)
+  })
+
+  it('첫 사이클부터 손실이면 종자금 대비로 잰다', () => {
+    expect(computeMdd(1000000, [950000])).toBeCloseTo(-5, 6)
+  })
+
+  it('자산이 없으면 0이다', () => {
+    expect(computeMdd(1000000, [])).toBe(0)
+  })
+})
+
+describe('지표 집계', () => {
+  // 회차1: 확정 — 1,000원 → 1,100원, 1000주
+  //   투입 1,000,000 / 매수비용 150 / 매도금 1,100,000 / 매도비용 1,815
+  //   종료자산 = 0 + 1,100,000 - 1,965 = 1,098,035
+  // 회차2: 진행중 — 현재가 900원
+  //   가용 1,098,035 → 1,098주 투입 1,098,000, 잔돈 35
+  //   매도금 988,200 / 비용 165 + 1,631 = 1,796 → 종료자산 986,439
+  const c1 = snap('2026-08-05', '2026-08-06', [
+    item({ code: 'A', total: 90, entryPrice: 1000, exitPrice: 1100, exitDate: '2026-08-11' }),
+  ])
+  const c2 = snap('2026-08-11', '2026-08-12', [
+    item({ code: 'B', total: 90, entryPrice: 1000 }),
+  ])
+  const run = () => simulate({
+    snapshots: [c1, c2], prices: { B: 900 }, stockCount: 1, seedCash: 1000000,
+  })
+
+  it('사이클별 종료자산과 비용이 정확하다', () => {
+    const r = run()
+    expect(r.cycles[0].endAsset).toBe(1098035)
+    expect(r.cycles[0].tradeCost).toBe(1965)
+    expect(r.cycles[1].endAsset).toBe(986439)
+    expect(r.finalAsset).toBe(986439)
+  })
+
+  it('진행중 사이클은 승률 분모에서 제외한다', () => {
+    const r = run()
+    expect(r.maturedCount).toBe(1)
+    expect(r.pendingCount).toBe(1)
+    expect(r.winCount).toBe(1)
+    expect(r.winRate).toBe(100)
+  })
+
+  it('평균·최고·최악은 확정 사이클만 본다', () => {
+    const r = run()
+    expect(r.avgReturnPct).toBeCloseTo(9.8035, 3)
+    expect(r.bestCycle?.index).toBe(1)
+    expect(r.worstCycle?.index).toBe(1)
+  })
+
+  it('확정 사이클이 없으면 승률·평균이 null이다', () => {
+    const r = simulate({ snapshots: [c2], prices: { B: 900 }, stockCount: 1, seedCash: 1000000 })
+    expect(r.winRate).toBeNull()
+    expect(r.avgReturnPct).toBeNull()
+    expect(r.bestCycle).toBeNull()
+    expect(r.mdd).toBe(0)
+  })
+
+  it('매매 없는 사이클은 승률 분모에서 뺀다', () => {
+    const empty = snap('2026-08-05', '2026-08-06', [item({ code: 'BAD', total: 70, entryPrice: 0 })])
+    const r = simulate({ snapshots: [empty], prices: {}, stockCount: 3, seedCash: 1000000 })
+    expect(r.cycles.length).toBe(1)
+    expect(r.maturedCount).toBe(0)
+    expect(r.winRate).toBeNull()
   })
 })
