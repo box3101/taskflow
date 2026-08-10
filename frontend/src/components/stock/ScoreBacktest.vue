@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { UiBadge, UiButton, UiIcon } from '@leechanyong/ispark-ui'
-import { fetchSnapshotList, fetchSnapshotByDate, fetchPrice, matureSnapshots } from '../../api/stockApi'
+import { matureSnapshots } from '../../api/stockApi'
 import type { ScoreSnapshotItem } from '../../api/stockApi'
+import { useScoreSnapshots } from '../../composables/useScoreSnapshots'
+import { tradingDaysBetween } from '../../utils/scoreSimulation'
 
 const HORIZON_DAYS = 3
 
@@ -19,76 +21,56 @@ interface SnapshotReturn {
   items: ScoredItem[]
 }
 
-const loading = ref(false)
+const { snapshots, prices: snapPrices, loading, error, handleLoadSnapshots, handleRefreshSnapshots } = useScoreSnapshots()
+
 const maturing = ref(false)
 const snapshotReturns = ref<SnapshotReturn[]>([])
-const error = ref('')
 
-// ── 거래일 계산 (주말 제외, 공휴일 무시) ──
-function tradingDaysBetween(from: string, to: string): number {
-  const start = new Date(from + 'T00:00:00')
-  const end = new Date(to + 'T00:00:00')
-  let count = 0
-  const cur = new Date(start)
-  while (cur < end) {
-    cur.setDate(cur.getDate() + 1)
-    const dow = cur.getDay()
-    if (dow !== 0 && dow !== 6) count++
-  }
-  return Math.max(1, count)
-}
 function todayStr(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-async function loadBacktestData() {
-  loading.value = true
-  error.value = ''
-  try {
-    const list = await fetchSnapshotList()
-    if (list.length === 0) {
-      error.value = '저장된 스냅샷이 없습니다. Smart Score에서 먼저 스코어를 저장하세요.'
-      return
-    }
-
-    const results: SnapshotReturn[] = []
-
-    for (const snap of list) {
-      const full = await fetchSnapshotByDate(snap.date)
-      if (!full || !full.data) continue
-
-      const items = full.data as ScoreSnapshotItem[]
-      // 미확정 종목만 현재가 조회 (확정 종목은 종료가 고정)
-      const pendingCodes = items.filter(i => i.exitPrice == null).map(i => i.code)
-      const prices = pendingCodes.length > 0 ? await fetchPrice(pendingCodes) : {}
-
-      const scored: ScoredItem[] = items.map(item => {
-        const isMatured = item.exitPrice != null && item.exitPrice > 0
-        const cur = prices[item.code]?.price || 0
-        const entry = item.entryPrice || 0
-        const computedReturn = isMatured
-          ? (item.returnPct ?? 0)
-          : (entry > 0 && cur > 0 ? ((cur - entry) / entry) * 100 : 0)
-        return { ...item, currentPrice: cur, computedReturn, isMatured }
-      })
-
-      const withEntry = scored.filter(i => i.entryPrice > 0)
-      results.push({
-        date: full.date,
-        entryDate: full.entryDate,
-        matured: withEntry.length > 0 && withEntry.every(i => i.isMatured),
-        items: scored,
-      })
-    }
-
-    snapshotReturns.value = results
-  } catch (e) {
-    error.value = '데이터 로드 실패'
-    console.error(e)
-  } finally {
-    loading.value = false
+// 스냅샷이 없을 때 보여줄 안내 (에러보다 우선)
+const emptyNotice = computed(() => {
+  if (error.value) return error.value
+  if (!loading.value && snapshots.value.length === 0) {
+    return '저장된 스냅샷이 없습니다. Smart Score에서 먼저 스코어를 저장하세요.'
   }
+  return ''
+})
+
+function buildReturns() {
+  snapshotReturns.value = snapshots.value.map(full => {
+    const items = full.data as ScoreSnapshotItem[]
+    const scored: ScoredItem[] = items.map(item => {
+      const isMatured = item.exitPrice != null && item.exitPrice > 0
+      const cur = snapPrices.value[item.code] || 0
+      const entry = item.entryPrice || 0
+      const computedReturn = isMatured
+        ? (item.returnPct ?? 0)
+        : (entry > 0 && cur > 0 ? ((cur - entry) / entry) * 100 : 0)
+      return { ...item, currentPrice: cur, computedReturn, isMatured }
+    })
+
+    const withEntry = scored.filter(i => i.entryPrice > 0)
+    return {
+      date: full.date,
+      entryDate: full.entryDate,
+      matured: withEntry.length > 0 && withEntry.every(i => i.isMatured),
+      items: scored,
+    }
+  })
+}
+
+async function loadBacktestData() {
+  await handleLoadSnapshots()
+  buildReturns()
+}
+
+async function refreshBacktestData() {
+  await handleRefreshSnapshots()
+  buildReturns()
 }
 
 // 만기 스냅샷 즉시 확정 (수동 트리거)
@@ -96,7 +78,7 @@ async function runMature() {
   maturing.value = true
   try {
     await matureSnapshots()
-    await loadBacktestData()
+    await refreshBacktestData()
   } catch (e) {
     console.error(e)
   } finally {
@@ -139,7 +121,7 @@ const dailySummaries = computed<DailySummary[]>(() => {
     // 보유일: 확정=진입→종료(D+3), 진행중=진입→오늘
     const exitDate = snap.items.find(i => i.exitDate)?.exitDate
     const heldDays = snap.entryDate
-      ? tradingDaysBetween(snap.entryDate, snap.matured && exitDate ? exitDate : today)
+      ? Math.max(1, tradingDaysBetween(snap.entryDate, snap.matured && exitDate ? exitDate : today))
       : HORIZON_DAYS
 
     const topAvg = avg(top)
@@ -202,7 +184,7 @@ loadBacktestData()
         <UiButton size="sm" variant="secondary" :disabled="maturing || loading" @click="runMature">
           {{ maturing ? '확정 중...' : '만기 확정' }}
         </UiButton>
-        <UiButton size="sm" variant="secondary" :disabled="loading" @click="loadBacktestData">
+        <UiButton size="sm" variant="secondary" :disabled="loading" @click="refreshBacktestData">
           {{ loading ? '로딩...' : '새로고침' }}
         </UiButton>
       </div>
@@ -214,7 +196,7 @@ loadBacktestData()
     </p>
 
     <div v-if="loading" class="loading-msg">스냅샷 분석 중...</div>
-    <div v-else-if="error" class="loading-msg">{{ error }}</div>
+    <div v-else-if="emptyNotice" class="loading-msg">{{ emptyNotice }}</div>
 
     <template v-else>
       <!-- 전체 구간 스프레드 요약 (확정 스냅샷만) -->
