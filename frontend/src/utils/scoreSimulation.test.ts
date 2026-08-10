@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { ScoreSnapshotFull, ScoreSnapshotItem } from '../api/stockApi'
 import {
-  tradingDaysBetween, addTradingDays, selectCycles,
+  tradingDaysBetween, addTradingDays, selectCycles, simulate,
   HORIZON_DAYS, FEE_RATE, TAX_RATE,
 } from './scoreSimulation'
 
@@ -90,5 +90,103 @@ describe('논오버랩 사이클 선택', () => {
 
   it('스냅샷이 없으면 빈 결과를 반환한다', () => {
     expect(selectCycles([])).toEqual({ picked: [], skipped: [] })
+  })
+})
+
+describe('사이클 손익 계산', () => {
+  it('단주는 버림 처리하고 잔돈은 현금으로 남긴다', () => {
+    // 종자금 100만, N=2 → 종목당 50만 배분
+    // X: floor(500000/30000)=16주 → 48만 투입, Y: floor(500000/7000)=71주 → 49.7만 투입
+    // 잔돈 = 1,000,000 - 977,000 = 23,000
+    const s = snap('2026-08-05', '2026-08-06', [
+      item({ code: 'X', total: 80, entryPrice: 30000, exitPrice: 33000, exitDate: '2026-08-11' }),
+      item({ code: 'Y', total: 70, entryPrice: 7000, exitPrice: 7000, exitDate: '2026-08-11' }),
+    ])
+    const r = simulate({ snapshots: [s], prices: {}, stockCount: 2, seedCash: 1000000 })
+
+    const c = r.cycles[0]
+    expect(c.holdings.map(h => h.quantity)).toEqual([16, 71])
+    expect(c.investAmount).toBe(977000)
+    // 비용전: 23,000 + (16×33,000 + 71×7,000) = 23,000 + 1,025,000
+    expect(c.endAssetGross).toBe(1048000)
+    // 비용후: 매수 round(977,000×0.00015)=147, 매도 round(1,025,000×0.00165)=1,691
+    expect(c.tradeCost).toBe(1838)
+    expect(c.endAsset).toBe(1046162)
+  })
+
+  it('비용전·비용후 누적수익률을 각각 낸다', () => {
+    const s = snap('2026-08-05', '2026-08-06', [
+      item({ code: 'X', total: 80, entryPrice: 30000, exitPrice: 33000, exitDate: '2026-08-11' }),
+      item({ code: 'Y', total: 70, entryPrice: 7000, exitPrice: 7000, exitDate: '2026-08-11' }),
+    ])
+    const r = simulate({ snapshots: [s], prices: {}, stockCount: 2, seedCash: 1000000 })
+    expect(r.totalReturnPctGross).toBeCloseTo(4.8, 4)
+    expect(r.totalReturnPct).toBeCloseTo(4.6162, 4)
+    expect(r.totalCost).toBe(1838)
+  })
+
+  it('점수 내림차순 상위 N종목만 매수한다', () => {
+    const s = snap('2026-08-05', '2026-08-06', [
+      item({ code: 'LOW', total: 50, entryPrice: 1000, exitPrice: 1000, exitDate: '2026-08-11' }),
+      item({ code: 'HIGH', total: 90, entryPrice: 1000, exitPrice: 1000, exitDate: '2026-08-11' }),
+      item({ code: 'MID', total: 70, entryPrice: 1000, exitPrice: 1000, exitDate: '2026-08-11' }),
+    ])
+    const r = simulate({ snapshots: [s], prices: {}, stockCount: 2, seedCash: 1000000 })
+    expect(r.cycles[0].holdings.map(h => h.code)).toEqual(['HIGH', 'MID'])
+  })
+
+  it('entryPrice가 0인 종목은 빼고 남은 종목으로 균등 배분한다', () => {
+    const s = snap('2026-08-05', '2026-08-06', [
+      item({ code: 'X', total: 80, entryPrice: 10000, exitPrice: 10000, exitDate: '2026-08-11' }),
+      item({ code: 'BAD', total: 70, entryPrice: 0 }),
+      item({ code: 'Z', total: 60, entryPrice: 5000, exitPrice: 5000, exitDate: '2026-08-11' }),
+    ])
+    const r = simulate({ snapshots: [s], prices: {}, stockCount: 3, seedCash: 1000000 })
+    const c = r.cycles[0]
+    expect(c.holdings.map(h => h.code)).toEqual(['X', 'Z'])
+    // 100만을 2종목으로 균등 → 50만씩, 유휴 현금 없음
+    expect(c.holdings.map(h => h.quantity)).toEqual([50, 100])
+    expect(c.investAmount).toBe(1000000)
+  })
+
+  it('미확정 종목은 전달받은 현재가로 평가한다', () => {
+    const s = snap('2026-08-05', '2026-08-06', [
+      item({ code: 'P', total: 80, entryPrice: 1000 }),
+    ])
+    const r = simulate({ snapshots: [s], prices: { P: 1200 }, stockCount: 1, seedCash: 1000000 })
+    expect(r.cycles[0].matured).toBe(false)
+    expect(r.cycles[0].holdings[0].exitPrice).toBe(1200)
+  })
+
+  it('현재가 조회에 실패한 미확정 종목은 진입가로 평가한다', () => {
+    const s = snap('2026-08-05', '2026-08-06', [
+      item({ code: 'P', total: 80, entryPrice: 1000 }),
+    ])
+    const r = simulate({ snapshots: [s], prices: {}, stockCount: 1, seedCash: 1000000 })
+    expect(r.cycles[0].holdings[0].exitPrice).toBe(1000)
+    expect(r.cycles[0].holdings[0].profit).toBe(0)
+  })
+
+  it('매수 가능한 종목이 없으면 전액 현금으로 넘어간다', () => {
+    const s = snap('2026-08-05', '2026-08-06', [item({ code: 'BAD', total: 70, entryPrice: 0 })])
+    const r = simulate({ snapshots: [s], prices: {}, stockCount: 3, seedCash: 1000000 })
+    expect(r.cycles[0].noTrade).toBe(true)
+    expect(r.cycles[0].endAsset).toBe(1000000)
+  })
+
+  it('주가가 배분금보다 비싸 한 주도 못 사면 매매 없음으로 본다', () => {
+    const s = snap('2026-08-05', '2026-08-06', [
+      item({ code: 'PRICEY', total: 80, entryPrice: 2000000, exitPrice: 2100000, exitDate: '2026-08-11' }),
+    ])
+    const r = simulate({ snapshots: [s], prices: {}, stockCount: 1, seedCash: 1000000 })
+    expect(r.cycles[0].noTrade).toBe(true)
+    expect(r.cycles[0].endAsset).toBe(1000000)
+  })
+
+  it('사이클이 없으면 종자금 그대로 반환한다', () => {
+    const r = simulate({ snapshots: [], prices: {}, stockCount: 3, seedCash: 1000000 })
+    expect(r.cycles).toEqual([])
+    expect(r.finalAsset).toBe(1000000)
+    expect(r.totalReturnPct).toBe(0)
   })
 })

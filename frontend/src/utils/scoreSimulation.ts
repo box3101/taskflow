@@ -86,3 +86,200 @@ export function selectCycles(snapshots: ScoreSnapshotFull[]): {
 
   return { picked, skipped }
 }
+
+// ===== 시뮬레이션 타입 =====
+export interface SimHolding {
+  code: string
+  name: string
+  score: number
+  entryPrice: number
+  quantity: number
+  cost: number          // 투입금 (수수료 제외)
+  exitPrice: number
+  proceeds: number      // 매도금 (수수료·세금 제외)
+  profit: number
+  returnPct: number
+  isMatured: boolean
+}
+
+export interface SimCycle {
+  index: number         // 회차 (1부터)
+  date: string          // 스코어일
+  entryDate: string
+  exitDate: string
+  matured: boolean      // 매수 종목 전부가 exitPrice를 가짐
+  noTrade: boolean      // 한 주도 매수하지 못함
+  holdings: SimHolding[]
+  investAmount: number
+  startAsset: number
+  endAsset: number      // 비용후
+  endAssetGross: number // 비용전
+  profit: number
+  returnPct: number
+  tradeCost: number
+}
+
+export interface SimInput {
+  snapshots: ScoreSnapshotFull[]
+  prices: Record<string, number>   // 미확정 종목 현재가 (code → 원)
+  stockCount: number
+  seedCash: number
+}
+
+export interface SimResult {
+  cycles: SimCycle[]
+  skipped: SkippedSnapshot[]
+  seedCash: number
+  finalAsset: number
+  finalAssetGross: number
+  totalReturnPct: number
+  totalReturnPctGross: number
+  totalCost: number
+  maturedCount: number   // 확정 + 실매매 사이클 수 (지표 분모)
+  pendingCount: number
+  winCount: number
+  winRate: number | null
+  mdd: number
+  avgReturnPct: number | null
+  bestCycle: SimCycle | null
+  worstCycle: SimCycle | null
+}
+
+// ===== 트랙 실행 =====
+interface TrackCycle {
+  holdings: SimHolding[]
+  investAmount: number
+  startAsset: number
+  endAsset: number
+  tradeCost: number
+  matured: boolean
+  noTrade: boolean
+}
+
+/** 자금 한 줄을 순차로 굴린다. withCost=false면 수수료·세금 0으로 계산 */
+function runTrack(
+  picked: PickedCycle[],
+  prices: Record<string, number>,
+  stockCount: number,
+  seedCash: number,
+  withCost: boolean,
+): TrackCycle[] {
+  const feeRate = withCost ? FEE_RATE : 0
+  const taxRate = withCost ? TAX_RATE : 0
+  const result: TrackCycle[] = []
+  let asset = seedCash
+
+  for (const { snap } of picked) {
+    const startAsset = asset
+    const items: ScoreSnapshotItem[] = snap.data || []
+    const candidates = items
+      .filter(i => i.entryPrice > 0)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, stockCount)
+
+    if (candidates.length === 0) {
+      result.push({
+        holdings: [], investAmount: 0, startAsset, endAsset: startAsset,
+        tradeCost: 0, matured: true, noTrade: true,
+      })
+      continue
+    }
+
+    const per = startAsset / candidates.length
+    const holdings: SimHolding[] = []
+    let investAmount = 0
+    let proceedsTotal = 0
+
+    for (const c of candidates) {
+      const quantity = Math.floor(per / c.entryPrice)
+      const isMatured = c.exitPrice != null && c.exitPrice > 0
+      const exitPrice = isMatured ? c.exitPrice! : (prices[c.code] || c.entryPrice)
+      const cost = quantity * c.entryPrice
+      const proceeds = quantity * exitPrice
+      investAmount += cost
+      proceedsTotal += proceeds
+      holdings.push({
+        code: c.code,
+        name: c.name,
+        score: c.total,
+        entryPrice: c.entryPrice,
+        quantity,
+        cost,
+        exitPrice,
+        proceeds,
+        profit: proceeds - cost,
+        returnPct: ((exitPrice - c.entryPrice) / c.entryPrice) * 100,
+        isMatured,
+      })
+    }
+
+    const tradeCost =
+      Math.round(investAmount * feeRate) + Math.round(proceedsTotal * (feeRate + taxRate))
+    const leftover = startAsset - investAmount
+    const endAsset = leftover + proceedsTotal - tradeCost
+
+    result.push({
+      holdings,
+      investAmount,
+      startAsset,
+      endAsset,
+      tradeCost,
+      matured: holdings.every(h => h.isMatured),
+      noTrade: holdings.every(h => h.quantity === 0),
+    })
+    asset = endAsset
+  }
+
+  return result
+}
+
+// ===== 진입점 =====
+export function simulate(input: SimInput): SimResult {
+  const { snapshots, prices, stockCount, seedCash } = input
+  const { picked, skipped } = selectCycles(snapshots)
+
+  const net = runTrack(picked, prices, stockCount, seedCash, true)
+  const gross = runTrack(picked, prices, stockCount, seedCash, false)
+
+  const cycles: SimCycle[] = picked.map((p, i) => ({
+    index: i + 1,
+    date: p.snap.date,
+    entryDate: p.snap.entryDate!,
+    exitDate: p.exitDate,
+    matured: net[i].matured,
+    noTrade: net[i].noTrade,
+    holdings: net[i].holdings,
+    investAmount: net[i].investAmount,
+    startAsset: net[i].startAsset,
+    endAsset: net[i].endAsset,
+    endAssetGross: gross[i].endAsset,
+    profit: net[i].endAsset - net[i].startAsset,
+    returnPct:
+      net[i].startAsset > 0
+        ? ((net[i].endAsset - net[i].startAsset) / net[i].startAsset) * 100
+        : 0,
+    tradeCost: net[i].tradeCost,
+  }))
+
+  const finalAsset = cycles.length > 0 ? cycles[cycles.length - 1].endAsset : seedCash
+  const finalAssetGross = cycles.length > 0 ? cycles[cycles.length - 1].endAssetGross : seedCash
+
+  return {
+    cycles,
+    skipped,
+    seedCash,
+    finalAsset,
+    finalAssetGross,
+    totalReturnPct: ((finalAsset - seedCash) / seedCash) * 100,
+    totalReturnPctGross: ((finalAssetGross - seedCash) / seedCash) * 100,
+    totalCost: cycles.reduce((s, c) => s + c.tradeCost, 0),
+    maturedCount: 0,
+    pendingCount: 0,
+    winCount: 0,
+    winRate: null,
+    mdd: 0,
+    avgReturnPct: null,
+    bestCycle: null,
+    worstCycle: null,
+  }
+}
