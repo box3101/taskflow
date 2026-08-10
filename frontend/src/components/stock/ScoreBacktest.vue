@@ -5,6 +5,7 @@ import { matureSnapshots } from '../../api/stockApi'
 import type { ScoreSnapshotItem } from '../../api/stockApi'
 import { useScoreSnapshots } from '../../composables/useScoreSnapshots'
 import { tradingDaysBetween } from '../../utils/scoreSimulation'
+import { formatPct, pctColor } from '../../utils/stockFormat'
 
 const HORIZON_DAYS = 3
 
@@ -159,16 +160,6 @@ const spread = computed(() => {
 })
 
 const pendingCount = computed(() => dailySummaries.value.filter(d => !d.matured).length)
-
-function formatPct(v: number): string {
-  const sign = v >= 0 ? '+' : ''
-  return `${sign}${v.toFixed(2)}%`
-}
-function pctColor(v: number): string {
-  if (v > 0) return '#ef4444'
-  if (v < 0) return '#3b82f6'
-  return '#6b7280'
-}
 
 loadBacktestData()
 </script>

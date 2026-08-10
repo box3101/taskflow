@@ -5,6 +5,7 @@ import type { TabItem, SelectOption, TableColumn } from '@leechanyong/ispark-ui'
 import { useScoreSnapshots } from '../../composables/useScoreSnapshots'
 import { simulate, HORIZON_DAYS } from '../../utils/scoreSimulation'
 import type { SimCycle } from '../../utils/scoreSimulation'
+import { formatPct, pctColor } from '../../utils/stockFormat'
 
 const STORAGE_COUNT = 'taskflow.scoreSim.stockCount'
 const STORAGE_SEED = 'taskflow.scoreSim.seedCash'
@@ -76,8 +77,6 @@ const assetChart = computed(() => {
 
 // ===== 표시 헬퍼 =====
 const won = (v: number) => Math.round(v).toLocaleString()
-const pct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
-const pctColor = (v: number) => (v > 0 ? '#ef4444' : v < 0 ? '#3b82f6' : '#6b7280')
 
 // ===== 회차별 표 =====
 const cycleColumns: TableColumn[] = [
@@ -166,9 +165,9 @@ handleLoadSnapshots()
         <div class="sum-card">
           <div class="s-label">누적수익률</div>
           <div class="s-value" :style="{ color: pctColor(result.totalReturnPct) }">
-            {{ pct(result.totalReturnPct) }}
+            {{ formatPct(result.totalReturnPct) }}
           </div>
-          <div class="s-sub">비용전 {{ pct(result.totalReturnPctGross) }}</div>
+          <div class="s-sub">비용전 {{ formatPct(result.totalReturnPctGross) }}</div>
         </div>
         <div class="sum-card">
           <div class="s-label">승률</div>
@@ -194,9 +193,9 @@ handleLoadSnapshots()
       </div>
 
       <p v-if="result.avgReturnPct !== null && result.bestCycle && result.worstCycle" class="stat-note">
-        회차 평균 <b :style="{ color: pctColor(result.avgReturnPct) }">{{ pct(result.avgReturnPct) }}</b>
-        · 최고 {{ result.bestCycle.index }}회차 {{ pct(result.bestCycle.returnPct) }}
-        · 최악 {{ result.worstCycle.index }}회차 {{ pct(result.worstCycle.returnPct) }}
+        회차 평균 <b :style="{ color: pctColor(result.avgReturnPct) }">{{ formatPct(result.avgReturnPct) }}</b>
+        · 최고 {{ result.bestCycle.index }}회차 {{ formatPct(result.bestCycle.returnPct) }}
+        · 최악 {{ result.worstCycle.index }}회차 {{ formatPct(result.worstCycle.returnPct) }}
       </p>
 
       <p class="cost-note">
@@ -226,7 +225,7 @@ handleLoadSnapshots()
             </span>
           </template>
           <template #cell-returnPct="{ row }: any">
-            <span :style="{ color: pctColor(row.returnPct) }">{{ pct(row.returnPct) }}</span>
+            <span :style="{ color: pctColor(row.returnPct) }">{{ formatPct(row.returnPct) }}</span>
           </template>
         </UiTable>
 
@@ -270,7 +269,7 @@ handleLoadSnapshots()
               <td :style="{ color: pctColor(h.profit), fontWeight: 700 }">
                 {{ h.profit >= 0 ? '+' : '' }}{{ won(h.profit) }}
               </td>
-              <td :style="{ color: pctColor(h.returnPct) }">{{ pct(h.returnPct) }}</td>
+              <td :style="{ color: pctColor(h.returnPct) }">{{ formatPct(h.returnPct) }}</td>
             </tr>
           </tbody>
         </table>

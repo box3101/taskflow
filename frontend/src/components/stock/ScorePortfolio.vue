@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { UiBadge, UiButton, UiIcon } from '@leechanyong/ispark-ui'
 import api from '../../api/client'
+import { formatPct } from '../../utils/stockFormat'
 
 interface Holding {
   code: string
@@ -126,10 +127,6 @@ const totalReturn = computed(() => {
 function formatMoney(v: number): string {
   if (Math.abs(v) >= 10000) return `${(v / 10000).toFixed(1)}만`
   return v.toLocaleString()
-}
-
-function formatPct(v: number): string {
-  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
 }
 
 onMounted(loadPortfolio)
