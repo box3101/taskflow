@@ -371,6 +371,19 @@ export async function fetchSnapshotList(): Promise<ScoreSnapshotSummary[]> {
   return data.data || []
 }
 
+// 일별 종가 마크 — 자산곡선을 회차가 아닌 일 단위로 그리기 위한 원재료
+export interface ScoreDailyMark {
+  snapshotDate: string   // 어느 스냅샷의 마크인지 (스코어일)
+  code: string
+  date: string           // 마크를 찍은 거래일
+  close: number
+}
+
+export async function fetchDailyMarks(): Promise<ScoreDailyMark[]> {
+  const { data } = await api.get('/score-snapshots/marks')
+  return data.data || []
+}
+
 export async function fetchSnapshotByDate(date: string): Promise<ScoreSnapshotFull | null> {
   try {
     const { data } = await api.get(`/score-snapshots/${date}`)

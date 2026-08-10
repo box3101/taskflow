@@ -412,6 +412,23 @@ model ScoreSnapshot {
   @@map("score_snapshots")
 }
 
+// 진행중 스냅샷 종목의 일별 종가 마크 (자산곡선을 일 단위로 그리기 위한 기록)
+// 자산금액이 아니라 종가를 저장한다 — 상위 N·종자금은 화면에서 바뀌므로
+// 금액을 굳히면 설정을 바꿨을 때 과거 곡선이 거짓이 된다.
+// ScoreSnapshot.data를 만기 확정 cron이 통째로 덮어쓰므로 별도 테이블로 분리.
+model ScoreDailyMark {
+  id           Int      @id @default(autoincrement())
+  snapshotDate String   @map("snapshot_date") @db.VarChar(10) // 스냅샷의 스코어일
+  code         String   @db.VarChar(10)
+  date         String   @db.VarChar(10)                        // 마크를 찍은 날 (거래일)
+  close        Int                                              // 그날 종가
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@unique([snapshotDate, code, date])
+  @@index([snapshotDate, date])
+  @@map("score_daily_marks")
+}
+
 // 스코어 검증 포트폴리오
 model ScorePortfolio {
   id           Int      @id @default(autoincrement())
