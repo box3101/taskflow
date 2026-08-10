@@ -1,6 +1,6 @@
 import { ref } from 'vue'
-import { fetchSnapshotList, fetchSnapshotByDate, fetchPrice } from '../api/stockApi'
-import type { ScoreSnapshotFull } from '../api/stockApi'
+import { fetchSnapshotList, fetchSnapshotByDate, fetchPrice, fetchDailyMarks } from '../api/stockApi'
+import type { ScoreSnapshotFull, ScoreDailyMark } from '../api/stockApi'
 
 // 캐시 유효 시간 — 탭을 오래 비웠다 돌아오면 시세를 다시 받는다
 const CACHE_TTL_MS = 90_000
@@ -8,6 +8,7 @@ const CACHE_TTL_MS = 90_000
 // ===== 상태 변수 (모듈 스코프 — 카드 간 공유) =====
 const snapshots = ref<ScoreSnapshotFull[]>([])
 const prices = ref<Record<string, number>>({})   // 미확정 종목 현재가
+const marks = ref<ScoreDailyMark[]>([])           // 일별 종가 마크 (자산곡선 일 단위 계산용)
 const loading = ref(false)
 const loaded = ref(false)
 const error = ref('')
@@ -22,7 +23,7 @@ const loadOnce = async () => {
   loading.value = true
   error.value = ''
   try {
-    const list = await fetchSnapshotList()
+    const [list, markList] = await Promise.all([fetchSnapshotList(), fetchDailyMarks()])
     const fulls: ScoreSnapshotFull[] = []
     for (const s of list) {
       const full = await fetchSnapshotByDate(s.date)
@@ -43,6 +44,7 @@ const loadOnce = async () => {
 
     snapshots.value = fulls
     prices.value = priceMap
+    marks.value = markList
     loaded.value = true
     loadedAt = Date.now()
   } catch (e) {
@@ -74,5 +76,5 @@ const handleRefreshSnapshots = async () => {
 }
 
 export const useScoreSnapshots = () => {
-  return { snapshots, prices, loading, loaded, error, handleLoadSnapshots, handleRefreshSnapshots }
+  return { snapshots, prices, marks, loading, loaded, error, handleLoadSnapshots, handleRefreshSnapshots }
 }

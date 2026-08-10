@@ -3,14 +3,14 @@ import { ref, computed, watch } from 'vue'
 import { UiButton, UiIcon, UiTab, UiSelect, UiEmpty, UiChart, UiTable, UiBadge, UiDrawer } from '@leechanyong/ispark-ui'
 import type { TabItem, SelectOption, TableColumn } from '@leechanyong/ispark-ui'
 import { useScoreSnapshots } from '../../composables/useScoreSnapshots'
-import { simulate, HORIZON_DAYS } from '../../utils/scoreSimulation'
+import { simulate, buildDailySeries, computeDailyMdd, HORIZON_DAYS } from '../../utils/scoreSimulation'
 import type { SimCycle } from '../../utils/scoreSimulation'
 import { formatPct, pctColor } from '../../utils/stockFormat'
 
 const STORAGE_COUNT = 'taskflow.scoreSim.stockCount'
 const STORAGE_SEED = 'taskflow.scoreSim.seedCash'
 
-const { snapshots, prices, loading, error, handleLoadSnapshots, handleRefreshSnapshots } = useScoreSnapshots()
+const { snapshots, prices, marks, loading, error, handleLoadSnapshots, handleRefreshSnapshots } = useScoreSnapshots()
 
 // ===== 설정 (localStorage 저장) =====
 const stockCount = ref(Math.max(1, Number(localStorage.getItem(STORAGE_COUNT)) || 3))
@@ -52,23 +52,68 @@ const result = computed(() => simulate({
 const hasCycles = computed(() => result.value.cycles.length > 0)
 const noEntryCount = computed(() => result.value.skipped.filter(s => s.reason === 'no-entry-date').length)
 
+// ===== 일별 자산 시계열 =====
+// 백엔드가 ScoreDailyMark를 기록하기 시작한 지 얼마 안 됐다면 마크가 비어있을 수 있다 — 그 경우 회차 기준으로 폴백한다
+const dailySeries = computed(() => buildDailySeries(result.value.cycles, marks.value))
+const hasDailySeries = computed(() => dailySeries.value.length > 0)
+
+// ===== MDD =====
+// 일별 시리즈가 있으면 회차 안쪽 낙폭까지 반영한 일별 MDD를, 없으면 회차 기준 MDD를 쓴다
+const mddValue = computed(() =>
+  hasDailySeries.value ? computeDailyMdd(result.value.seedCash, dailySeries.value) : result.value.mdd
+)
+const mddBasisLabel = computed(() => (hasDailySeries.value ? '일별 기준 최대낙폭' : '확정 회차 기준 최대낙폭'))
+
 // ===== 자산곡선 =====
 // 라인차트 config 계약: { categories, datasets } — datasets는 Chart.js 데이터셋을 그대로 받는다
 const assetChart = computed(() => {
   const cycles = result.value.cycles
+  const series = dailySeries.value
+
+  if (!hasDailySeries.value) {
+    // 마크가 아직 없으면(과거 회차 등) 기존처럼 회차 기준으로 그린다
+    return {
+      categories: ['시작', ...cycles.map(c => c.entryDate.slice(5))],
+      datasets: [
+        {
+          label: '비용후',
+          data: [result.value.seedCash, ...cycles.map(c => c.endAsset)],
+          borderColor: '#ef4444',
+        },
+        {
+          label: '비용전',
+          data: [result.value.seedCash, ...cycles.map(c => c.endAssetGross)],
+          borderColor: '#9ca3af',
+          borderDash: [4, 4],
+        },
+      ],
+      tooltipValueSuffix: '원',
+    }
+  }
+
+  // 비용전(수수료·세금 미차감) 트랙은 매수 수량이 비용후 트랙과 갈리기 때문에 일별 마크(종가)만으로는
+  // 중간 날짜의 자산을 계산할 수 없다 — 아는 값(회차 종료 시점)만 점으로 찍고 나머지는 null로 비워
+  // 끊긴 선으로 그린다. 억지로 이어 붙이면 실제로 계산하지 않은 값을 있는 것처럼 보여주게 된다.
   return {
-    categories: ['시작', ...cycles.map(c => c.entryDate.slice(5))],
+    categories: ['시작', ...series.map(p => p.date.slice(5))],
     datasets: [
       {
         label: '비용후',
-        data: [result.value.seedCash, ...cycles.map(c => c.endAsset)],
+        data: [result.value.seedCash, ...series.map(p => p.asset)],
         borderColor: '#ef4444',
       },
       {
         label: '비용전',
-        data: [result.value.seedCash, ...cycles.map(c => c.endAssetGross)],
+        data: [
+          result.value.seedCash,
+          ...series.map(p => {
+            if (!p.isCycleEnd) return null
+            return cycles.find(c => c.index === p.cycleIndex)?.endAssetGross ?? null
+          }),
+        ],
         borderColor: '#9ca3af',
         borderDash: [4, 4],
+        spanGaps: false,
       },
     ],
     tooltipValueSuffix: '원',
@@ -180,10 +225,10 @@ handleLoadSnapshots()
         </div>
         <div class="sum-card">
           <div class="s-label">MDD</div>
-          <div class="s-value" :style="{ color: result.mdd < 0 ? '#3b82f6' : '#6b7280' }">
-            {{ result.mdd === 0 ? '-' : `${result.mdd.toFixed(2)}%` }}
+          <div class="s-value" :style="{ color: mddValue < 0 ? '#3b82f6' : '#6b7280' }">
+            {{ mddValue === 0 ? '-' : `${mddValue.toFixed(2)}%` }}
           </div>
-          <div class="s-sub">확정 회차 기준 최대낙폭</div>
+          <div class="s-sub">{{ mddBasisLabel }}</div>
         </div>
       </div>
 
