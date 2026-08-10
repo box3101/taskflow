@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { UiButton, UiIcon, UiTab, UiSelect, UiEmpty, UiChart } from '@leechanyong/ispark-ui'
-import type { TabItem, SelectOption } from '@leechanyong/ispark-ui'
+import { UiButton, UiIcon, UiTab, UiSelect, UiEmpty, UiChart, UiTable, UiBadge, UiDrawer } from '@leechanyong/ispark-ui'
+import type { TabItem, SelectOption, TableColumn } from '@leechanyong/ispark-ui'
 import { useScoreSnapshots } from '../../composables/useScoreSnapshots'
 import { simulate, HORIZON_DAYS } from '../../utils/scoreSimulation'
+import type { SimCycle } from '../../utils/scoreSimulation'
 
 const STORAGE_COUNT = 'taskflow.scoreSim.stockCount'
 const STORAGE_SEED = 'taskflow.scoreSim.seedCash'
@@ -77,6 +78,47 @@ const assetChart = computed(() => {
 const won = (v: number) => Math.round(v).toLocaleString()
 const pct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
 const pctColor = (v: number) => (v > 0 ? '#ef4444' : v < 0 ? '#3b82f6' : '#6b7280')
+
+// ===== 회차별 표 =====
+const cycleColumns: TableColumn[] = [
+  { key: 'no', label: '회차', width: '52px', align: 'center' },
+  { key: 'date', label: '스코어일', width: '72px', align: 'center' },
+  { key: 'entry', label: '진입', width: '64px', align: 'center', hideBelow: 640 },
+  { key: 'stocks', label: '종목', width: '48px', align: 'center' },
+  { key: 'status', label: '상태', width: '64px', align: 'center' },
+  { key: 'invest', label: '투입금', width: '96px', align: 'right', hideBelow: 480 },
+  { key: 'endAsset', label: '평가금', width: '96px', align: 'right' },
+  { key: 'profit', label: '손익', width: '92px', align: 'right' },
+  { key: 'returnPct', label: '수익률', width: '72px', align: 'right' },
+]
+
+const cycleRows = computed(() =>
+  result.value.cycles.map(c => ({
+    no: c.index,
+    date: c.date.slice(5),
+    entry: c.entryDate.slice(5),
+    stocks: c.holdings.filter(h => h.quantity > 0).length,
+    status: c.matured ? '확정' : '진행중',
+    invest: c.investAmount,
+    endAsset: c.endAsset,
+    profit: c.profit,
+    returnPct: c.returnPct,
+    matured: c.matured,
+    cycle: c,
+  }))
+)
+
+// ===== 종목 상세 드로어 =====
+const drawerOpen = ref(false)
+const selectedCycle = ref<SimCycle | null>(null)
+
+function openCycleDetail(row: { cycle: SimCycle }) {
+  selectedCycle.value = row.cycle
+  drawerOpen.value = true
+}
+
+// 건너뛴 스냅샷 (보유중이라 매매 못 한 날)
+const holdingSkipped = computed(() => result.value.skipped.filter(s => s.reason === 'holding'))
 
 handleLoadSnapshots()
 </script>
@@ -162,7 +204,81 @@ handleLoadSnapshots()
         <template v-if="result.pendingCount"> · 진행중 {{ result.pendingCount }}회차</template>
         <template v-if="noEntryCount"> · 진입일 미기록 {{ noEntryCount }}건 제외</template>
       </p>
+
+      <!-- 회차별 -->
+      <div class="cycle-section">
+        <h4>회차별 <span class="h4-note">(행을 누르면 종목 상세)</span></h4>
+        <UiTable
+          :columns="cycleColumns"
+          :data="(cycleRows as any)"
+          size="sm"
+          @row-click="(row: any) => openCycleDetail(row)"
+        >
+          <template #cell-status="{ row }: any">
+            <UiBadge :variant="row.matured ? 'success' : 'default'" size="sm">{{ row.status }}</UiBadge>
+          </template>
+          <template #cell-invest="{ row }: any">{{ won(row.invest) }}</template>
+          <template #cell-endAsset="{ row }: any">{{ won(row.endAsset) }}</template>
+          <template #cell-profit="{ row }: any">
+            <span :style="{ color: pctColor(row.profit), fontWeight: 700 }">
+              {{ row.profit >= 0 ? '+' : '' }}{{ won(row.profit) }}
+            </span>
+          </template>
+          <template #cell-returnPct="{ row }: any">
+            <span :style="{ color: pctColor(row.returnPct) }">{{ pct(row.returnPct) }}</span>
+          </template>
+        </UiTable>
+
+        <p v-if="holdingSkipped.length" class="skip-note">
+          건너뜀 {{ holdingSkipped.length }}건 (직전 사이클 보유중):
+          {{ holdingSkipped.map(s => s.date.slice(5)).join(', ') }}
+        </p>
+      </div>
     </template>
+
+    <!-- 종목 상세 -->
+    <UiDrawer v-model:open="drawerOpen" :title="`${selectedCycle?.index ?? 0}회차 종목 상세`" width="520px">
+      <div v-if="selectedCycle" class="detail-body">
+        <p class="detail-meta">
+          스코어일 {{ selectedCycle.date }} · 진입 {{ selectedCycle.entryDate }} · 청산 {{ selectedCycle.exitDate }}
+          <UiBadge :variant="selectedCycle.matured ? 'success' : 'default'" size="sm">
+            {{ selectedCycle.matured ? '확정' : '진행중' }}
+          </UiBadge>
+        </p>
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>종목</th>
+              <th>점수</th>
+              <th>매수가</th>
+              <th>수량</th>
+              <th>투입금</th>
+              <th>청산가</th>
+              <th>손익</th>
+              <th>수익률</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="h in selectedCycle.holdings" :key="h.code">
+              <td class="td-name">{{ h.name }}</td>
+              <td>{{ h.score }}</td>
+              <td>{{ won(h.entryPrice) }}</td>
+              <td>{{ h.quantity }}</td>
+              <td>{{ won(h.cost) }}</td>
+              <td>{{ won(h.exitPrice) }}</td>
+              <td :style="{ color: pctColor(h.profit), fontWeight: 700 }">
+                {{ h.profit >= 0 ? '+' : '' }}{{ won(h.profit) }}
+              </td>
+              <td :style="{ color: pctColor(h.returnPct) }">{{ pct(h.returnPct) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="detail-foot">
+          투입 {{ won(selectedCycle.investAmount) }}원 · 거래비용 {{ won(selectedCycle.tradeCost) }}원 ·
+          종료자산 {{ won(selectedCycle.endAsset) }}원
+        </p>
+      </div>
+    </UiDrawer>
   </div>
 </template>
 
@@ -222,10 +338,47 @@ handleLoadSnapshots()
 .stat-note { font-size: 12px; color: #6b7280; margin: 0 0 6px; }
 .cost-note { font-size: 11px; color: #9ca3af; margin: 0 0 16px; }
 
+.cycle-section {
+  border-top: 1px solid #e6e8ec;
+  padding-top: 16px;
+
+  h4 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+  .h4-note { font-size: 11px; font-weight: 400; color: #9ca3af; }
+}
+.skip-note { font-size: 11px; color: #9ca3af; margin: 8px 0 0; }
+
+.detail-body { font-size: 13px; }
+.detail-meta {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 12px; color: #6b7280; margin: 0 0 12px;
+}
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+
+  th, td {
+    padding: 6px 8px;
+    text-align: right;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  th {
+    background: #f9fafb;
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 11px;
+    text-align: right;
+  }
+  .td-name { text-align: left; font-weight: 500; color: #374151; }
+  th:first-child { text-align: left; }
+}
+.detail-foot { font-size: 11px; color: #9ca3af; margin: 10px 0 0; }
+
 @media (max-width: 640px) {
   .score-simulation { padding: 14px; }
   .sim-summary { flex-wrap: wrap; }
   .sum-card { min-width: calc(50% - 8px); }
   .s-value { font-size: 16px; }
+  .detail-table { font-size: 11px; th, td { padding: 4px 4px; } }
 }
 </style>
