@@ -12,5 +12,14 @@
     "resolveJsonModule": true
   },
   "include": ["src/**/*", "generated/**/*"],
-  "exclude": ["src/seed.ts", "src/**/*.test.ts"]
+  "exclude": [
+    "src/seed.ts",
+    "src/**/*.test.ts",
+    // 백테스트 리서치 코드 — 프론트 스코어링 모듈을 직접 import 하므로 rootDir(backend)을
+    // 벗어난다. 서버 배포물에 불필요하고 tsx로만 실행하므로 서버 빌드에서 제외한다.
+    // 타입체크는 tsconfig.research.json 으로 별도 수행 (npm run typecheck:research)
+    "src/scripts/**",
+    "src/services/scoreReplay.ts",
+    "src/services/factorStats.ts"
+  ]
 }

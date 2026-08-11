@@ -1,0 +1,25 @@
+// 백테스트 리서치 코드 전용 타입체크 설정.
+// 서버 빌드(tsconfig.json)는 rootDir이 backend라 프론트 스코어링 모듈을 포함할 수 없다.
+// 여기서는 rootDir 없이 프론트 파일까지 프로그램에 넣고 noEmit으로 검사만 한다.
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2020", "DOM"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "src/scripts/**/*",
+    "src/services/scoreReplay.ts",
+    "src/services/factorStats.ts",
+    "src/prisma.ts",
+    "generated/**/*"
+  ]
+}

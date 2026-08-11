@@ -1,59 +1,41 @@
 import { Router } from 'express'
+import { getInvestorRows, detectShareDiscontinuity } from '../services/investorData'
 
 const router = Router()
 
 // 네이버 주식 API 프록시 (CORS 우회)
 
-// 외인/기관 20거래일 동향
+const MAX_DAYS = 260   // 약 1년치 거래일
+
+// 외인/기관 일별 동향 (기본 20일, ?days=260 까지 확장 / ?refresh=1 강제 재수집)
 router.get('/investor/:code', async (req, res) => {
   try {
     const { code } = req.params
+    const days = Math.min(MAX_DAYS, Math.max(1, Number(req.query.days) || 20))
+    const refresh = req.query.refresh === '1'
 
-    // 네이버 PC 외국인 매매 페이지에서 20일치 크롤링
-    const url = `https://finance.naver.com/item/frgn.naver?code=${code}&page=1`
-    const response = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    })
-    const html = await response.text()
+    const rows = await getInvestorRows(code, days, { refresh })
 
-    const parseNum = (v: string) => {
-      if (!v) return 0
-      return Number(v.replace(/,/g, '').replace(/\+/g, '').trim()) || 0
-    }
+    // 기존 응답 계약 유지 (foreign/institution/foreignAmt/institutionAmt/changePct)
+    const trends = rows.map(r => ({
+      date: r.date,
+      foreign: r.foreignVol,
+      institution: r.instVol,
+      individual: 0,
+      foreignAmt: Math.round(r.foreignVol * r.close / 1_000_000),      // 백만원 단위
+      institutionAmt: Math.round(r.instVol * r.close / 1_000_000),
+      changePct: r.changePct,
+      // 과거 재현 백테스트용 추가 필드
+      close: r.close,
+      volume: r.volume,
+      listedShares: r.listedShares,
+      marketCapAt: r.listedShares > 0
+        ? Math.round(r.listedShares * r.close / 1_000_000)             // 해당일 시총 (백만원)
+        : 0,
+    }))
 
-    // 테이블 행에서 데이터 추출 (6개 이상 td를 가진 행)
-    const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/g
-    const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/g
-    const trends: any[] = []
-    let match
-
-    while ((match = rowRegex.exec(html)) !== null) {
-      const row = match[1]
-      const tds: string[] = []
-      let tdMatch
-      while ((tdMatch = tdRegex.exec(row)) !== null) {
-        tds.push(tdMatch[1].replace(/<[^>]+>/g, '').trim())
-      }
-      // 날짜 형식 확인 (2026.05.29)
-      // 컬럼: 날짜(0), 종가(1), 전일비(2), 등락률(3), 거래량(4), 기관(5), 외국인(6), 보유주수(7), 보유율(8)
-      if (tds.length >= 9 && /^\d{4}\.\d{2}\.\d{2}$/.test(tds[0])) {
-        const price = parseNum(tds[1])
-        const foreignVol = parseNum(tds[6])
-        const instVol = parseNum(tds[5])
-        // tds[3]: 전일 대비 일간 등락률 (예: "+24.9%" → 24.9, "-13.7%" → -13.7)
-        const changePct = parseFloat(tds[3].replace(/[+%,]/g, '')) || 0
-        trends.push({
-          date: tds[0].replace(/\./g, ''),
-          foreign: foreignVol,
-          institution: instVol,
-          individual: 0,
-          foreignAmt: Math.round(foreignVol * price / 1_000_000), // 백만원 단위
-          institutionAmt: Math.round(instVol * price / 1_000_000),
-          changePct,
-        })
-      }
-      if (trends.length >= 20) break
-    }
+    // 액면분할·감자 의심 구간 (해당 날짜 이전은 가격 연속성 없음)
+    const splitDates = detectShareDiscontinuity(rows)
 
     // 기본 정보는 모바일 API에서 가져오기
     let per = '-', pbr = '-', marketCap = '-'
@@ -80,10 +62,10 @@ router.get('/investor/:code', async (req, res) => {
       }
     } catch { /* 기본값 유지 */ }
 
-    res.json({ trends, per, pbr, marketCap })
+    res.json({ trends, per, pbr, marketCap, splitDates })
   } catch (e) {
     console.error('[stock/investor] 실패:', e)
-    res.json({ trends: [], per: '-', pbr: '-', marketCap: '-' })
+    res.json({ trends: [], per: '-', pbr: '-', marketCap: '-', splitDates: [] })
   }
 })
 

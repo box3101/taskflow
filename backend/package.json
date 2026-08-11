@@ -9,6 +9,11 @@
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "ts-node-dev src/seed.ts",
     "sync:movies": "ts-node-dev --transpile-only src/scripts/syncMoviesOnce.ts",
+    "backfill:investor": "npx tsx src/scripts/backfillInvestor.ts",
+    "replay": "npx tsx src/scripts/replayScore.ts",
+    "factors": "npx tsx src/scripts/factorAnalysis.ts",
+    "walkforward": "npx tsx src/scripts/walkForward.ts",
+    "typecheck:research": "tsc -p tsconfig.research.json",
     "test": "vitest run"
   },
   "keywords": [],

@@ -1162,7 +1162,21 @@ onMounted(async () => {
                 </div>
                 <div v-else class="issue-title-cell">
                     <span v-if="isNew(row.createdAt)" class="issue-new-badge">NEW</span>
-                    <span class="issue-title" @click="openPanel(row)" @dblclick.stop="startTitleEdit(row)">{{ row.title }}</span>
+                    <!-- 외부 링크가 있으면 제목 클릭 시 새 탭으로 이동 (없으면 기존대로 패널 열기) -->
+                    <a
+                      v-if="row.externalUrl"
+                      class="issue-title issue-title--link"
+                      :href="row.externalUrl"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      :title="row.externalUrl"
+                      @click.stop
+                      @dblclick.stop.prevent="startTitleEdit(row)"
+                    >
+                      {{ row.title }}
+                      <UiIcon name="external-link" :size="12" />
+                    </a>
+                    <span v-else class="issue-title" @click="openPanel(row)" @dblclick.stop="startTitleEdit(row)">{{ row.title }}</span>
                     <span
                       v-if="row._count?.comments"
                       class="issue-comment-count"
@@ -2011,6 +2025,14 @@ onMounted(async () => {
   word-break: break-word;
   cursor: pointer;
   &:hover { color: #2563eb; }
+}
+// 외부 링크가 걸린 제목 — 새 탭으로 이동
+.issue-title--link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
 }
 .issue-comment-count {
   display: inline-flex;

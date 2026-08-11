@@ -110,6 +110,24 @@ function onRowClick(row: any) {
   router.push(`/projects/${row.id}`)
 }
 
+// 외부 링크 라벨 — Figma URL이면 파일명 세그먼트를 풀어서 보여준다
+function externalLabel(url: string) {
+  try {
+    const u = new URL(url)
+    if (u.hostname.includes('figma.com')) {
+      const slug = u.pathname.split('/')[3]
+      if (slug) {
+        return decodeURIComponent(slug)
+          .replace(/^\d{8}_/, '') // 날짜 접두사 제거
+          .replace(/-/g, ' ')
+      }
+    }
+    return u.hostname.replace(/^www\./, '')
+  } catch {
+    return '바로가기'
+  }
+}
+
 async function onDragEnd() {
   const items = projects.value.map((p, i) => ({ id: p.id, order: i }))
   try {
@@ -144,7 +162,21 @@ onMounted(loadProjects)
         <template #item="{ element: row }">
           <div class="project-list__row" @click="onRowClick(row)">
             <span class="drag-handle" @click.stop>⠿</span>
-            <span class="project-list__col project-list__col--name">{{ row.name }}</span>
+            <span class="project-list__col project-list__col--name">
+              {{ row.name }}
+              <a
+                v-if="row.externalUrl"
+                class="project-list__link"
+                :href="row.externalUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                :title="row.externalUrl"
+                @click.stop
+              >
+                <UiIcon name="external-link" :size="12" />
+                {{ externalLabel(row.externalUrl) }}
+              </a>
+            </span>
             <span class="project-list__col project-list__col--status">
               <UiBadge
                 :variant="row.status === 'active' ? 'success' : row.status === 'done' ? 'primary' : 'default'"
@@ -218,7 +250,41 @@ onMounted(loadProjects)
   &:hover .drag-handle { opacity: 1; }
 }
 
-.project-list__col--name { flex: 1; font-size: 14px; font-weight: 500; color: #1a1f2b; }
+.project-list__col--name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1f2b;
+}
+
+// 외부 링크 (Figma 등) — 행 클릭과 별개로 새 탭 열기
+.project-list__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 2px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 400;
+  color: #6b7280;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.15s, border-color 0.15s;
+
+  &:hover {
+    color: #4f6af6;
+    border-color: #c7d2fe;
+    background: #f5f7ff;
+  }
+}
 .project-list__col--status { width: 100px; text-align: center; }
 .project-list__col--count { width: 80px; text-align: center; font-size: 13px; color: #6b7280; }
 .project-list__col--action { width: 48px; text-align: center; }

@@ -2,9 +2,36 @@ import { Router } from 'express'
 import prisma from '../prisma'
 import { authenticate } from '../middleware/auth'
 import { matureSnapshots } from '../services/scoreMaturity'
+import { markDailyCloses } from '../services/scoreDailyMark'
 
 const router = Router()
 router.use(authenticate)
+
+// GET /marks — 일별 종가 마크 (자산곡선 일 단위 렌더용)
+// :date 라우트보다 먼저 선언해야 'marks'가 날짜로 잡히지 않는다
+router.get('/marks', async (_req, res) => {
+  try {
+    const marks = await prisma.scoreDailyMark.findMany({
+      orderBy: [{ snapshotDate: 'asc' }, { date: 'asc' }],
+      select: { snapshotDate: true, code: true, date: true, close: true },
+    })
+    res.json({ data: marks })
+  } catch (err) {
+    console.error('GET /score-snapshots/marks error:', err)
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
+  }
+})
+
+// POST /marks — 오늘 종가 마크 즉시 기록 (cron 수동 트리거)
+router.post('/marks', async (_req, res) => {
+  try {
+    const result = await markDailyCloses()
+    res.json({ message: '기록 완료', ...result })
+  } catch (err) {
+    console.error('POST /score-snapshots/marks error:', err)
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' })
+  }
+})
 
 // POST /mature — 만기 도래 스냅샷 즉시 확정 (cron 수동 트리거)
 router.post('/mature', async (_req, res) => {

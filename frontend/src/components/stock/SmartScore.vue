@@ -277,7 +277,7 @@ loadSnapshotList()
         <div v-if="selectedSnapshot" class="snapshot-detail">
           <div class="detail-header">
             <strong>{{ selectedSnapshot.date }}</strong> 스코어
-            <span v-if="selectedSnapshot.entryDate" class="detail-entry">(진입기준: {{ selectedSnapshot.entryDate }} 시가)</span>
+            <span class="detail-entry">(진입가: {{ selectedSnapshot.date }} 종가 · 만기 기산일 {{ selectedSnapshot.entryDate || '-' }})</span>
           </div>
           <table class="snapshot-table">
             <thead>

@@ -3,10 +3,9 @@ import { computed, onMounted, onUnmounted } from 'vue'
 import { useStockData } from '../../composables/useStockData'
 import HoldingSummary from './HoldingSummary.vue'
 import InvestorTrend from './InvestorTrend.vue'
-import RecommendCard from './RecommendCard.vue'
-import ThemeOverview from './ThemeOverview.vue'
 import SmartScore from './SmartScore.vue'
 import ScoreBacktest from './ScoreBacktest.vue'
+import ScoreSimulation from './ScoreSimulation.vue'
 import ScorePortfolio from './ScorePortfolio.vue'
 import StockCalendar from './StockCalendar.vue'
 
@@ -14,9 +13,8 @@ import StockCalendar from './StockCalendar.vue'
 const {
   holdings, prices, quotes, themes, themeQuotes,
   loading, lastUpdated,
-  recMomentum, recLaggard, recOverheat,
   investorData,
-  loadAll, refreshPrices, loadThemeQuotes,
+  loadAll, refreshPrices,
   saveHoldings, addHolding, removeHolding,
   startAutoRefresh, stopAutoRefresh,
 } = useStockData()
@@ -63,24 +61,6 @@ onUnmounted(() => {
       <StockCalendar :holdings="holdingsForCalendar" />
     </div>
 
-    <!-- AI 종목 분석 + 테마 동향 (좌우 배치) -->
-    <div class="stock-row">
-      <RecommendCard
-        :momentum="recMomentum"
-        :laggard="recLaggard"
-        :overheat="recOverheat"
-        :loading="loading"
-        @load-data="loadThemeQuotes"
-      />
-
-      <ThemeOverview
-        :themes="themes"
-        :theme-quotes="themeQuotes"
-        :loading="loading"
-        @load-quotes="loadThemeQuotes"
-      />
-    </div>
-
     <!-- Smart Score 랭킹 -->
     <SmartScore
       :themes="themes"
@@ -89,6 +69,9 @@ onUnmounted(() => {
 
     <!-- 구간 스프레드 분석 -->
     <ScoreBacktest />
+
+    <!-- 가상매매 수익률 -->
+    <ScoreSimulation />
 
     <!-- 실자금 검증 포트폴리오 -->
     <ScorePortfolio />

@@ -87,23 +87,8 @@ export async function fetchTopValue(
 // ── TaskFlow 백엔드 프록시 (네이버 CORS 우회) ──
 import api from './client'
 
-// 외인/기관 5거래일 동향
-export interface InvestorTrend {
-  date: string
-  foreign: number       // 외국인 순매수량
-  institution: number   // 기관 순매수량
-  individual: number    // 개인 순매수량
-  foreignAmt: number    // 외국인 순매수금액 (백만원)
-  institutionAmt: number
-  changePct?: number    // 전일 대비 일간 등락률 (%)
-}
-
-export interface InvestorData {
-  trends: InvestorTrend[]
-  per: string
-  pbr: string
-  marketCap: string
-}
+// 외인/기관 일별 매매동향 — 정의는 types/stock.ts (기존 import 경로 유지용 재export)
+export type { InvestorTrend, InvestorData } from '../types/stock'
 
 export async function fetchInvestor(code: string): Promise<InvestorData> {
   try {
@@ -383,6 +368,19 @@ export async function saveScoreSnapshot(
 
 export async function fetchSnapshotList(): Promise<ScoreSnapshotSummary[]> {
   const { data } = await api.get('/score-snapshots')
+  return data.data || []
+}
+
+// 일별 종가 마크 — 자산곡선을 회차가 아닌 일 단위로 그리기 위한 원재료
+export interface ScoreDailyMark {
+  snapshotDate: string   // 어느 스냅샷의 마크인지 (스코어일)
+  code: string
+  date: string           // 마크를 찍은 거래일
+  close: number
+}
+
+export async function fetchDailyMarks(): Promise<ScoreDailyMark[]> {
+  const { data } = await api.get('/score-snapshots/marks')
   return data.data || []
 }
 
