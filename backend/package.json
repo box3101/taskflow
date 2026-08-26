@@ -8,6 +8,7 @@
     "start": "node dist/src/app.js",
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "ts-node-dev src/seed.ts",
+    "db:seed:demo": "ts-node-dev --transpile-only src/seed-demo.ts",
     "sync:movies": "ts-node-dev --transpile-only src/scripts/syncMoviesOnce.ts",
     "backfill:investor": "npx tsx src/scripts/backfillInvestor.ts",
     "replay": "npx tsx src/scripts/replayScore.ts",

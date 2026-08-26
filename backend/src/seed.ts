@@ -2,7 +2,33 @@ import 'dotenv/config'
 import bcrypt from 'bcryptjs'
 import prisma from './prisma'
 
+/**
+ * 프로덕션 DB에서 실수로 실행되는 것을 막는다.
+ * 이 스크립트는 아래에서 users를 포함한 6개 테이블을 전부 삭제한다.
+ * 의도적으로 실행해야 한다면 ALLOW_DESTRUCTIVE_SEED=1 을 붙인다.
+ *
+ * 데모 계정만 필요하다면 삭제 동작이 없는 `npm run db:seed:demo` 를 쓴다.
+ */
+function assertSafeToWipe() {
+  if (process.env.ALLOW_DESTRUCTIVE_SEED === '1') return
+
+  const url = process.env.DATABASE_URL ?? ''
+  const isLocal = /@(localhost|127\.0\.0\.1|host\.docker\.internal)[:/]/.test(url)
+
+  if (!isLocal) {
+    console.error('중단: 로컬이 아닌 DB에서 파괴적 seed를 실행하려고 합니다.')
+    console.error(`  DATABASE_URL 호스트: ${url.replace(/\/\/[^@]*@/, '//***@') || '(미설정)'}`)
+    console.error('  이 스크립트는 users·projects·issues·todos·members·ai_tools 를 전부 삭제합니다.')
+    console.error('')
+    console.error('  데모 계정만 필요하면:  npm run db:seed:demo   (삭제 없음)')
+    console.error('  그래도 실행하려면:      ALLOW_DESTRUCTIVE_SEED=1 npm run db:seed')
+    process.exit(1)
+  }
+}
+
 async function main() {
+  assertSafeToWipe()
+
   // 기존 데이터 정리
   await prisma.aiTool.deleteMany()
   await prisma.todo.deleteMany()
