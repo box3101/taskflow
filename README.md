@@ -1,68 +1,73 @@
-# TaskFlow — 프로젝트 관리 앱
+<div align="center">
 
-> ispark-ui 디자인 시스템을 활용한 풀스택 프로젝트
+# TaskFlow
 
-## 기술 스택
+**ispark-ui 디자인 시스템으로 만든 풀스택 프로젝트 관리 앱**
 
-| 구분 | 스택 |
-|---|---|
-| 프론트엔드 | Vue 3 + TypeScript + Vite + ispark-ui + Pinia + Vue Router |
-| 백엔드 | Node.js + Express + TypeScript + Prisma |
-| DB | PostgreSQL |
-| 인증 | JWT |
+[![Vue3](https://img.shields.io/badge/Vue_3-4FC08D?style=flat-square&logo=vue.js&logoColor=white)](https://vuejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://typescriptlang.org/)
+[![Express](https://img.shields.io/badge/Express-000000?style=flat-square&logo=express&logoColor=white)](https://expressjs.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 
-## 빠른 시작
+</div>
 
-### 1. PostgreSQL 준비
+---
 
-로컬에 PostgreSQL이 없으면 Docker로 실행:
+## Overview
+
+ispark-ui 디자인 시스템의 실제 적용 사례로 만든 프로젝트 관리 앱입니다.  
+프론트엔드부터 백엔드, DB 설계까지 풀스택으로 구현했습니다.
+
+## Tech Stack
+
+| 영역 | 기술 |
+|------|------|
+| **Frontend** | Vue 3 + TypeScript + Vite |
+| **State** | Pinia |
+| **Backend** | Express + Prisma |
+| **Database** | PostgreSQL (Railway) |
+| **Auth** | JWT (Access + Refresh) |
+| **UI** | [@leechanyong/ispark-ui](https://www.npmjs.com/package/@leechanyong/ispark-ui) |
+| **Deploy** | Vercel (Frontend) + Railway (Backend) |
+
+## Key Features
+
+- **프로젝트 관리** — 생성, 수정, 삭제, 상태 관리
+- **칸반 보드** — 드래그 앤 드롭 작업 관리
+- **JWT 인증** — Access/Refresh 토큰 기반 보안
+- **역할 기반 권한** — 관리자/멤버 권한 분리
+- **디자인 시스템** — ispark-ui 컴포넌트 실전 적용
+
+## Project Structure
+
+```
+├── frontend/
+│   ├── src/views/        # 페이지 컴포넌트
+│   ├── src/components/   # 재사용 컴포넌트
+│   └── src/stores/       # Pinia 상태 관리
+├── backend/
+│   ├── src/routes/       # API 라우트
+│   ├── src/prisma.ts     # DB 클라이언트
+│   └── prisma/schema.prisma
+└── docker-compose.yml
+```
+
+## Getting Started
 
 ```bash
-docker run -d --name taskflow-db -e POSTGRES_PASSWORD=1234 -e POSTGRES_DB=taskflow -p 5432:5432 postgres:16
+# Frontend
+cd frontend && npm install && npm run dev
+
+# Backend
+cd backend && npm install && npm run dev
 ```
 
-### 2. 백엔드
+## Links
 
-```bash
-cd backend
-cp .env.example .env    # DB 접속 정보 수정
-npm run db:migrate      # 테이블 생성
-npm run db:seed         # 테스트 데이터 투입
-npm run dev             # http://localhost:4000
-```
+- **Live** — [ispark-task.up.railway.app](https://ispark-task.up.railway.app/)
 
-### 3. 프론트엔드
+---
 
-```bash
-cd frontend
-npm run dev             # http://localhost:5173
-```
-
-### 테스트 계정
-
-| 이메일 | 비밀번호 | 역할 |
-|---|---|---|
-| chanyong@test.com | 1234 | admin |
-| hyunji@test.com | 1234 | member |
-
-## 역할 분담
-
-- **찬용** (백엔드): API + DB + 인증 + 배포
-- **현지** (프론트): Vue 화면 + ispark-ui 컴포넌트 + API 연동
-
-## API 엔드포인트
-
-```
-POST   /auth/login              로그인
-POST   /auth/register           회원가입
-GET    /projects                 프로젝트 목록
-POST   /projects                 프로젝트 생성
-GET    /projects/:id             프로젝트 상세
-PUT    /projects/:id             프로젝트 수정
-GET    /projects/:id/members     멤버 목록
-POST   /projects/:id/members     멤버 추가
-GET    /projects/:id/issues      이슈 목록
-POST   /projects/:id/issues      이슈 생성
-PUT    /issues/:id               이슈 수정
-DELETE /issues/:id               이슈 삭제
-```
+<div align="center">
+  <sub>Built by <a href="https://github.com/box3101">@box3101</a></sub>
+</div>
