@@ -7,8 +7,9 @@ import { useAuthStore } from '../stores/auth'
 const router = useRouter()
 const auth = useAuthStore()
 
-const email = ref('chanyong@test.com')
-const password = ref('1234')
+// 공개 데모 계정. 포트폴리오에서 링크되므로 개인 실계정을 기본값으로 두지 않는다.
+const email = ref('demo@taskflow.dev')
+const password = ref('demo1234')
 const error = ref('')
 const loading = ref(false)
 
