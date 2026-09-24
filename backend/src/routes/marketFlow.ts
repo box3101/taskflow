@@ -5,10 +5,16 @@ import { authenticate } from '../middleware/auth'
 import { collectorStatus, recordedFlow } from '../services/flowCollector'
 import { koreanClock, reviewFlow } from '../services/flowAnalysis'
 import retrospectiveReview from '../data/market-review-2026-09-22.json'
+import flowAgentRouter from './flowAgent'
+import flowExpertRouter from './flowExpert'
+import flowCalendarRouter from './flowCalendar'
 
 const router = Router()
 router.use(authenticate)
 router.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next() })
+router.use(flowAgentRouter)
+router.use(flowExpertRouter)
+router.use(flowCalendarRouter)
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 2, fieldSize: 8000 } })
 export function validFlowDate(value: unknown): value is string {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false

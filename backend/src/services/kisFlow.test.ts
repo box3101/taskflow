@@ -30,6 +30,10 @@ describe('KIS response normalization', () => {
         expect(url.searchParams.get('EXCH_DIV_CLS_CODE')).toBe('J')
         return new Response(JSON.stringify({ rt_cd: '0', output1: [{ invr_cls_name: '외국인', nabt_ntby_amt: '-700' }, { invr_cls_name: '전체', nabt_ntby_amt: '800' }] }))
       }
+      if (url.pathname.endsWith('/comp-program-trade-today')) {
+        expect(url.searchParams.get('FID_MRKT_CLS_CODE')).toBe('K')
+        return new Response(JSON.stringify({ rt_cd: '0', output: [{ bsop_hour: '095900', nabt_smtn_ntby_tr_pbmn: '700' }, { bsop_hour: '100000', nabt_smtn_ntby_tr_pbmn: '800', whol_smtn_ntby_tr_pbmn: '9999' }] }))
+      }
       return new Response(JSON.stringify({ rt_cd: '0', output: { bstp_nmix_prpr: '3000.15', bstp_nmix_prdy_ctrt: '-0.15' } }))
     })
     vi.stubGlobal('fetch', fetchMock)

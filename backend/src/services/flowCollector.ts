@@ -50,7 +50,7 @@ export async function collectFlow(now = new Date()): Promise<void> {
       const analyses = Object.fromEntries(FLOW_WINDOWS.map(window => [String(window), analyzeFlow(sample, history, window)]))
       const payload: RecordedFlow = { version: 1, sample, analyses, moneyUnits: collectorStatus().moneyUnits }
       await prisma.flowSnapshot.upsert({ where: { observedAt: minute }, create: { date, observedAt: minute, payload: JSON.parse(JSON.stringify(payload)) }, update: {} })
-      lastError = ['cash', 'futures', 'nonArb', 'kospi'].some(k => sample.sources[k as keyof typeof sample.sources].status !== 'ok') ? '일부 데이터 조회 실패 · 항목별 상태를 확인하세요.' : null
+      lastError = ['cash', 'futures', 'nonArb', 'totalNonArb', 'kospi'].some(k => sample.sources[k as keyof typeof sample.sources].status !== 'ok') ? '일부 데이터 조회 실패 · 항목별 상태를 확인하세요.' : null
       session = lastError ? 'partial' : 'collecting'
     } catch (err) {
       session = 'error'
@@ -61,8 +61,12 @@ export async function collectFlow(now = new Date()): Promise<void> {
   })()
   try { await collecting } finally { collecting = null }
 }
-export function startFlowCollector() {
+export function startFlowCollector(afterCollect?: () => Promise<void>) {
   // Always registered: only configured servers call KIS, and only on verified trading days.
-  cron.schedule('* * * * *', () => { void collectFlow() }, { timezone: 'Asia/Seoul' })
-  void collectFlow()
+  const tick = async () => {
+    await collectFlow()
+    await afterCollect?.()
+  }
+  cron.schedule('* * * * *', () => { void tick().catch(() => console.warn('[market-flow] scheduled task failed')) }, { timezone: 'Asia/Seoul' })
+  void tick().catch(() => console.warn('[market-flow] startup task failed'))
 }

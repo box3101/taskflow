@@ -9,6 +9,7 @@ import todoRouter from './routes/todos'
 import stockRouter from './routes/stock'
 import marketFlowRouter from './routes/marketFlow'
 import { startFlowCollector } from './services/flowCollector'
+import { automationConfig, runFlowAutomation } from './services/flowAutomation'
 import stockGuardRouter from './routes/stockGuard'
 import stockNewsRouter from './routes/stockNews'
 import aiToolRouter from './routes/aiTools'
@@ -111,7 +112,8 @@ const PORT = process.env.PORT || 4000
 app.listen(PORT, () => {
   console.log(`서버 실행: http://localhost:${PORT}`)
   startStockGuardCron()
-  startFlowCollector()
+  startFlowCollector(runFlowAutomation)
+  console.log(`[flow-auto] enabled=${automationConfig().enabled} configured=${automationConfig().configured} interval=15m`)
   startScoreMaturityCron()
   startSyncMoviesCron()
 })

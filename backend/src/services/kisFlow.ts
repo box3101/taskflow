@@ -84,11 +84,20 @@ export async function fetchKisFlow(now = new Date()): Promise<FlowSample> {
       const data = await kisGet('/uapi/domestic-stock/v1/quotations/inquire-investor-time-by-market', 'FHPTJ04030000', { FID_INPUT_ISCD: 'K2I', FID_INPUT_ISCD_2: 'F001' })
       values.futures = apiNumber(rows(data.output)[0]?.frgn_ntby_qty)
     } },
-    { keys: ['nonArb', 'totalNonArb'], fetch: async () => {
+    { keys: ['nonArb'], fetch: async () => {
       const data = await kisGet('/uapi/domestic-stock/v1/quotations/investor-program-trade-today', 'HHPPG046600C1', { MRKT_DIV_CLS_CODE: '1', EXCH_DIV_CLS_CODE: 'J' })
       values.nonArb = apiNumber(foreignProgramRow(data.output1)?.nabt_ntby_amt)
-      const total = rows(data.output1).find(r => /^(전체|합계|총계)$/.test(String(r.invr_cls_name ?? '').trim()))
-      values.totalNonArb = apiNumber(total?.nabt_ntby_amt)
+    } },
+    { keys: ['totalNonArb'], fetch: async () => {
+      // Investor breakdown has no total row and includes overlapping institution subtotals.
+      // Read the market total from the dedicated endpoint; never sum those rows.
+      const data = await kisGet('/uapi/domestic-stock/v1/quotations/comp-program-trade-today', 'FHPPG04600101', {
+        FID_COND_MRKT_DIV_CODE: 'J', FID_MRKT_CLS_CODE: 'K', FID_SCTN_CLS_CODE: '',
+        FID_INPUT_ISCD: '', FID_COND_MRKT_DIV_CODE1: '', FID_INPUT_HOUR_1: '',
+      })
+      const latest = rows(data.output).filter(r => /^\d{6}$/.test(String(r.bsop_hour ?? '')))
+        .sort((a, b) => String(b.bsop_hour).localeCompare(String(a.bsop_hour)))[0]
+      values.totalNonArb = apiNumber(latest?.nabt_smtn_ntby_tr_pbmn)
     } },
     { keys: ['kospi'], fetch: async () => {
       const data = await kisGet('/uapi/domestic-stock/v1/quotations/inquire-index-price', 'FHPUP02100000', { FID_COND_MRKT_DIV_CODE: 'U', FID_INPUT_ISCD: '0001' })

@@ -36,6 +36,9 @@ model User {
   preference        UserPreference?
   movieBookmarks    MovieBookmark[]
   flowReports       FlowReport[]
+  flowPredictions   FlowPrediction[]
+  flowExpertReviews FlowExpertReview[]
+  flowAutoRuns      FlowAutoRun[]
 
   @@map("users")
 }
@@ -52,7 +55,7 @@ model FlowSnapshot {
   @@map("flow_snapshots")
 }
 
-// 참고 PDF는 인증된 소유자만 조회 가능하며 외부 AI 서비스로 전송하지 않는다.
+// PDF 원문은 소유자만 조회. AI 실행 시 검색된 발췌문만 모델에 전달한다.
 model FlowReport {
   id         Int      @id @default(autoincrement())
   userId     Int      @map("user_id")
@@ -60,6 +63,9 @@ model FlowReport {
   filename   String   @db.VarChar(255)
   content    Bytes
   note       String   @default("") @db.Text
+  ragStatus  String   @default("pending") @map("rag_status")
+  ragError   String?  @map("rag_error")
+  ragChunks  Json?    @map("rag_chunks")
   createdAt  DateTime @default(now()) @map("created_at")
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -67,7 +73,63 @@ model FlowReport {
   @@map("flow_reports")
 }
 
+// 최초 판단을 보존하며 동일 관측/예측 구간은 다시 생성하지 않는다.
+model FlowPrediction {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  snapshotId  Int      @map("snapshot_id")
+  date        String   @db.VarChar(10)
+  horizon     Int
+  variant     String   @default("rag")
+  mode        String
+  model       String
+  version     String
+  payload     Json
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, snapshotId, horizon, variant])
+  @@index([userId, date])
+  @@map("flow_predictions")
+}
+
 // 프로젝트
+// 상위 모델의 검토/사후 복기는 기본 예측 성적과 별도로 보존한다.
+model FlowAutoRun {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @map("user_id")
+  date          String   @db.VarChar(10)
+  slot          Int
+  snapshotId    Int      @map("snapshot_id")
+  status        String   @default("running")
+  reservedCalls Int      @map("reserved_calls")
+  message       String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  completedAt   DateTime? @map("completed_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, slot])
+  @@map("flow_auto_runs")
+}
+
+model FlowExpertReview {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  date       String   @db.VarChar(10)
+  task       String
+  snapshotId Int      @map("snapshot_id")
+  provider   String
+  model      String
+  version    String
+  payload    Json
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, task, snapshotId, provider], map: "flow_expert_reviews_user_date_task_snapshot_provider_key")
+  @@index([userId, date])
+  @@map("flow_expert_reviews")
+}
+
 model Project {
   id          Int      @id @default(autoincrement())
   name        String

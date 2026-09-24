@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { UiIcon, UiTab, UiButton, UiBadge, UiDatePicker, UiSelect, UiInput, UiTable, UiEmpty, UiFileUpload, UiAlert, openConfirm, openToast } from '@leechanyong/ispark-ui'
 import type { TabItem, TableColumn } from '@leechanyong/ispark-ui'
 import { CalendarDate, type DateValue } from '@internationalized/date'
@@ -7,16 +7,19 @@ import api from '../../api/client'
 import type { FlowKey, FlowRecord, FlowReport, FlowResponse, FlowStatus, MoneyUnit } from '../../types/marketFlow'
 import FlowMiniChart from './FlowMiniChart.vue'
 import HistoricalMarketReview from './HistoricalMarketReview.vue'
+import FlowCalendarDashboard from './FlowCalendarDashboard.vue'
+import FlowAgentPanel from './FlowAgentPanel.vue'
 
 function today() { return new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10) }
 function time(value?: string | null) {
   return value ? new Date(value).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }) : '—'
 }
 const initialDate = new URLSearchParams(window.location.search).get('date')
+const initialView = new URLSearchParams(window.location.search).get('view')
 const selectedDate = ref(initialDate && /^\d{4}-\d{2}-\d{2}$/.test(initialDate) && Number.isFinite(Date.parse(initialDate)) && initialDate <= today() ? initialDate : today())
 const pendingDate = ref(selectedDate.value)
 const windowMinutes = ref(15)
-const activeTab = ref(selectedDate.value === '2026-09-22' ? 'retrospective' : 'live')
+const activeTab = ref(initialView && ['calendar', 'live', 'agent', 'history', 'review', 'retrospective'].includes(initialView) ? initialView : !initialDate ? 'calendar' : selectedDate.value === '2026-09-22' ? 'retrospective' : 'live')
 const selectedId = ref<number | null>(null)
 const data = ref<FlowResponse | null>(null)
 const status = ref<FlowStatus | null>(null)
@@ -30,7 +33,7 @@ let timer: ReturnType<typeof setInterval> | undefined
 let requestVersion = 0
 let controller: AbortController | undefined
 let disposed = false
-const tabs: TabItem[] = [{ value: 'live', label: '수급 해석' }, { value: 'history', label: '시간대별 기록' }, { value: 'review', label: '패턴 복기' }, { value: 'retrospective', label: '장전 리포트 비교' }]
+const tabs: TabItem[] = [{ value: 'calendar', label: '월간 대시보드' }, { value: 'live', label: '수급 해석' }, { value: 'agent', label: 'AI 판단·검증' }, { value: 'history', label: '시간대별 기록' }, { value: 'review', label: '패턴 복기' }, { value: 'retrospective', label: '장전 리포트 비교' }]
 const windowOptions = [5, 15, 30].map(value => ({ value, label: `최근 ${value}분` }))
 const dateModel = computed({
   get: (): DateValue => { const [y, m, d] = pendingDate.value.split('-').map(Number); return new CalendarDate(y!, m!, d!) },
@@ -67,6 +70,7 @@ const metricCards = [
   { key: 'cash' as const, label: '외국인 현물', market: '코스피', icon: 'layers', color: '#4f6af6', caption: '시장 전체 외국인 순매수 대금' },
   { key: 'futures' as const, label: '외국인 선물', market: '코스피200', icon: 'activity', color: '#8b5cf6', caption: '외국인 순매수 계약 수' },
   { key: 'nonArb' as const, label: '외국인 비차익', market: '코스피', icon: 'chart-no-axes-combined', color: '#0d9488', caption: '현물에 포함되는 거래 · 별도 합산 안 함' },
+  { key: 'totalNonArb' as const, label: '전체 비차익', market: '코스피', icon: 'chart-no-axes-combined', color: '#d97706', caption: '전체 투자자 비차익 · 외국인 비차익과 구분' },
 ]
 function unit(key: FlowKey, row = current.value): MoneyUnit | 'contracts' | 'points' {
   if (key === 'futures') return 'contracts'
@@ -125,12 +129,24 @@ async function load() {
 watch(selectedDate, () => {
   pendingDate.value = selectedDate.value
   data.value = null; selectedId.value = null
-  if (selectedDate.value === '2026-09-22') activeTab.value = 'retrospective'
+  if (selectedDate.value === '2026-09-22' && activeTab.value !== 'calendar') activeTab.value = 'retrospective'
   const url = new URL(window.location.href); url.searchParams.set('date', selectedDate.value)
+  url.searchParams.set('view', activeTab.value)
   window.history.replaceState(window.history.state, '', url)
   void load()
 })
 function openSeptemberReview() { selectedDate.value = '2026-09-22'; activeTab.value = 'retrospective' }
+watch(activeTab, tab => {
+  const url = new URL(window.location.href); url.searchParams.set('view', tab)
+  window.history.replaceState(window.history.state, '', url)
+})
+async function openCalendarDay(date: string, tab: string) {
+  selectedDate.value = date
+  await nextTick()
+  activeTab.value = tab === 'pdf' ? 'live' : tab
+  await nextTick()
+  if (tab === 'pdf') document.querySelector('.reports-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 function visibilityChanged() { if (!document.hidden && selectedDate.value === today()) void load() }
 onMounted(() => {
   void load()
@@ -177,7 +193,7 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
     <header class="flow-header">
       <div><span class="eyebrow">MARKET FLOW</span><h1>외국인 수급 해석</h1><p>현물·선물·비차익의 변화로 포지션 의도를 추정합니다.</p></div>
       <div class="flow-header-actions">
-        <div class="flow-date-control">
+        <div v-if="activeTab !== 'calendar'" class="flow-date-control">
           <span class="flow-date-label">조회 날짜</span>
           <UiDatePicker v-model="dateModel" :max-value="maxDate" :clearable="false" size="sm" trigger-label="거래일 선택" class="flow-date" />
           <UiButton size="sm" :disabled="pendingDate === selectedDate" @click="selectedDate = pendingDate">확인</UiButton>
@@ -199,13 +215,16 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
     <div class="flow-toolbar">
       <UiTab v-model="activeTab" :tabs="tabs" align="left" size="sm" aria-label="수급 화면" class="flow-tabs" />
       <div class="flow-controls">
-        <UiButton variant="outline" size="sm" @click="openSeptemberReview">9/22 복기 보기</UiButton>
-        <UiSelect v-if="activeTab !== 'retrospective'" v-model="windowMinutes" :options="windowOptions" label="비교 구간" label-hidden size="sm" class="flow-window" />
+        <UiButton v-if="activeTab !== 'calendar'" variant="outline" size="sm" @click="activeTab = 'calendar'">달력으로</UiButton>
+        <UiButton v-if="activeTab !== 'calendar'" variant="outline" size="sm" @click="openSeptemberReview">9/22 복기 보기</UiButton>
+        <UiSelect v-if="!['calendar', 'retrospective', 'agent'].includes(activeTab)" v-model="windowMinutes" :options="windowOptions" label="비교 구간" label-hidden size="sm" class="flow-window" />
         <UiButton variant="outline" size="sm" icon-only :loading="busy" @click="load" aria-label="새로고침"><template #icon-left><UiIcon name="refresh-cw" :size="16" /></template></UiButton>
       </div>
     </div>
+    <FlowCalendarDashboard v-if="activeTab === 'calendar'" :date="selectedDate" :refresh-key="data?.serverTime || ''" @select="selectedDate = $event" @open="openCalendarDay" />
     <HistoricalMarketReview v-if="activeTab === 'retrospective'" :date="selectedDate" />
-    <template v-if="activeTab !== 'retrospective'">
+    <FlowAgentPanel v-if="activeTab === 'agent'" :date="selectedDate" :record="current" :refresh-key="data?.serverTime || ''" />
+    <template v-if="!['calendar', 'retrospective'].includes(activeTab)">
     <UiAlert v-if="error" variant="error" role="alert" title="연결 확인 필요" :description="error" />
     <UiAlert v-else-if="status && !status.configured" variant="info" title="한국투자 API 연결을 기다리고 있어요" description="연결 후 정규장에 수급이 쌓이면 해석과 복기가 시작됩니다. 상단 연결 안내에서 설정 상태를 확인하세요." />
     <UiAlert v-else-if="status?.lastError" variant="warning" :description="status.lastError" />
@@ -271,10 +290,13 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
         <p class="chart-footnote">겹치는 구간과 작은 표본은 독립적인 검증 결과가 아닙니다. 가설의 인과관계나 수익을 보장하는 점수가 아닙니다.</p>
       </section>
     </template>
-    <section class="panel reports-panel">
-      <div class="section-heading"><div><h2><UiIcon name="file-text" :size="18" />오늘의 참고 PDF</h2><p class="muted">원문과 내 메모를 함께 보관합니다. PDF 내용은 자동 해석에 아직 반영하지 않습니다.</p></div><UiFileUpload v-if="status?.storageReady" accept=".pdf,application/pdf" :max-size="10 * 1024 * 1024" label="PDF 추가" :loading="uploading" @upload="uploadPdf" /><UiButton v-else size="sm" disabled>PDF 추가</UiButton></div>
+    <section v-if="activeTab !== 'calendar'" class="panel reports-panel">
+      <div class="section-heading"><div><h2><UiIcon name="file-text" :size="18" />{{ selectedDate }} 참고 PDF</h2><p class="muted">선택한 조회 날짜에 원문과 메모를 저장합니다. 파일 제목의 날짜는 자동 적용하지 않습니다. AI 판단·검증 탭에서 검색 준비를 완료하면 이후 관측의 분석 근거로 사용됩니다.</p></div><UiFileUpload v-if="status?.storageReady" accept=".pdf,application/pdf" :max-size="10 * 1024 * 1024" label="PDF 추가" :loading="uploading" @upload="uploadPdf" /><UiButton v-else size="sm" disabled>PDF 추가</UiButton></div>
       <UiInput v-model="uploadNote" label="첨부할 PDF 참고 메모" label-hidden :maxlength="4000" placeholder="첨부할 리포트에서 오늘 확인할 조건을 메모하세요 (선택)" size="sm" />
-      <div v-if="!data?.reports.length" class="report-empty">{{ selectedDate }} 참고 자료 · PDF 최대 10MB</div>
+      <div v-if="busy && !data" class="report-empty" role="status">저장된 PDF를 확인하고 있습니다.</div>
+      <div v-else-if="error" class="report-empty" role="alert">PDF 목록을 갱신하지 못했습니다. <UiButton variant="ghost" size="sm" @click="load">다시 조회</UiButton></div>
+      <div v-else-if="data && !data.reports.length" class="report-empty">{{ selectedDate }}에 저장된 PDF가 없습니다. 다른 날짜에 추가한 파일은 해당 날짜를 조회해 주세요. · PDF 최대 10MB</div>
+      <div v-else-if="data?.reports.length" class="report-empty">{{ selectedDate }}에 저장된 PDF {{ data.reports.length }}개</div>
       <div v-for="report in data?.reports" :key="report.id" class="report-row"><UiIcon name="file-text" :size="21" /><div><UiButton variant="ghost" size="sm" class="report-name" @click="downloadReport(report)">{{ report.filename }}</UiButton><small>{{ time(report.createdAt) }} 등록{{ report.note ? ` · ${report.note}` : '' }}</small></div><UiButton variant="ghost" size="sm" icon-only @click="downloadReport(report)" aria-label="PDF 다운로드"><template #icon-left><UiIcon name="download" :size="16" /></template></UiButton><UiButton variant="ghost" size="sm" icon-only @click="removeReport(report)" aria-label="PDF 삭제"><template #icon-left><UiIcon name="trash-2" :size="16" /></template></UiButton></div>
     </section>
     <footer class="flow-footer"><UiIcon name="info" :size="14" />한국투자증권 장중 집계 · 1분 간격 조회 · 표시 시각은 서버 수집 시각이며 원천 데이터 갱신 시각과 다를 수 있습니다.</footer>
@@ -310,7 +332,7 @@ h2 :deep(svg) { color: var(--accent); }
 .notice button, .history-notice button { margin-left: auto; background: none; border: 0; color: #4f6af6; white-space: nowrap; font-size: 12px; }
 .notice--error { background: #fff8f5; color: #ad6555; border-color: #f4e2dc; }
 .history-notice { display: flex; align-items: center; gap: 8px; color: #6f7c98; font-size: 12px; }
-.metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 .metric-heading { display: flex; align-items: center; gap: 10px; }
 .metric-icon { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: #f1f4fc; border-radius: 12px; }
 .metric-heading h2 { font-size: 13px; }
