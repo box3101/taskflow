@@ -15,6 +15,18 @@ const authorization = `Bearer ${signToken({ id: 12, email: 'fixture@example.test
 
 beforeEach(() => { vi.clearAllMocks(); mocks.snapshots.mockResolvedValue([]); mocks.reports.mockResolvedValue([]); mocks.count.mockResolvedValue(0) })
 describe('market flow API', () => {
+  it('serves retrospective price evidence separately from flow predictions', async () => {
+    expect((await request(app).get('/market-flow/retrospective?date=2026-09-22')).status).toBe(401)
+    const response = await request(app).get('/market-flow/retrospective?date=2026-09-22').set('Authorization', authorization)
+    expect(response.status).toBe(200)
+    expect(response.body.data).toMatchObject({ date: '2026-09-22', mode: 'retrospective', barCount: 393, previous: 7007.72 })
+    expect(response.body.data.points).toHaveLength(393)
+    expect(response.body.data.records).toBeUndefined()
+    expect(mocks.snapshots).not.toHaveBeenCalled()
+    const other = await request(app).get('/market-flow/retrospective?date=2026-09-23').set('Authorization', authorization)
+    expect(other.body.data).toBeNull()
+    expect((await request(app).get('/market-flow/retrospective?date=invalid').set('Authorization', authorization)).status).toBe(400)
+  })
   it('requires authentication', async () => {
     expect((await request(app).get('/market-flow')).status).toBe(401)
     expect(mocks.snapshots).not.toHaveBeenCalled()

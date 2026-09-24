@@ -4,6 +4,7 @@ import prisma from '../prisma'
 import { authenticate } from '../middleware/auth'
 import { collectorStatus, recordedFlow } from '../services/flowCollector'
 import { koreanClock, reviewFlow } from '../services/flowAnalysis'
+import retrospectiveReview from '../data/market-review-2026-09-22.json'
 
 const router = Router()
 router.use(authenticate)
@@ -16,6 +17,12 @@ export function validFlowDate(value: unknown): value is string {
 }
 function dateParam(value: unknown) { return value === undefined ? koreanClock().date : value }
 const reportSelect = { id: true, date: true, filename: true, note: true, createdAt: true } as const
+
+// Historical price evidence is separate from contemporaneous flow predictions.
+router.get('/retrospective', (req, res) => {
+  if (!validFlowDate(req.query.date)) { res.status(400).json({ message: '올바른 날짜를 입력하세요.' }); return }
+  res.json({ data: req.query.date === retrospectiveReview.date ? retrospectiveReview : null })
+})
 
 router.get('/', async (req, res) => {
   const date = dateParam(req.query.date)

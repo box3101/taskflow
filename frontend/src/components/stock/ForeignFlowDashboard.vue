@@ -6,14 +6,17 @@ import { CalendarDate, type DateValue } from '@internationalized/date'
 import api from '../../api/client'
 import type { FlowKey, FlowRecord, FlowReport, FlowResponse, FlowStatus, MoneyUnit } from '../../types/marketFlow'
 import FlowMiniChart from './FlowMiniChart.vue'
+import HistoricalMarketReview from './HistoricalMarketReview.vue'
 
 function today() { return new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10) }
 function time(value?: string | null) {
   return value ? new Date(value).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }) : '—'
 }
-const selectedDate = ref(today())
+const initialDate = new URLSearchParams(window.location.search).get('date')
+const selectedDate = ref(initialDate && /^\d{4}-\d{2}-\d{2}$/.test(initialDate) && Number.isFinite(Date.parse(initialDate)) && initialDate <= today() ? initialDate : today())
+const pendingDate = ref(selectedDate.value)
 const windowMinutes = ref(15)
-const activeTab = ref('live')
+const activeTab = ref(selectedDate.value === '2026-09-22' ? 'retrospective' : 'live')
 const selectedId = ref<number | null>(null)
 const data = ref<FlowResponse | null>(null)
 const status = ref<FlowStatus | null>(null)
@@ -27,11 +30,11 @@ let timer: ReturnType<typeof setInterval> | undefined
 let requestVersion = 0
 let controller: AbortController | undefined
 let disposed = false
-const tabs: TabItem[] = [{ value: 'live', label: '수급 해석' }, { value: 'history', label: '시간대별 기록' }, { value: 'review', label: '패턴 복기' }]
+const tabs: TabItem[] = [{ value: 'live', label: '수급 해석' }, { value: 'history', label: '시간대별 기록' }, { value: 'review', label: '패턴 복기' }, { value: 'retrospective', label: '장전 리포트 비교' }]
 const windowOptions = [5, 15, 30].map(value => ({ value, label: `최근 ${value}분` }))
 const dateModel = computed({
-  get: (): DateValue => { const [y, m, d] = selectedDate.value.split('-').map(Number); return new CalendarDate(y!, m!, d!) },
-  set: (value: DateValue | undefined) => { if (value) selectedDate.value = `${value.year}-${String(value.month).padStart(2, '0')}-${String(value.day).padStart(2, '0')}` },
+  get: (): DateValue => { const [y, m, d] = pendingDate.value.split('-').map(Number); return new CalendarDate(y!, m!, d!) },
+  set: (value: DateValue | undefined) => { if (value) pendingDate.value = `${value.year}-${String(value.month).padStart(2, '0')}-${String(value.day).padStart(2, '0')}` },
 })
 const maxDate = computed(() => { const [y, m, d] = today().split('-').map(Number); return new CalendarDate(y!, m!, d!) })
 const historyColumns = computed<TableColumn[]>(() => [
@@ -119,7 +122,15 @@ async function load() {
     status.value = err.response?.data?.status || status.value
   } finally { if (version === requestVersion && !disposed) { busy.value = false; now.value = Date.now() } }
 }
-watch(selectedDate, () => { data.value = null; selectedId.value = null; void load() })
+watch(selectedDate, () => {
+  pendingDate.value = selectedDate.value
+  data.value = null; selectedId.value = null
+  if (selectedDate.value === '2026-09-22') activeTab.value = 'retrospective'
+  const url = new URL(window.location.href); url.searchParams.set('date', selectedDate.value)
+  window.history.replaceState(window.history.state, '', url)
+  void load()
+})
+function openSeptemberReview() { selectedDate.value = '2026-09-22'; activeTab.value = 'retrospective' }
 function visibilityChanged() { if (!document.hidden && selectedDate.value === today()) void load() }
 onMounted(() => {
   void load()
@@ -165,11 +176,19 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
   <div class="flow-page">
     <header class="flow-header">
       <div><span class="eyebrow">MARKET FLOW</span><h1>외국인 수급 해석</h1><p>현물·선물·비차익의 변화로 포지션 의도를 추정합니다.</p></div>
-      <UiButton variant="outline" size="sm" @click="showConnection = !showConnection" :aria-expanded="showConnection">
+      <div class="flow-header-actions">
+        <div class="flow-date-control">
+          <span class="flow-date-label">조회 날짜</span>
+          <UiDatePicker v-model="dateModel" :max-value="maxDate" :clearable="false" size="sm" trigger-label="거래일 선택" class="flow-date" />
+          <UiButton size="sm" :disabled="pendingDate === selectedDate" @click="selectedDate = pendingDate">확인</UiButton>
+          <span v-if="pendingDate !== selectedDate" class="flow-date-label" role="status">현재 조회: {{ selectedDate }}</span>
+        </div>
+        <UiButton variant="outline" size="sm" @click="showConnection = !showConnection" :aria-expanded="showConnection">
         <template #icon-left><span class="status-dot" :class="{ 'status-dot--live': connectionOk }" /></template>
         {{ connectionText }}
         <template #icon-right><UiIcon name="settings-2" :size="14" /></template>
-      </UiButton>
+        </UiButton>
+      </div>
     </header>
     <section v-if="showConnection" class="panel connection-panel">
       <h2>한국투자증권 연결</h2>
@@ -180,16 +199,19 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
     <div class="flow-toolbar">
       <UiTab v-model="activeTab" :tabs="tabs" align="left" size="sm" aria-label="수급 화면" class="flow-tabs" />
       <div class="flow-controls">
-        <UiDatePicker v-model="dateModel" :max-value="maxDate" :clearable="false" size="sm" trigger-label="거래일 선택" class="flow-date" />
-        <UiSelect v-model="windowMinutes" :options="windowOptions" label="비교 구간" label-hidden size="sm" class="flow-window" />
+        <UiButton variant="outline" size="sm" @click="openSeptemberReview">9/22 복기 보기</UiButton>
+        <UiSelect v-if="activeTab !== 'retrospective'" v-model="windowMinutes" :options="windowOptions" label="비교 구간" label-hidden size="sm" class="flow-window" />
         <UiButton variant="outline" size="sm" icon-only :loading="busy" @click="load" aria-label="새로고침"><template #icon-left><UiIcon name="refresh-cw" :size="16" /></template></UiButton>
       </div>
     </div>
+    <HistoricalMarketReview v-if="activeTab === 'retrospective'" :date="selectedDate" />
+    <template v-if="activeTab !== 'retrospective'">
     <UiAlert v-if="error" variant="error" role="alert" title="연결 확인 필요" :description="error" />
     <UiAlert v-else-if="status && !status.configured" variant="info" title="한국투자 API 연결을 기다리고 있어요" description="연결 후 정규장에 수급이 쌓이면 해석과 복기가 시작됩니다. 상단 연결 안내에서 설정 상태를 확인하세요." />
     <UiAlert v-else-if="status?.lastError" variant="warning" :description="status.lastError" />
     <UiAlert v-if="stale" variant="warning" :description="`최근 관측 ${time(latest?.sample.observedAt)} · 표시 중인 기록은 현재 수급이 아닐 수 있습니다.`" />
     <div v-if="historical && current" class="history-notice"><UiIcon name="history" :size="14" />{{ selectedDate }} {{ time(current.sample.observedAt) }}에 저장한 해석 <UiButton v-if="selectedId !== null" variant="ghost" size="xs" @click="selectedId = null">최신 기록으로</UiButton></div>
+    </template>
     <template v-if="activeTab === 'live'">
       <section class="metrics" aria-label="수급 요약">
         <article v-for="card in metricCards" :key="card.key" class="panel metric">
@@ -235,7 +257,7 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
         <template #cell-time="{ row }"><UiButton variant="ghost" size="xs" @click="selectRecord(row.record)">{{ row.time }}<template #icon-right><UiIcon name="arrow-up-right" :size="12" /></template></UiButton></template>
       </UiTable>
     </section>
-    <template v-else>
+    <template v-else-if="activeTab === 'review'">
       <section class="review-summary"><article class="panel"><span>방향 예측 평가</span><strong>{{ reviewStats.count }}<small>건</small></strong><p>15분 간격 표본 · 15분 후 결과</p></article><article class="panel"><span>방향 일치</span><strong>{{ reviewStats.matched }}<small>/ {{ reviewStats.count }}건</small></strong><p>기록한 방향과 실제 지수 변화 비교</p></article><article class="panel"><span>판단 보류·혼재</span><strong>{{ reviewStats.held }}<small>건</small></strong><p>방향 적중률 계산에서 제외</p></article></section>
       <section class="panel history-panel">
         <div class="section-heading"><h2>가설 이후, 실제로 어떻게 움직였을까?</h2><UiBadge size="xs">15분 수급 해석 기준</UiBadge></div>
@@ -264,6 +286,9 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
 .flow-page { --accent: #4f6af6; color: #19253b; display: flex; flex-direction: column; gap: 16px; padding-bottom: 24px; }
 .flow-page * { box-sizing: border-box; }
 .flow-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.flow-header-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; }
+.flow-date-control { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.flow-date-label { color: #6c7890; font-size: 12px; white-space: nowrap; }
 .eyebrow { color: #7582a5; font-size: 10px; font-weight: 700; letter-spacing: .15em; }
 h1 { font-size: 27px; line-height: 1.3; letter-spacing: -.8px; margin: 5px 0 8px; }
 .flow-header p { font-size: 13px; color: #7d889f; margin: 0; }
@@ -274,7 +299,7 @@ h2 { font-size: 14px; font-weight: 650; margin: 0; display: flex; align-items: c
 h2 :deep(svg) { color: var(--accent); }
 .muted { color: #8a95a8; font-size: 11px; }
 .flow-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #e8edf5; padding: 6px 0 0; }
-.flow-tabs { flex: 1; min-width: 0; }
+.flow-tabs { flex: 1; min-width: 0; max-width: 100%; overflow-x: auto; }
 .flow-controls { display: flex; gap: 8px; padding-bottom: 6px; }
 .flow-date { width: 170px; min-width: 0; }
 .flow-window { width: 120px; min-width: 0; }
@@ -369,5 +394,5 @@ td { padding: 13px 12px; border-bottom: 1px solid #edf0f6; color: #56647f; }
 @media (max-width: 1000px) { .analysis-grid { grid-template-columns: minmax(0, 1.5fr) minmax(240px, 1fr); } .panel { padding: 17px; } .metric-number { font-size: 25px; } .metric-summary span { display: block; } .flow-toolbar { flex-wrap: wrap; } }
 @media (max-width: 700px) { .flow-header { align-items: flex-start; flex-direction: column; gap: 12px; } h1 { font-size: 24px; } .flow-toolbar { gap: 8px; } .flow-toolbar nav { width: 100%; gap: 22px; } .flow-controls { width: 100%; } .flow-controls input { width: 145px; } .metrics { grid-template-columns: 1fr; gap: 10px; } .metric { padding: 15px 17px; } .metric-number { margin: 13px 0 5px; } .metric-summary span { display: inline; } .metric-caption { margin-top: 8px; padding-top: 8px; } .hypotheses { grid-template-columns: 1fr; } .insight { padding: 17px; } .insight h2 { font-size: 15px; } .insight .section-heading { align-items: flex-start; flex-wrap: wrap; } .analysis-grid { grid-template-columns: 1fr; } .flow-side { display: grid; grid-template-columns: 1fr; } .review-summary { gap: 8px; } .review-summary .panel { padding: 12px; } .review-summary article > span { font-size: 10px; } .review-summary strong { font-size: 24px; } .notice { flex-wrap: wrap; } .section-heading .muted { font-size: 10px; } .reports-panel .section-heading { align-items: flex-start; } .flow-footer { align-items: flex-start; } }
 @media (prefers-reduced-motion: reduce) { .spinning { animation: none; } }
-@media (max-width: 700px) { .flow-tabs { flex-basis: 100%; } .flow-date { flex: 1; width: auto; } .flow-window { width: 116px; flex-shrink: 0; } }
+@media (max-width: 700px) { .flow-header-actions { width: 100%; justify-content: flex-start; } .flow-tabs { flex-basis: 100%; } .flow-window { width: 116px; flex-shrink: 0; } }
 </style>
