@@ -7,6 +7,8 @@ import projectRouter from './routes/projects'
 import issueRouter from './routes/issues'
 import todoRouter from './routes/todos'
 import stockRouter from './routes/stock'
+import marketFlowRouter from './routes/marketFlow'
+import { startFlowCollector } from './services/flowCollector'
 import stockGuardRouter from './routes/stockGuard'
 import stockNewsRouter from './routes/stockNews'
 import aiToolRouter from './routes/aiTools'
@@ -73,6 +75,7 @@ app.use('/projects', projectRouter)
 app.use('/issues', issueRouter)
 app.use('/todos', todoRouter)
 app.use('/stock', stockRouter)
+app.use('/market-flow', marketFlowRouter)
 app.use('/stock', stockGuardRouter)
 app.use('/stock-news', stockNewsRouter)
 app.use('/ai-tools', aiToolRouter)
@@ -108,6 +111,7 @@ const PORT = process.env.PORT || 4000
 app.listen(PORT, () => {
   console.log(`서버 실행: http://localhost:${PORT}`)
   startStockGuardCron()
+  startFlowCollector()
   startScoreMaturityCron()
   startSyncMoviesCron()
 })

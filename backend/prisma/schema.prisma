@@ -35,8 +35,36 @@ model User {
   scorePortfolio    ScorePortfolio?
   preference        UserPreference?
   movieBookmarks    MovieBookmark[]
+  flowReports       FlowReport[]
 
   @@map("users")
+}
+
+// 수집 당시 관측과 규칙 기반 해석을 함께 보존. 과거 예측을 재작성하지 않는다.
+model FlowSnapshot {
+  id         Int      @id @default(autoincrement())
+  date       String   @db.VarChar(10)
+  observedAt DateTime @unique @map("observed_at")
+  payload    Json
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([date, observedAt])
+  @@map("flow_snapshots")
+}
+
+// 참고 PDF는 인증된 소유자만 조회 가능하며 외부 AI 서비스로 전송하지 않는다.
+model FlowReport {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  date       String   @db.VarChar(10)
+  filename   String   @db.VarChar(255)
+  content    Bytes
+  note       String   @default("") @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("flow_reports")
 }
 
 // 프로젝트
