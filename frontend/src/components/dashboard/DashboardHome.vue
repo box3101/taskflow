@@ -5,12 +5,9 @@ import { UiLoading, openToast } from '@leechanyong/ispark-ui'
 import { useAuthStore } from '../../stores/auth'
 import api from '../../api/client'
 import type { Todo } from '../../types/todo'
-import DailyQuote from './DailyQuote.vue'
 import StatCard from './StatCard.vue'
 import TodoQuickList from './TodoQuickList.vue'
 import ProjectSummary from './ProjectSummary.vue'
-import WeatherOutfit from './WeatherOutfit.vue'
-import MoodWidget from './MoodWidget.vue'
 import CalendarWidget from '../calendar/CalendarWidget.vue'
 
 const router = useRouter()
@@ -92,30 +89,6 @@ const summaryText = computed(() => {
   return parts.join(', ')
 })
 
-// 식욕 억제 문구 (밤 9시 이후, chanyong만)
-const appetiteMessages = [
-  '공복이 불편한 게 아니라, 공복을 참지 못하는 마음이 불편한 거다.',
-  '하윤이 아빠는 오래 건강해야 한다.',
-  '40대에 후회할 몸을 30대에 만들지 마라.',
-  '지금 참는 한 끼가, 내일의 자존감이 된다.',
-  '배고픔은 30분이면 지나간다. 후회는 내일까지 간다.',
-  '몸이 가벼워야 마음도 가볍다.',
-  '오늘 밤 참으면, 내일 아침 거울이 웃는다.',
-]
-const showAppetiteMsg = computed(() => {
-  return auth.user?.email === 'chanyong@test.com'
-})
-const appetiteIdx = ref(Math.floor(Math.random() * appetiteMessages.length))
-const appetiteMsg = computed(() => appetiteMessages[appetiteIdx.value])
-
-// 10초마다 슬라이드
-let appetiteTimer: ReturnType<typeof setInterval> | null = null
-onMounted(() => {
-  appetiteTimer = setInterval(() => {
-    appetiteIdx.value = (appetiteIdx.value + 1) % appetiteMessages.length
-  }, 10000)
-})
-
 // 데이터 로딩
 onMounted(async () => {
   try {
@@ -170,23 +143,6 @@ function onNavigateTodos() {
         </h1>
       </div>
 
-      <!-- 식욕 억제 문구 (chanyong@test.com만) -->
-      <Transition name="fade" mode="out-in">
-        <div v-if="showAppetiteMsg" :key="appetiteIdx" class="dashboard__appetite">
-          <span class="dashboard__appetite-icon">🧘</span>
-          <span class="dashboard__appetite-text">{{ appetiteMsg }}</span>
-        </div>
-      </Transition>
-
-      <!-- 명언 + 기분/날씨 (2열 grid = StatCard와 폭 동일) -->
-      <div class="dashboard__quote-weather">
-        <DailyQuote class="dashboard__quote" />
-        <div class="dashboard__mood-weather">
-          <MoodWidget />
-          <WeatherOutfit />
-        </div>
-      </div>
-
       <!-- 요약 카드 -->
       <div class="dashboard__stats">
         <StatCard
@@ -232,29 +188,6 @@ function onNavigateTodos() {
   position: relative;
 }
 
-.fade-enter-active, .fade-leave-active { transition: opacity 0.5s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-
-.dashboard__appetite {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 20px;
-  background: #f0fdf4;
-  border-radius: 10px;
-  margin-bottom: 4px;
-}
-.dashboard__appetite-icon {
-  font-size: 20px;
-  flex-shrink: 0;
-}
-.dashboard__appetite-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: #374151;
-  line-height: 1.5;
-  font-style: italic;
-}
 .dashboard__greeting {
   margin-bottom: 4px;
 }
@@ -273,24 +206,6 @@ function onNavigateTodos() {
   font-size: 13px;
   font-weight: 400;
   color: #9ca3af;
-}
-
-.dashboard__quote-weather {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  align-items: stretch;
-}
-
-.dashboard__quote {
-  min-width: 0;
-}
-
-/* 기분+날씨를 오른쪽 1fr 안에서 나란히 */
-.dashboard__mood-weather {
-  display: flex;
-  gap: 12px;
-  align-items: stretch;
 }
 
 .dashboard__stats {
@@ -325,24 +240,8 @@ function onNavigateTodos() {
     grid-template-columns: 1fr;
   }
 
-  .dashboard__quote-weather {
-    grid-template-columns: 1fr;
-  }
-
-  .dashboard__mood-weather {
-    flex-direction: column;
-  }
-
   .dashboard__greeting-sub,
   .dashboard__greeting {
-    display: none;
-  }
-
-  .dashboard__quote {
-    display: none;
-  }
-
-  .dashboard__mood-weather :deep(.mood-widget) {
     display: none;
   }
 }

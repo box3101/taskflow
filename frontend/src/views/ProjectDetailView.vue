@@ -1093,7 +1093,7 @@ onMounted(async () => {
               <UiMultiSelect v-model="checkedStatuses" :options="statusFilterItems" all-label="상태 전체" size="sm" placeholder="상태" class="filter-status" @update:model-value="resetDisplay" />
               <UiSelect v-model="filterModule" :options="[{ label: '모듈 전체', value: '' }, ...moduleSelectOptions]" size="sm" placeholder="모듈" class="filter-module" />
               <div class="filter-date-range">
-                <UiDateRangePicker v-model="dateRangeModel" :presets="datePresets" size="sm" />
+                <UiDateRangePicker v-model="dateRangeModel" mode="range" :presets="datePresets" size="sm" />
               </div>
 
             </div>
@@ -1778,7 +1778,10 @@ onMounted(async () => {
 .filter-date-range {
   display: flex;
   align-items: center;
-  gap: 4px;
+  width: 300px;
+  max-width: 100%;
+  min-width: 0;
+  :deep(.ui-daterangepicker-wrap) { width: 100%; min-width: 0; }
 }
 .filter-bar {
   display: flex;
