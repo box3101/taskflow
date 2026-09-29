@@ -64,7 +64,7 @@ export function analyzeFlow(current: FlowSample, history: FlowSample[], minutes:
   // Rules describe observable signs, not calibrated probabilities or causal attribution.
   if (c > 0 && f > 0 && n > 0) return result('aligned-buy', '현물·선물 동반 매수 · 비차익 유입', ['상승 방향의 포지션 확대 가능성', '서로 다른 투자자의 매수 또는 기존 헤지 청산 가능성'], 'up', ['외국인 현물 순매수 지속', '외국인 비차익 순매수 지속', '코스피의 상승 반응 확인'])
   if (c < 0 && f < 0 && n < 0) return result('aligned-sell', '현물·선물 동반 매도 · 비차익 유출', ['위험 노출 축소 가능성', '현물 매도와 선물 헤지가 동시에 집계됐을 가능성'], 'down', ['외국인 현물 순매도 지속', '외국인 비차익 순매도 지속', '코스피의 하락 반응 확인'])
-  if (c < 0 && f > 0) return result('futures-only', '선물 매수 확대 · 현물 동참 부족', ['선물 중심의 상승 포지션 확대 가능성', '기존 선물 매도 포지션 청산 가능성'], 'wait', ['현물 순매도 둔화 또는 매수 전환', '외국인 비차익 매수 동참', '미결제약정·베이시스 추가 확인'])
+  if (c < 0 && f > 0) return result('futures-only', '선물 순매수 · 현물 순매도', ['선물 중심의 상승 포지션 확대 가능성', '기존 선물 매도 포지션 청산 가능성'], 'wait', ['현물 순매도 둔화 또는 매수 전환', '외국인 비차익 매수 동참', '미결제약정·베이시스 추가 확인'])
   if (c > 0 && f < 0) return result('hedge', '현물 매수 · 선물 매도 엇갈림', ['현물 보유에 대한 선물 헤지 가능성', '차익거래 또는 서로 다른 투자 전략의 혼재 가능성'], 'wait', ['현물 매수 지속 여부', '미결제약정·베이시스 추가 확인', '비차익과 차익 거래 구분'])
   return result('mixed', '수급 방향 혼재 · 추가 관측 필요', ['순매수·순매도 부호만으로 뚜렷한 방향을 판단하기 어렵습니다.'], 'neutral', ['현물·선물 방향 일치 여부', '외국인 비차익 방향 전환', '지수 반응 확인'])
 }

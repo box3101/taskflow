@@ -9,6 +9,7 @@ import FlowMiniChart from './FlowMiniChart.vue'
 import HistoricalMarketReview from './HistoricalMarketReview.vue'
 import FlowCalendarDashboard from './FlowCalendarDashboard.vue'
 import FlowAgentPanel from './FlowAgentPanel.vue'
+import { flowReading, flowTitle } from '../../utils/flowReading'
 
 function today() { return new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10) }
 function time(value?: string | null) {
@@ -18,7 +19,7 @@ const initialDate = new URLSearchParams(window.location.search).get('date')
 const initialView = new URLSearchParams(window.location.search).get('view')
 const selectedDate = ref(initialDate && /^\d{4}-\d{2}-\d{2}$/.test(initialDate) && Number.isFinite(Date.parse(initialDate)) && initialDate <= today() ? initialDate : today())
 const pendingDate = ref(selectedDate.value)
-const windowMinutes = ref(15)
+const windowMinutes = ref(5)
 const activeTab = ref(initialView && ['calendar', 'live', 'agent', 'history', 'review', 'retrospective'].includes(initialView) ? initialView : !initialDate ? 'calendar' : selectedDate.value === '2026-09-22' ? 'retrospective' : 'live')
 const selectedId = ref<number | null>(null)
 const data = ref<FlowResponse | null>(null)
@@ -46,12 +47,15 @@ const historyColumns = computed<TableColumn[]>(() => [
   { key: 'futures', label: '선물 (계약)', align: 'right' },
   { key: 'nonArb', label: `비차익 (${unitLabel('nonArb')})`, align: 'right' },
   { key: 'title', label: `당시 해석 (${windowMinutes.value}분)` },
+  { key: 'change', label: '직전 관측 대비' },
+  { key: 'price', label: `코스피 (${windowMinutes.value}분)` },
 ])
 const historyRows = computed(() => [...records.value].reverse().map(row => ({ id: row.id, time: time(row.sample.observedAt), cash: fmt(row.analyses[String(windowMinutes.value)]?.delta.cash, 'cash', row), futures: fmt(row.analyses[String(windowMinutes.value)]?.delta.futures, 'futures', row), nonArb: fmt(row.analyses[String(windowMinutes.value)]?.delta.nonArb, 'nonArb', row), title: row.analyses[String(windowMinutes.value)]?.title, record: row })))
 const reviewColumns: TableColumn[] = [{ key: 'time', label: '기록 시각', width: '100px' }, { key: 'title', label: '당시 해석' }, { key: 'after15', label: '15분 후' }, { key: 'after30', label: '30분 후' }]
 const records = computed(() => data.value?.records || [])
 const current = computed(() => records.value.find(r => r.id === selectedId.value) || records.value.at(-1))
 const analysis = computed(() => current.value?.analyses[String(windowMinutes.value)])
+const reading = computed(() => flowReading(current.value, records.value, windowMinutes.value))
 const latest = computed(() => records.value.at(-1))
 const historical = computed(() => selectedDate.value !== today() || selectedId.value !== null)
 const stale = computed(() => !historical.value && !!latest.value && now.value - Date.parse(latest.value.sample.observedAt) > 180_000)
@@ -237,11 +241,14 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
           <div class="metric-heading"><span class="metric-icon" :style="{ color: card.color }"><UiIcon :name="card.icon" :size="20" /></span><div><h2>{{ card.label }}</h2><small>{{ card.market }}</small></div><UiBadge v-if="current?.sample.sources[card.key].status !== 'ok'" size="xs">{{ current ? '조회 확인' : '수집 대기' }}</UiBadge></div>
           <div class="metric-number" :class="tone(analysis?.delta[card.key])">{{ fmt(analysis?.delta[card.key], card.key) }}<span>{{ unitLabel(card.key) }}</span></div>
           <p class="metric-summary">최근 {{ windowMinutes }}분 변화 <span>· 누적 {{ fmt(current?.sample.values[card.key], card.key) }}</span></p>
+          <p class="metric-summary">{{ analysis?.baselineAt ? `${time(analysis.baselineAt)} → ${time(current?.sample.observedAt)} 비교 · 1분마다 갱신` : `${windowMinutes}분 비교 데이터 수집 중` }}</p>
           <div class="metric-caption">{{ current?.sample.sources[card.key].message || card.caption }}</div>
         </article>
       </section>
       <section class="insight">
-        <div class="section-heading"><h2><UiIcon name="lightbulb" :size="22" />{{ analysis?.title || '수급이 모이면, 의도를 함께 읽어볼게요' }}</h2><UiBadge variant="primary" size="xs">규칙 기반 가설</UiBadge></div>
+        <div class="section-heading"><h2><UiIcon name="lightbulb" :size="22" />{{ flowTitle(current, windowMinutes) }}</h2><UiBadge variant="primary" size="xs">관측 요약</UiBadge></div>
+        <dl class="reading-grid"><dt>현재 상태</dt><dd>{{ reading.state }}</dd><dt>직전 관측 대비</dt><dd>{{ reading.changes }}</dd><dt>가격 반응</dt><dd>{{ reading.price }}</dd><dt>다음 확인 조건</dt><dd>{{ reading.checks.join(' · ') }}</dd></dl>
+        <p class="chart-footnote">직전 관측과 현재의 최근 {{ windowMinutes }}분 값을 비교합니다. 구간이 겹치므로 행을 합산하지 않습니다. 외국인 비차익은 현물에 포함됩니다.</p>
         <div class="hypotheses"><article v-for="(hypothesis, i) in (analysis?.hypotheses || ['외국인 현물과 선물의 방향이 일치하는지 확인합니다.', '외국인 비차익 동참 여부와 실제 지수 반응을 비교합니다.'])" :key="i"><UiBadge variant="info" size="xs">가설 {{ i + 1 }}</UiBadge><p>{{ hypothesis }}</p></article></div>
         <div class="insight-footer"><UiIcon name="info" :size="14" /><span>미결제약정·베이시스는 미연결 · 신규 포지션과 기존 포지션 청산을 단정하지 않습니다.</span></div>
       </section>
@@ -274,7 +281,11 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
       <UiEmpty v-if="!records.length" title="이 날짜에는 수집 기록이 없어요" description="연결 이후 장중 관측부터 저장합니다. 과거 수급을 예측 기록으로 소급하지 않습니다." />
       <UiTable v-else :columns="historyColumns" :data="historyRows" size="sm">
         <template #cell-time="{ row }"><UiButton variant="ghost" size="xs" @click="selectRecord(row.record)">{{ row.time }}<template #icon-right><UiIcon name="arrow-up-right" :size="12" /></template></UiButton></template>
+        <template #cell-title="{ row }">{{ flowTitle(row.record, windowMinutes) }}</template>
+        <template #cell-change="{ row }">{{ flowReading(row.record, records, windowMinutes).changes }}</template>
+        <template #cell-price="{ row }">{{ flowReading(row.record, records, windowMinutes).price }}</template>
       </UiTable>
+      <p class="chart-footnote">각 행은 최근 {{ windowMinutes }}분 값입니다. 직전 행과 구간이 겹치며 합산할 수 없습니다. 순매수·순매도 규모 변화는 직전 관측과의 비교입니다.</p>
     </section>
     <template v-else-if="activeTab === 'review'">
       <section class="review-summary"><article class="panel"><span>방향 예측 평가</span><strong>{{ reviewStats.count }}<small>건</small></strong><p>15분 간격 표본 · 15분 후 결과</p></article><article class="panel"><span>방향 일치</span><strong>{{ reviewStats.matched }}<small>/ {{ reviewStats.count }}건</small></strong><p>기록한 방향과 실제 지수 변화 비교</p></article><article class="panel"><span>판단 보류·혼재</span><strong>{{ reviewStats.held }}<small>건</small></strong><p>방향 적중률 계산에서 제외</p></article></section>
@@ -305,6 +316,7 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
 
 
 <style scoped>
+.reading-grid{display:grid;grid-template-columns:120px 1fr;gap:12px;font-size:13px;line-height:1.7;margin:18px 0}.reading-grid dt{color:#64748b}.reading-grid dd{margin:0;font-weight:500}@media(max-width:600px){.reading-grid{grid-template-columns:1fr;gap:5px}.reading-grid dd{margin-bottom:10px}}
 .flow-page { --accent: #4f6af6; color: #19253b; display: flex; flex-direction: column; gap: 16px; padding-bottom: 24px; }
 .flow-page * { box-sizing: border-box; }
 .flow-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
