@@ -318,7 +318,7 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
 
 <style scoped>
 .flow-change-buy{color:#c62828;font-weight:600}.flow-change-sell{color:#205bc2;font-weight:600}.flow-change-neutral{color:#64748b}
-.flow-change-cell{font-size:12px;min-width:420px;display:flex;align-items:center;flex-wrap:nowrap;gap:10px;line-height:1.6;white-space:nowrap;letter-spacing:-0.2px}.flow-change-item{display:inline-flex;align-items:center;gap:6px;flex-shrink:0}.flow-change-item+.flow-change-item{border-left:1px solid #dce3ed;padding-left:10px}.flow-change-item strong{display:inline-block;padding:1px 6px;border-radius:4px;background:#f0f4fa;color:#52647e;font-size:10px;text-align:center;font-weight:600}
+.flow-change-cell{min-width:420px;display:flex;align-items:center;flex-wrap:nowrap;gap:10px;line-height:1.6;white-space:nowrap;letter-spacing:-0.2px}.flow-change-item{display:inline-flex;align-items:center;gap:6px;flex-shrink:0}.flow-change-item+.flow-change-item{border-left:1px solid #dce3ed;padding-left:10px}.flow-change-item strong{display:inline-block;padding:1px 6px;border-radius:4px;background:#f0f4fa;color:#52647e;font-size:11px;text-align:center;font-weight:600}
 .reading-grid{display:grid;grid-template-columns:120px 1fr;gap:12px;font-size:13px;line-height:1.7;margin:18px 0}.reading-grid dt{color:#64748b}.reading-grid dd{margin:0;font-weight:500}@media(max-width:600px){.reading-grid{grid-template-columns:1fr;gap:5px}.reading-grid dd{margin-bottom:10px}}
 .flow-page { --accent: #4f6af6; color: #19253b; display: flex; flex-direction: column; gap: 16px; padding-bottom: 24px; }
 .flow-page * { box-sizing: border-box; }
