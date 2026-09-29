@@ -11,6 +11,7 @@ const menuDefs = [
   { key: 'projects', label: '프로젝트', icon: 'folder', desc: '프로젝트·이슈 관리' },
   { key: 'todos', label: '할일', icon: 'check-square', desc: '개인 할일 목록' },
   { key: 'stock', label: '주식', icon: 'trending-up', desc: '시황·매매일지·대시보드' },
+  { key: 'spike', label: '급등 탐지기', icon: 'zap', desc: 'Average 급등 알림·성적·종목 상세' },
   { key: 'memos', label: '메모', icon: 'sticky-note', desc: '빠른 메모' },
   { key: 'health', label: '건강', icon: 'heart-pulse', desc: '운동·식단 기록' },
   { key: 'ai-tools', label: 'AI Tools', icon: 'bot', desc: 'AI 도구 가이드' },

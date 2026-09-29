@@ -31,6 +31,7 @@ const allMenuItems = [
   { label: '메모', value: 'memos', icon: 'sticky-note', path: '/memos', pinned: false },
   { label: '건강', value: 'health', icon: 'heart-pulse', path: '/health', pinned: false },
   { label: '주식', value: 'stock', icon: 'trending-up', path: '/stock', pinned: false },
+  { label: '급등 탐지기', value: 'spike', icon: 'zap', path: '/spike', pinned: false },
 ]
 
 // 유저 설정에 따라 메뉴 필터링 (홈은 항상 표시)

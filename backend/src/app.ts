@@ -8,6 +8,7 @@ import issueRouter from './routes/issues'
 import todoRouter from './routes/todos'
 import stockRouter from './routes/stock'
 import marketFlowRouter from './routes/marketFlow'
+import spikeDetectorRouter from './routes/spikeDetector'
 import { startFlowCollector } from './services/flowCollector'
 import { automationConfig, runFlowAutomation } from './services/flowAutomation'
 import stockGuardRouter from './routes/stockGuard'
@@ -30,6 +31,7 @@ import movieRouter from './routes/movies'
 import { startStockGuardCron } from './services/stockGuardCron'
 import { startScoreMaturityCron } from './services/scoreMaturityCron'
 import { startSyncMoviesCron } from './services/syncMoviesCron'
+import { startSpikeCloud } from './services/spikeCloud'
 
 const app = express()
 
@@ -56,7 +58,7 @@ const clientPath = path.join(__dirname, '../../../frontend/dist')
 // → 프론트 라우트면 index.html(SPA) 반환. XHR/API 호출은 Accept에 text/html이 없어 그대로 통과한다.
 const FRONTEND_ROUTES = [
   '/', '/login', '/settings', '/main',
-  '/projects', '/todos', '/calendar', '/screenings', '/ai-tools', '/memos', '/stock', '/health',
+  '/projects', '/todos', '/calendar', '/screenings', '/ai-tools', '/memos', '/stock', '/health', '/spike',
 ]
 app.use((req, res, next) => {
   if (req.method !== 'GET') return next()
@@ -77,6 +79,7 @@ app.use('/issues', issueRouter)
 app.use('/todos', todoRouter)
 app.use('/stock', stockRouter)
 app.use('/market-flow', marketFlowRouter)
+app.use('/spike-detector', spikeDetectorRouter)
 app.use('/stock', stockGuardRouter)
 app.use('/stock-news', stockNewsRouter)
 app.use('/ai-tools', aiToolRouter)
@@ -113,6 +116,7 @@ app.listen(PORT, () => {
   console.log(`서버 실행: http://localhost:${PORT}`)
   startStockGuardCron()
   startFlowCollector(runFlowAutomation)
+  startSpikeCloud()
   console.log(`[flow-auto] enabled=${automationConfig().enabled} configured=${automationConfig().configured} interval=15m`)
   startScoreMaturityCron()
   startSyncMoviesCron()

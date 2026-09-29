@@ -53,6 +53,10 @@ const router = createRouter({
           component: () => import('./views/StockView.vue'),
         },
         {
+          path: 'spike',
+          component: () => import('./views/SpikeView.vue'),
+        },
+        {
           path: 'settings',
           component: () => import('./views/SettingsView.vue'),
         },
