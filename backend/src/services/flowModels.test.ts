@@ -3,6 +3,15 @@ import { basicModel, expertModels, judgmentSchema, modelJson } from './flowModel
 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs() })
 describe('tiered model transport', () => {
+  it('disables thinking explicitly for short judgments without changing expert defaults', async () => {
+    vi.stubEnv('ANTHROPIC_API_KEY', 'fixture')
+    const fetcher = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ stop_reason: 'end_turn', content: [{ type: 'text', text: '{}' }] })))
+    vi.stubGlobal('fetch', fetcher)
+    await modelJson('anthropic', 'claude-sonnet-5', '', {}, judgmentSchema, 3072, 'disabled')
+    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({ max_tokens: 3072, thinking: { type: 'disabled' }, output_config: { format: { type: 'json_schema' } } })
+    await modelJson('anthropic', 'claude-sonnet-5', '', {}, judgmentSchema)
+    expect(JSON.parse(fetcher.mock.calls[1][1].body).thinking).toBeUndefined()
+  })
   it('uses the basic Sonnet model for expert tasks despite a legacy Opus setting', () => {
     vi.stubEnv('FLOW_BASIC_MODEL', '')
     vi.stubEnv('FLOW_OPUS_MODEL', 'claude-opus-5-5')

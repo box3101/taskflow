@@ -10,7 +10,7 @@ export function expertModels() {
 }
 
 // Only fixed first-party endpoints receive server-side credentials.
-export async function modelJson(provider: ExpertProvider, model: string, instructions: string, input: unknown, schema: object, maxOutputTokens = 8192): Promise<string> {
+export async function modelJson(provider: ExpertProvider, model: string, instructions: string, input: unknown, schema: object, maxOutputTokens = 8192, thinking?: 'disabled'): Promise<string> {
   const apiKey = provider === 'anthropic' ? process.env.ANTHROPIC_API_KEY : process.env.OPENAI_API_KEY
   if (!apiKey) throw Object.assign(new Error('AI API 키 설정이 필요합니다.'), { status: 401 })
   const anthropic = provider === 'anthropic'
@@ -19,6 +19,7 @@ export async function modelJson(provider: ExpertProvider, model: string, instruc
     headers: anthropic ? { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' } : { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify(anthropic ? {
       model, max_tokens: maxOutputTokens, system: instructions,
+      ...(thinking ? { thinking: { type: thinking } } : {}),
       messages: [{ role: 'user', content: JSON.stringify(input) }],
       output_config: { format: { type: 'json_schema', schema } },
     } : {
