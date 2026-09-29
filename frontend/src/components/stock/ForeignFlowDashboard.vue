@@ -225,7 +225,10 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
     </div>
     <FlowCalendarDashboard v-if="activeTab === 'calendar'" :date="selectedDate" :refresh-key="data?.serverTime || ''" @select="selectedDate = $event" @open="openCalendarDay" />
     <HistoricalMarketReview v-if="activeTab === 'retrospective'" :date="selectedDate" />
-    <FlowAgentPanel v-if="activeTab === 'agent'" :date="selectedDate" :record="current" :refresh-key="data?.serverTime || ''" />
+    <template v-if="activeTab === 'agent'">
+      <p class="chart-footnote">새 AI 판단에는 선택한 관측 시점까지의 당일 수급·코스피 기록도 함께 전달됩니다. 15분 간격 대표 기록·최근 15분 상세·수집 공백을 포함하며, 이후 데이터는 제외합니다. 추가 AI 호출 없이 기존 판단의 입력 자료로 사용합니다.</p>
+      <FlowAgentPanel :date="selectedDate" :record="current" :refresh-key="data?.serverTime || ''" />
+    </template>
     <template v-if="!['calendar', 'retrospective'].includes(activeTab)">
     <UiAlert v-if="error" variant="error" role="alert" title="연결 확인 필요" :description="error" />
     <UiAlert v-else-if="status && !status.configured" variant="info" title="한국투자 API 연결을 기다리고 있어요" description="연결 후 정규장에 수급이 쌓이면 해석과 복기가 시작됩니다. 상단 연결 안내에서 설정 상태를 확인하세요." />

@@ -2,8 +2,11 @@ import { basicModel, judgmentSchema, modelJson } from './flowModels'
 import { FlowAnalysis, FlowSample, isCollectionTime, koreanClock, reviewFlow } from './flowAnalysis'
 import { RecordedFlow } from './flowCollector'
 import { Evidence } from './flowRag'
+import prisma from '../prisma'
+import { recordedFlow } from './flowCollector'
+import { buildDayContext } from './flowDayContext'
 
-export const AGENT_VERSION = 'flow-sonnet-v4'
+export const AGENT_VERSION = 'flow-sonnet-v5-day'
 export type Direction = 'up' | 'down' | 'neutral' | 'wait'
 export interface AgentJudgment {
   direction: Direction
@@ -48,8 +51,13 @@ export function parseJudgment(text: string, evidence: Evidence[]): AgentJudgment
 export async function generateJudgment(record: RecordedFlow, evidence: Evidence[], horizon: number): Promise<AgentJudgment> {
   const config = agentConfig()
   if (!config.configured) throw new Error('서버에 ANTHROPIC_API_KEY를 설정하세요.')
+  if (!record.dayContext) {
+    const snapshots=await prisma.flowSnapshot.findMany({where:{date:record.sample.date},orderBy:{observedAt:'asc'}})
+    record.dayContext=buildDayContext(record,snapshots.flatMap(s=>{const r=recordedFlow(s.payload);return r?[r]:[]}))
+  }
   const instructions = `너는 코스피 수급 분석가다. 제공된 관측 시점 이후 ${horizon}분의 방향을 한국어로 판단한다.
 외국인 현물, 선물, 외국인 비차익, 전체 비차익을 구분한다. 비차익은 현물에 포함되므로 합산하지 않는다.
+record.dayContext는 관측 시점까지의 당일 장 기록이다. 누적 수급의 오전·오후 흐름과 최근 변화를 구분해 참고한다. points는 15분 간격 대표 관측과 최근 15분 관측이며 전체 기록이 아니다. gaps는 실제 원본 수집 공백이다. 구간별 증감을 더해 중복 계산하지 않는다. raw 단위를 임의로 원·억원으로 해석하지 않는다. 시장 전체 외국인 수급을 특정 종목 수급으로 해석하지 않는다. 제공 시각 이후의 종가·뉴스·다음 날 결과는 알 수 없다. dayContext로 현재의 필수 관측 누락을 대체하지 않는다.
 수급을 주된 근거로, PDF는 배경과 반대 근거로만 사용한다. PDF 전망과 실제 수급이 충돌하면 전망을 고집하지 않는다.
 수치와 단위는 제공된 데이터만 사용한다. 누락은 0이 아니다. 필수 데이터 부족 또는 모순은 wait로 판단한다. 매번 방향을 정하지 말고 근거가 일치할 때만 방향을 제시한다.
 선물 매수는 숏 청산일 수 있으며 이미 일어난 가격 변화를 미래 예측의 증거로 단정하지 않는다.
