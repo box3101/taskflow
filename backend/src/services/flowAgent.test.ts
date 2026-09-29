@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { analyzeFlow, FlowSample } from './flowAnalysis'
-import { AgentPayload, evaluatePrediction, parseJudgment, predictionMode, summarizePredictions, summarizeComparison } from './flowAgent'
+import { AgentPayload, agentErrorMessage, evaluatePrediction, parseJudgment, predictionMode, summarizePredictions, summarizeComparison } from './flowAgent'
 import { chunkPages, extractPdf, retrieveEvidence } from './flowRag'
 
 vi.mock('../prisma', () => ({ default: {} }))
@@ -48,6 +48,9 @@ describe('point-in-time PDF retrieval', () => {
 })
 
 describe('AI response validation', () => {
+  it('explains output exhaustion separately from connection or model errors', () => {
+    expect(agentErrorMessage({ code: 'AI_OUTPUT_LIMIT' })).toBe('AI 출력 한도를 초과해 응답이 중단되었습니다.')
+  })
   it('requires valid output and citations from retrieved evidence', () => {
     expect(parseJudgment(JSON.stringify(judgment), [])).toEqual(judgment)
     expect(() => parseJudgment(JSON.stringify({ ...judgment, citations: ['999:0'] }), [])).toThrow()

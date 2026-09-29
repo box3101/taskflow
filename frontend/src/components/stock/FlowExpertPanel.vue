@@ -64,7 +64,7 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
 
 <template>
   <section class="expert-panel">
-    <div class="heading"><div><h3>심층 검토 · 장 마감 복기</h3><p>Claude Opus 또는 GPT Astra로 충돌하는 신호와 반대 시나리오를 검토합니다.</p></div><UiBadge>기본 예측 성적과 별도 저장</UiBadge></div>
+    <div class="heading"><div><h3>심층 검토 · 장 마감 복기</h3><p>Claude Sonnet 또는 GPT Astra로 충돌하는 신호와 반대 시나리오를 검토합니다.</p></div><UiBadge>기본 예측 성적과 별도 저장</UiBadge></div>
     <UiAlert v-if="conflicts.length" variant="info" title="심층 검토할 신호가 있습니다" :description="conflicts.join(' · ')" />
     <div class="actions">
       <div class="model-select"><UiSelect v-model="provider" :options="options" label="심층 분석 모델" size="sm" :disabled="!!running" /></div>

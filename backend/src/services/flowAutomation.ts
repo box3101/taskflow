@@ -57,7 +57,8 @@ export async function runFlowAutomation(now = new Date()): Promise<void> {
     console.log(`[flow-auto] ${date} slot=${slot} saved=1 status=completed`)
   } catch (error) {
     if ((error as { code?: string }).code !== 'P2002') {
-      console.warn('[flow-auto] 자동 분석 실패: 연결·마이그레이션 및 실행 기록을 확인하세요.')
+      const detail = error as { code?: string; status?: number; stopReason?: string; outputTokens?: number }
+      console.warn('[flow-auto] 자동 분석 실패', { jobId, slot, code: detail.code, status: detail.status, stopReason: detail.stopReason, outputTokens: detail.outputTokens })
       if (jobId) await prisma.flowAutoRun.update({ where: { id: jobId }, data: { status: 'failed', message: `${agentErrorMessage(error)} 중복 과금 방지를 위해 자동 재시도하지 않습니다.`, completedAt: new Date() } }).catch(() => {})
     }
   } finally { running = false }

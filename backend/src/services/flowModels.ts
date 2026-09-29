@@ -4,7 +4,7 @@ export function basicModel() {
 }
 export function expertModels() {
   return [
-    { provider: 'anthropic' as const, label: 'Claude Opus', model: process.env.FLOW_OPUS_MODEL || 'claude-opus-5-5', configured: Boolean(process.env.ANTHROPIC_API_KEY) },
+    { ...basicModel(), label: 'Claude Sonnet' },
     { provider: 'openai' as const, label: 'GPT Astra', model: process.env.FLOW_ASTRA_MODEL || 'gpt-6-astra', configured: Boolean(process.env.OPENAI_API_KEY) },
   ]
 }
@@ -29,9 +29,11 @@ export async function modelJson(provider: ExpertProvider, model: string, instruc
   if (!response.ok) throw Object.assign(new Error('AI 요청 실패'), { status: response.status })
   const body = await response.json() as any
   if (anthropic) {
+    if (body.stop_reason === 'max_tokens') throw Object.assign(new Error('AI 출력 한도를 초과했습니다.'), { code: 'AI_OUTPUT_LIMIT', stopReason: body.stop_reason, outputTokens: body.usage?.output_tokens })
     if (body.stop_reason !== 'end_turn') throw new Error('AI 응답이 완료되지 않았습니다.')
     return body.content?.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('') || ''
   }
+  if (body.status === 'incomplete' && body.incomplete_details?.reason === 'max_output_tokens') throw Object.assign(new Error('AI 출력 한도를 초과했습니다.'), { code: 'AI_OUTPUT_LIMIT', stopReason: 'max_output_tokens', outputTokens: body.usage?.output_tokens })
   if (body.status !== 'completed') throw new Error('AI 응답이 완료되지 않았습니다.')
   return body.output?.filter((b: any) => b.type === 'message').flatMap((b: any) => b.content || []).filter((b: any) => b.type === 'output_text').map((b: any) => b.text).join('') || ''
 }

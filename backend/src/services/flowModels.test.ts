@@ -3,6 +3,13 @@ import { basicModel, expertModels, judgmentSchema, modelJson } from './flowModel
 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs() })
 describe('tiered model transport', () => {
+  it('uses the basic Sonnet model for expert tasks despite a legacy Opus setting', () => {
+    vi.stubEnv('FLOW_BASIC_MODEL', '')
+    vi.stubEnv('FLOW_OPUS_MODEL', 'claude-opus-5-5')
+    expect(expertModels().find(m => m.provider === 'anthropic')).toMatchObject({ label: 'Claude Sonnet', model: 'claude-sonnet-5' })
+    vi.stubEnv('FLOW_BASIC_MODEL', 'claude-sonnet-custom')
+    expect(expertModels().find(m => m.provider === 'anthropic')?.model).toBe('claude-sonnet-custom')
+  })
   it('uses Sonnet for basics even with the legacy Gemini configuration', () => {
     vi.stubEnv('FLOW_BASIC_MODEL', ''); vi.stubEnv('FLOW_AI_MODEL', 'gemini-2.5-flash')
     expect(basicModel().model).toBe('claude-sonnet-5')
@@ -18,7 +25,8 @@ describe('tiered model transport', () => {
     expect(body.model).toBe('claude-sonnet-5')
     expect(body.output_config.format.schema).toEqual(judgmentSchema)
     fetcher.mockResolvedValue(new Response(JSON.stringify({ stop_reason: 'max_tokens', content: [{ type: 'text', text: '{}' }] })))
-    await expect(modelJson('anthropic', 'claude-opus-5-5', '', {}, judgmentSchema)).rejects.toThrow()
+    await expect(modelJson('anthropic', 'claude-sonnet-5', '', {}, judgmentSchema)).rejects.toMatchObject({ code: 'AI_OUTPUT_LIMIT', stopReason: 'max_tokens' })
+    expect(fetcher).toHaveBeenCalledTimes(2)
   })
   it('uses Responses with storage disabled for Astra, without Anthropic credentials', async () => {
     vi.stubEnv('OPENAI_API_KEY', 'openai-fixture')

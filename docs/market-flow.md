@@ -81,7 +81,8 @@ LLM의 사전 학습 지식 때문에 과거 재분석을 엄밀한 당시 예�
 
 - `20260924110000_add_flow_expert_review`, `20260924120000_add_flow_comparison`까지
   `prisma migrate deploy`와 `prisma generate`를 실행하고 서버를 재시작합니다.
-- 기본 선택은 Claude Opus(`FLOW_OPUS_MODEL=claude-opus-5-5`, `ANTHROPIC_API_KEY`)입니다.
+- 기본 선택은 Claude Sonnet(`FLOW_BASIC_MODEL=claude-sonnet-5`, `ANTHROPIC_API_KEY`)이며 기본 판단과 같은 모델 설정을 사용합니다.
+  기존 `FLOW_OPUS_MODEL` 설정은 더 이상 사용하지 않습니다.
   GPT Astra(`FLOW_ASTRA_MODEL=gpt-6-astra`, `OPENAI_API_KEY`)도 선택할 수 있습니다.
   키가 없는 제공사는 설정 필요로 표시하며 다른 제공사로 몰래 전환하지 않습니다.
 - `GET/POST /market-flow/expert`: 사용자별 심층 검토와 복기를 별도 테이블에 보존합니다.
@@ -92,7 +93,7 @@ LLM의 사전 학습 지식 때문에 과거 재분석을 엄밀한 당시 예�
   관련 문단 최대 12개를 전달합니다. 누락 구간을 생성하지 않습니다. 복기는 예측 적중률에서 완전히 제외합니다.
 - 하루 같은 마감 복기/제공사 또는 같은 관측 심층 검토/제공사는 재생성하지 않습니다.
   최근 24시간 심층 분석 최대 20건. API 타임아웃 110초, 실패 응답은 저장하지 않습니다.
-- Sonnet/Opus는 Anthropic Messages의 JSON 출력, Astra는 OpenAI Responses의 엄격한 JSON 출력과
+- Sonnet은 Anthropic Messages의 JSON 출력, Astra는 OpenAI Responses의 엄격한 JSON 출력과
   `store:false`를 사용합니다. 모델 응답의 인용·필수 필드 검증 후 저장합니다.
 
 ## 확인
