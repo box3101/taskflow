@@ -48,8 +48,10 @@ export function analyzeFlow(current: FlowSample, history: FlowSample[], minutes:
   const waiting: FlowAnalysis = { code: 'waiting', title: `${minutes}분 비교 데이터 수집 중`, hypotheses: ['같은 거래일의 연속 관측이 쌓이면 수급 변화를 해석합니다.'], direction: 'wait', checks: ['현물·선물·외국인 비차익의 다음 관측 확인'], delta, baselineAt: null }
   const end = Date.parse(current.observedAt)
   const target = end - minutes * 60_000
-  const candidates = history.filter(s => s.date === current.date && Date.parse(s.observedAt) <= target && target - Date.parse(s.observedAt) <= 90_000)
-  const base = candidates.sort((a, b) => b.observedAt.localeCompare(a.observedAt))[0]
+  // HTTP completion jitter must not drop the intended baseline for sub-second drift.
+  // All candidates still precede the current observation; never use future data.
+  const candidates = history.filter(s => s.date === current.date && Date.parse(s.observedAt) < end && Date.parse(s.observedAt) <= target + 5_000 && target - Date.parse(s.observedAt) <= 90_000)
+  const base = candidates.sort((a, b) => Math.abs(Date.parse(a.observedAt) - target) - Math.abs(Date.parse(b.observedAt) - target) || a.observedAt.localeCompare(b.observedAt))[0]
   if (!base) return waiting
   const interval = [...history.filter(s => s.date === current.date && s.observedAt >= base.observedAt && s.observedAt < current.observedAt), current].sort((a, b) => a.observedAt.localeCompare(b.observedAt))
   if (interval.some((s, i) => i > 0 && Date.parse(s.observedAt) - Date.parse(interval[i - 1].observedAt) > 180_000)) return { ...waiting, title: '수집 공백 · 연속 데이터 대기' }
