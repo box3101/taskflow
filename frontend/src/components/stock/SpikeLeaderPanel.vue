@@ -2,7 +2,11 @@
 import { computed, ref } from 'vue'
 import { UiIcon, UiButton, UiBadge, UiTab, UiTable, UiEmpty, UiDrawer } from '@leechanyong/ispark-ui'
 
-const props = defineProps({ rows: { type: Array, default: () => [] }, loading: Boolean, lastCapturedAt: String, fee: Number })
+const props = defineProps({ rows: { type: Array, default: () => [] }, board: { type: Array, default: () => [] }, loading: Boolean, lastCapturedAt: String, fee: Number })
+const boardTheme = ref('')
+const boardThemes = computed(() => [...new Set(props.board.map(r=>r.theme))].sort())
+const boardRows = computed(() => props.board.filter(r=>r.theme===(boardTheme.value || boardThemes.value[0]) && (r.rank===null || r.rank<=3)).sort((a,b)=>(a.rank??999)-(b.rank??999)))
+const boardColumns = [{key:'name',label:'후보 종목'},{key:'rank',label:'누적 순위'},{key:'turnover5m',label:'최근 5분 거래대금'},{key:'turnoverRatio',label:'직전 5분 대비'},{key:'relative5m',label:'테마 대비 5분 강도'}]
 const emit = defineEmits(['detail'])
 const filter = ref('all')
 const showRules = ref(false)
@@ -24,6 +28,9 @@ const columns = [
   { key: 'price', label: '알림가', width: '100px', align: 'right' },
   { key: 'turnover', label: '테마 거래대금 순위', width: '160px' },
   { key: 'strength', label: '상승률 순위', width: '120px' },
+  { key: 'recent', label: '최근 5분 거래대금', width: '140px' },
+  { key: 'acceleration', label: '직전 5분 대비', width: '120px' },
+  { key: 'relative', label: '테마 대비 5분 강도', width: '150px' },
   { key: 'status', label: '필터 판정', width: '110px' },
   { key: 'reason', label: '근거', width: '220px' },
 ]
@@ -31,7 +38,7 @@ const baseline = computed(() => {
   const values = signals.value.filter(r => r.graded && Number.isFinite(r.close)).map(r => r.close)
   return { n: values.length }
 })
-const confirmed = computed(() => signals.value.filter(r => ['pass','excluded'].includes(status(r))))
+const confirmed = computed(() => signals.value.filter(r => r.leader?.version === 'leader-v2' && ['pass','excluded'].includes(status(r))))
 const passed = computed(() => confirmed.value.filter(r => status(r) === 'pass'))
 const performance = rows => {
   const values = rows.filter(r => r.graded && Number.isFinite(r.close)).map(r => r.close-props.fee)
@@ -47,12 +54,23 @@ const money = value => Number.isFinite(value) ? `${(value/100000000).toLocaleStr
   <div class="leader-panel">
     <div class="filter-banner">
       <UiIcon name="shield-check" :size="22" />
-      <div class="filter-copy"><strong>대장주 필터</strong><span>알림 당시 테마 내 누적 거래대금 1위</span><small>관찰 종목 기준 · 자료 부족 시 판단 불가</small></div>
+      <div class="filter-copy"><strong>대장주 후보 비교</strong><span>세부 테마 거래대금 상위 3위 · 5분 거래대금·가격 강도</span><small>관찰용 · 비교 지표는 추가 탈락 조건이 아닙니다</small></div>
       <UiButton variant="outline" size="sm" @click="showRules = true">필터 기준 보기</UiButton>
     </div>
     <p class="footnote">{{ lastCapturedAt ? `최근 순위 수집 ${new Date(lastCapturedAt).toLocaleString('ko-KR')} · 신호 당시 순위 고정 저장` : '순위 수집 대기 · 탐지기 실행 후 새 알림부터 판정됩니다.' }}</p>
+    <section class="signals-card">
+      <div class="signals-heading"><h2>최근 수집 기준 · 테마별 후보</h2><label>세부 테마 <select v-model="boardTheme" aria-label="후보 비교 테마"><option value="">{{ boardThemes[0] || '수집 대기' }}</option><option v-for="theme in boardThemes" :key="theme" :value="theme">{{ theme }}</option></select></label></div>
+      <UiTable v-if="boardRows.length" :columns="boardColumns" :data="boardRows" row-key="code" size="sm">
+        <template #cell-rank="{row}">{{ row.rank ? `${row.rank}위 / ${row.total}` : '판단 불가' }}</template>
+        <template #cell-turnover5m="{row}">{{ money(row.turnover5m) }}</template>
+        <template #cell-turnoverRatio="{row}">{{ Number.isFinite(row.turnoverRatio) ? `${row.turnoverRatio.toFixed(2)}배` : '—' }}</template>
+        <template #cell-relative5m="{row}">{{ Number.isFinite(row.relative5m) ? `${row.relative5m>0?'+':''}${row.relative5m.toFixed(2)}%p` : '—' }}</template>
+      </UiTable>
+      <UiEmpty v-else title="새 비교 데이터 수집 대기" />
+      <p class="footnote">최근 저장 시각 기준입니다. 날짜·라벨 필터는 아래 알림 기록에만 적용됩니다. 5분 강도는 테마 중앙값 대비이며, 배수는 최소 10분 관측 후 표시됩니다.</p>
+    </section>
 
-    <div class="section-title"><h2>같은 조건으로 성적 비교</h2><span>선택한 날짜·라벨 기준 · 실매매 기록 제외</span></div>
+    <div class="section-title"><h2>같은 조건으로 성적 비교</h2><span>새 상위 3위 기준만 비교 · 이전 1위 필터 성적 제외</span></div>
     <div class="comparison">
       <article class="comparison-card">
         <div class="card-title"><h3>전체 알림 신호</h3><UiBadge size="sm">원본 기록</UiBadge></div>
@@ -70,23 +88,26 @@ const money = value => Number.isFinite(value) ? `${(value/100000000).toLocaleStr
       <div class="signals-heading"><h2>점화 신호 <span>{{ visible.length }}건</span></h2><UiTab v-model="filter" :tabs="tabs" size="sm" aria-label="대장주 필터 판정" /></div>
       <div class="signal-filters"><slot name="filters" /></div>
       <UiTable v-if="visible.length" :columns="columns" :data="visible" row-key="key" size="sm" sticky-header max-height="440px" clickable @row-click="row => selectedKey = row.key">
-        <template #cell-name="{ row }"><div class="stock-name">{{ row.name }}<small>{{ row.theme }} · {{ row.code }}</small></div></template>
+        <template #cell-name="{ row }"><div class="stock-name">{{ row.name }}<small>{{ row.leader?.theme || row.theme }} · {{ row.code }}</small><small v-if="row.leader && row.leader.version !== 'leader-v2'">이전 1위 기준</small></div></template>
         <template #cell-price="{ row }">{{ row.price?.toLocaleString('ko-KR') ?? '—' }}</template>
         <template #cell-turnover="{row}"><span>{{ row.leader?.rank ? `${row.leader.rank}위 / ${row.leader.total}종목${row.leader.tied ? ' (공동)' : ''}` : '—' }}</span></template>
         <template #cell-strength="{row}">{{ row.leader?.strengthRank ? `${row.leader.strengthRank}위` : '—' }}</template>
+        <template #cell-recent="{row}">{{ money(row.leader?.turnover5m) }}</template>
+        <template #cell-acceleration="{row}">{{ Number.isFinite(row.leader?.turnoverRatio) ? `${row.leader.turnoverRatio.toFixed(2)}배` : '—' }}</template>
+        <template #cell-relative="{row}">{{ Number.isFinite(row.leader?.relative5m) ? `${row.leader.relative5m > 0 ? '+' : ''}${row.leader.relative5m.toFixed(2)}%p` : '—' }}</template>
         <template #cell-status="{row}"><UiBadge :variant="statusVariant(row)" size="sm">{{ statusText(row) }}</UiBadge></template>
         <template #cell-reason="{row}"><span class="reason">{{ reason(row) }}</span></template>
       </UiTable>
       <UiEmpty v-else :title="loading ? '기록을 불러오는 중입니다' : filter === 'pass' ? '아직 검증된 통과 신호가 없습니다' : '조건에 맞는 신호가 없습니다'" :description="filter === 'pass' ? '거래대금 순위가 확인되면 통과한 신호를 여기에서 볼 수 있습니다.' : '날짜와 라벨을 확인해 주세요.'" />
       <div v-if="selected" class="selection-detail">
         <div><h3>{{ selected.name }} · 판정 근거</h3><p>{{ selected.date }} {{ selected.time }} 알림 시점 기준</p><UiBadge :variant="statusVariant(selected)" size="sm">{{ statusText(selected) }}</UiBadge><p>{{ reason(selected) }}</p><div v-for="peer in (selected.leader?.peers || []).slice(0,5)" :key="peer.code" class="peer"><span>{{ peer.name }}</span><meter min="0" :max="selected.leader.peers[0]?.turnoverWon || 1" :value="peer.turnoverWon" /><span>{{ money(peer.turnoverWon) }}</span></div><p v-if="selected.leader">확보 {{ selected.leader.available }} / {{ selected.leader.total }}종목 · {{ selected.leader.basis }}</p></div>
-        <div><h3>판정에 사용하는 정보</h3><dl class="evidence"><dt>비교 테마</dt><dd>{{ selected.theme }}</dd><dt>거래대금</dt><dd>알림 당시 누적 기준</dd><dt>상승률 순위</dt><dd>참고용 · 필터 미반영</dd></dl><UiButton size="sm" variant="outline" @click="emit('detail', selected)">원본 알림 상세 보기</UiButton></div>
+        <div><h3>판정에 사용하는 정보</h3><dl class="evidence"><dt>비교 테마</dt><dd>{{ selected.leader?.theme || selected.theme }}</dd><dt>거래대금</dt><dd>알림 당시 누적 상위 3위 · 공동 포함</dd><dt>5분 강도</dt><dd>종목 5분 수익률 − 테마 중앙값</dd><dt>비교 상태</dt><dd>{{ selected.leader?.comparisonNote || '이전 기준 · 비교 자료 없음' }}</dd></dl><UiButton size="sm" variant="outline" @click="emit('detail', selected)">원본 알림 상세 보기</UiButton></div>
       </div>
       <p class="footnote"><UiIcon name="info" :size="14" />순위 미확인은 제외 판정과 다릅니다. 검증되지 않은 순위와 성적은 표시하지 않습니다.</p>
     </section>
 
     <UiDrawer :open="showRules" title="대장주 필터 기준" width="440px" :confirm-before-close="false" :show-fullscreen="false" @update:open="showRules = $event">
-      <div class="rules"><UiBadge variant="info">관찰용 필터</UiBadge><h3>누적 거래대금 1위만 선별</h3><p>점화 알림 시점에 같은 테마의 관찰 종목을 비교합니다. 누적 거래대금 1위(공동 포함)는 통과, 2위 이하는 제외합니다. 당일 비교 종목은 첫 실행 때 고정 저장합니다.</p><h3>자료가 부족하면 판단 불가</h3><p>테마의 모든 비교 종목이 확보되어야 합니다. 수집 20초 초과, 원본 시세 90초 초과 지연, 누락, 미래 시각이면 판정하지 않습니다. 수집 시작 전 알림은 소급 추정하지 않습니다.</p><h3>같은 조건으로 비교</h3><p>순위가 확인된 신호와 그중 통과한 신호를 원본의 알림가→종가 수익률로 비교하고 동일한 비용을 차감합니다. 체결을 재현한 실매매 성적은 아닙니다.</p><p>상승률 순위는 참고 정보입니다. 시장 전체가 아닌 관찰 종목 안의 순위이며, 장 마감 후 순위를 과거 신호에 적용하지 않습니다.</p></div>
+      <div class="rules"><UiBadge variant="info">관찰용 필터 · v2</UiBadge><h3>세부 테마 거래대금 상위 3위</h3><p>알림 당시 누적 거래대금 순위로 후보를 고릅니다. 공동 순위를 포함하므로 3종목을 넘을 수 있습니다. 비교 종목이 2~3개인 테마는 모두 후보가 될 수 있고, 1개뿐이면 판단 불가입니다. 당일 비교 목록을 고정하며 기존 점화 신호 조건은 유지합니다.</p><h3>5분 흐름을 함께 비교</h3><p>최근 5분 거래대금은 누적값의 차이입니다. 직전 5분 대비 배수는 최근 5분 거래대금 ÷ 그 이전 5분 거래대금입니다. 가격 강도는 종목의 5분 수익률에서 같은 테마 종목의 5분 수익률 중앙값을 뺀 값(%p)입니다. 이 지표로 추가 탈락시키거나 매수를 지시하지 않습니다.</p><h3>자료 부족은 빈 값으로 표시</h3><p>배수에는 최소 10분 관측이 필요합니다. 직전 거래대금이 0이거나 30초 넘는 수집 공백, 누적값 감소가 있으면 비교값을 만들지 않습니다. 순위는 테마 전체 시세가 확보되어야 합니다. 과거 알림을 현재 순위로 다시 판정하지 않습니다.</p><h3>새 기준 성적만 비교</h3><p>v2 순위가 확인된 전체 신호와 상위 3위 후보를 알림가→종가 수익률로 비교하고 같은 비용을 차감합니다. 이전 1위 기준은 성적에서 제외합니다. 실제 체결을 재현한 실매매 성적은 아닙니다.</p></div>
     </UiDrawer>
   </div>
 </template>

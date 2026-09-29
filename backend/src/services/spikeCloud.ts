@@ -1,6 +1,8 @@
 import cron from 'node-cron'
 import prisma from '../prisma'
 import poolConfig from '../data/spike-pool.json'
+import leaderPoolConfig from '../data/spike-leader-pool.json'
+import { recordLeaderQuotes, researchLeader } from './spikeLeaderResearch'
 import archive from '../data/spike-archive.json'
 import { clock, fresh, parseQuotes, signalsForTick } from './spikeCloudRules'
 import { isKisTradingDay, kisConfigured } from './kisFlow'
@@ -63,7 +65,13 @@ export async function collectSpikeCloud(now=new Date()){
       if(clock(at).slice(0,10)!==date)return
       if(!Object.values(quotes).some(q=>fresh(q,at)))throw new Error('시세 수집 지연')
       updateOutcomes(state.alerts,quotes,at)
+      // Freeze the research universe independently of the original detector universe.
+      state.leaderPool ||= leaderPoolConfig
+      state.leaderHistory ||= {}
+      recordLeaderQuotes(state.leaderHistory,quotes,at)
+      state.leaderQuotes=quotes
       const alerts=time<'15:30:00'?signalsForTick(state,quotes,at):[]
+      for(const alert of alerts) alert.leader=researchLeader(state.leaderPool,quotes,state.leaderHistory,alert.code,at) as any
       state.alerts.push(...alerts);state.lastAt=at
       await tx.$executeRaw`INSERT INTO spike_cloud_snapshots(date,captured_at,payload) VALUES (${date},${new Date(at)},${JSON.stringify(quotes)}::jsonb)`
       for(const a of state.alerts){const key=date+a.time+a.code
@@ -90,7 +98,9 @@ export async function cloudSpikeDashboard(){
     for(const a of payload.alerts)records[date+a.time+a.code]=a.leader
   }
   const lastAt=Math.max(0,...days.map(d=>d.payload.lastAt||0))
-  return {spike:{...archive,days:[...merged.values()].sort((a,b)=>a.date.localeCompare(b.date))},leader:{records,lastCapturedAt:lastAt?new Date(lastAt).toISOString():null},
+  const latest=days[days.length-1]?.payload
+  const board=latest?.leaderPool&&latest?.leaderQuotes?Object.keys(latest.leaderPool).map(code=>({code,name:latest.leaderPool[code].name,...researchLeader(latest.leaderPool,latest.leaderQuotes,latest.leaderHistory||{},code,latest.lastAt)})):[]
+  return {spike:{...archive,days:[...merged.values()].sort((a,b)=>a.date.localeCompare(b.date))},leader:{records,board,lastCapturedAt:lastAt?new Date(lastAt).toISOString():null},
     market:null,live:null,auto:null,fills:{},themes:Object.fromEntries(Object.entries(poolConfig).map(([c,p])=>[c,p.themes[0]])),
     loadedAt:new Date().toISOString(),collector:{mode:'cloud',enabled:cloudEnabled(),lastError,intervalSeconds:10,source:'Naver REST',missingChg20:days[days.length-1]?Object.values(days[days.length-1].payload.chg20).filter(v=>v===null).length:null}}
 }
