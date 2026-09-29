@@ -19,7 +19,7 @@ const initialDate = new URLSearchParams(window.location.search).get('date')
 const initialView = new URLSearchParams(window.location.search).get('view')
 const selectedDate = ref(initialDate && /^\d{4}-\d{2}-\d{2}$/.test(initialDate) && Number.isFinite(Date.parse(initialDate)) && initialDate <= today() ? initialDate : today())
 const pendingDate = ref(selectedDate.value)
-const windowMinutes = ref(5)
+const windowMinutes = ref(15)
 const activeTab = ref(initialView && ['calendar', 'live', 'agent', 'history', 'review', 'retrospective'].includes(initialView) ? initialView : !initialDate ? 'calendar' : selectedDate.value === '2026-09-22' ? 'retrospective' : 'live')
 const selectedId = ref<number | null>(null)
 const data = ref<FlowResponse | null>(null)
@@ -47,7 +47,7 @@ const historyColumns = computed<TableColumn[]>(() => [
   { key: 'futures', label: '선물 (계약)', align: 'right' },
   { key: 'nonArb', label: `비차익 (${unitLabel('nonArb')})`, align: 'right' },
   { key: 'title', label: `당시 해석 (${windowMinutes.value}분)` },
-  { key: 'change', label: '직전 관측 대비' },
+  { key: 'change', label: '직전 관측 대비', width: '440px' },
   { key: 'price', label: `코스피 (${windowMinutes.value}분)` },
 ])
 const historyRows = computed(() => [...records.value].reverse().map(row => ({ id: row.id, time: time(row.sample.observedAt), cash: fmt(row.analyses[String(windowMinutes.value)]?.delta.cash, 'cash', row), futures: fmt(row.analyses[String(windowMinutes.value)]?.delta.futures, 'futures', row), nonArb: fmt(row.analyses[String(windowMinutes.value)]?.delta.nonArb, 'nonArb', row), title: row.analyses[String(windowMinutes.value)]?.title, record: row })))
@@ -282,7 +282,7 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
       <UiTable v-else :columns="historyColumns" :data="historyRows" size="sm">
         <template #cell-time="{ row }"><UiButton variant="ghost" size="xs" @click="selectRecord(row.record)">{{ row.time }}<template #icon-right><UiIcon name="arrow-up-right" :size="12" /></template></UiButton></template>
         <template #cell-title="{ row }">{{ flowTitle(row.record, windowMinutes) }}</template>
-        <template #cell-change="{ row }">{{ flowReading(row.record, records, windowMinutes).changes }}</template>
+        <template #cell-change="{ row }"><div class="flow-change-cell">{{ flowReading(row.record, records, windowMinutes).changes }}</div></template>
         <template #cell-price="{ row }">{{ flowReading(row.record, records, windowMinutes).price }}</template>
       </UiTable>
       <p class="chart-footnote">각 행은 최근 {{ windowMinutes }}분 값입니다. 직전 행과 구간이 겹치며 합산할 수 없습니다. 순매수·순매도 규모 변화는 직전 관측과의 비교입니다.</p>
@@ -316,6 +316,7 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
 
 
 <style scoped>
+.flow-change-cell{min-width:420px;line-height:1.7;white-space:normal}
 .reading-grid{display:grid;grid-template-columns:120px 1fr;gap:12px;font-size:13px;line-height:1.7;margin:18px 0}.reading-grid dt{color:#64748b}.reading-grid dd{margin:0;font-weight:500}@media(max-width:600px){.reading-grid{grid-template-columns:1fr;gap:5px}.reading-grid dd{margin-bottom:10px}}
 .flow-page { --accent: #4f6af6; color: #19253b; display: flex; flex-direction: column; gap: 16px; padding-bottom: 24px; }
 .flow-page * { box-sizing: border-box; }
