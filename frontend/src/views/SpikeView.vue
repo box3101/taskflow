@@ -5,8 +5,10 @@ import { UiPageHeader, UiButton, UiIcon, UiBadge, UiTab, UiTable, UiEmpty, UiDra
 import api from '../api/client'
 import { marketCells } from '../utils/spikeMarket.mjs'
 import SpikeLeaderPanel from '../components/stock/SpikeLeaderPanel.vue'
+import LeaderStrategyPanel from '../components/stock/LeaderStrategyPanel.vue'
+const strategyData = ref(null)
 const screen = ref('leader')
-const screenTabs = [{ label: '대장주 필터', value: 'leader' }, { label: '원본 기록·성적', value: 'original' }]
+const screenTabs = [{ label: '주도주 전략', value: 'strategy' }, { label: '대장주 필터', value: 'leader' }, { label: '원본 기록·성적', value: 'original' }]
 const leaderData = ref({ records: {}, lastCapturedAt: null })
 const collector = ref(null)
 const tradeLog = ref(null)
@@ -207,6 +209,7 @@ async function refreshAll() {
     if (disposed) return
     const payload = data.data
     spike.value = payload.spike
+    strategyData.value = payload.strategy || null
     leaderData.value = payload.leader || { records: {}, lastCapturedAt: null }
     collector.value = payload.collector || null
     spikeMarket.value = payload.market
@@ -229,7 +232,7 @@ onUnmounted(() => { disposed = true; clearInterval(timer); controller?.abort() }
 <p class="note" v-if="updatedAt">최근 조회 {{ updatedAt }} · {{ collector?.mode === 'cloud' ? '서버 10초 수집 · 화면 30초 갱신 · PC 종료 가능' : '30초마다 원본 기록 갱신' }}</p>
 <UiAlert v-if="collector?.lastError" variant="warning" :description="collector.lastError" />
     <ui-page-header class="page-head" title="급등 탐지기">
-      <template #description><template v-if="screen === 'leader'">세부 테마 거래대금 상위 3위 · 5분 거래대금과 가격 강도 비교</template><template v-else-if="spike">실제 텔레그램 알림을 그대로 채점 · 주문 없음 ·
+      <template #description><template v-if="screen === 'strategy'">주도주 돌파 후 눌림 · 독립 모의 전략 · 기존 점화와 별도 기록</template><template v-else-if="screen === 'leader'">세부 테마 거래대금 상위 3위 · 5분 거래대금과 가격 강도 비교</template><template v-else-if="spike">실제 텔레그램 알림을 그대로 채점 · 주문 없음 ·
       {{ spike.days.length }}일 ·
       <b>{{ spikeLabel === 'all' ? '전체' : spikeLabel }}</b> {{ spikeStat.n }}건 ·
       익절 +{{ spike.rule.target }}% / 손절 −{{ spike.rule.stop }}% /
@@ -243,6 +246,7 @@ onUnmounted(() => { disposed = true; clearInterval(timer); controller?.abort() }
     </ui-page-header>
 
     <UiTab v-model="screen" :tabs="screenTabs" size="sm" aria-label="급등 탐지기 보기" />
+    <LeaderStrategyPanel v-if="screen === 'strategy'" :data="strategyData" />
     <SpikeLeaderPanel v-if="screen === 'leader'" :rows="spikeRows" :board="leaderData.board || []" :loading="loading" :last-captured-at="leaderData.lastCapturedAt" :fee="spike?.rule?.fee" @detail="spikeSel = $event">
       <template #filters>
         <UiSelect v-model="spikeLabel" :options="SPIKE_LABEL_TABS.filter(t => t.value !== '실매매')" label="신호 라벨" label-hidden size="sm" class="spike-label-select" />
