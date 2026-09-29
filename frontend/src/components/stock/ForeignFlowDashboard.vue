@@ -394,7 +394,9 @@ h2 :deep(svg) { color: var(--accent); }
 .empty-state h3 { font-size: 16px; font-weight: 550; color: #73829e; margin: 20px 0 5px; }
 .empty-state p { font-size: 12px; line-height: 1.8; }
 .table-wrap { overflow-x: auto; }
-.history-panel :deep(.ui-table-wrapper) { max-width: 100%; overflow-x: auto; }
+.history-panel :deep(.ui-table-wrap) { max-width: 100%; overflow-x: auto; }
+.history-panel :deep(.ui-table) { min-width: 760px; table-layout: auto; }
+.history-panel :deep(.ui-table th), .history-panel :deep(.ui-table td) { white-space: nowrap; }
 table { border-collapse: collapse; width: 100%; font-size: 12px; white-space: nowrap; text-align: left; }
 th { background: #f6f8fc; padding: 12px; color: #7b88a1; font-weight: 500; }
 td { padding: 13px 12px; border-bottom: 1px solid #edf0f6; color: #56647f; }
@@ -425,5 +427,19 @@ td { padding: 13px 12px; border-bottom: 1px solid #edf0f6; color: #56647f; }
 @media (max-width: 1000px) { .analysis-grid { grid-template-columns: minmax(0, 1.5fr) minmax(240px, 1fr); } .panel { padding: 17px; } .metric-number { font-size: 25px; } .metric-summary span { display: block; } .flow-toolbar { flex-wrap: wrap; } }
 @media (max-width: 700px) { .flow-header { align-items: flex-start; flex-direction: column; gap: 12px; } h1 { font-size: 24px; } .flow-toolbar { gap: 8px; } .flow-toolbar nav { width: 100%; gap: 22px; } .flow-controls { width: 100%; } .flow-controls input { width: 145px; } .metrics { grid-template-columns: 1fr; gap: 10px; } .metric { padding: 15px 17px; } .metric-number { margin: 13px 0 5px; } .metric-summary span { display: inline; } .metric-caption { margin-top: 8px; padding-top: 8px; } .hypotheses { grid-template-columns: 1fr; } .insight { padding: 17px; } .insight h2 { font-size: 15px; } .insight .section-heading { align-items: flex-start; flex-wrap: wrap; } .analysis-grid { grid-template-columns: 1fr; } .flow-side { display: grid; grid-template-columns: 1fr; } .review-summary { gap: 8px; } .review-summary .panel { padding: 12px; } .review-summary article > span { font-size: 10px; } .review-summary strong { font-size: 24px; } .notice { flex-wrap: wrap; } .section-heading .muted { font-size: 10px; } .reports-panel .section-heading { align-items: flex-start; } .flow-footer { align-items: flex-start; } }
 @media (prefers-reduced-motion: reduce) { .spinning { animation: none; } }
+@media (max-width: 700px) {
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .metric { min-width: 0; padding: 13px 11px; }
+  .metric-heading { gap: 7px; flex-wrap: wrap; }
+  .metric-heading > div { min-width: 0; flex: 1; }
+  .metric-icon { width: 28px; height: 28px; border-radius: 9px; flex-shrink: 0; }
+  .metric-heading h2 { font-size: 11px; }
+  .metric-heading :deep(.ui-badge) { margin-left: 0; }
+  .metric-number { font-size: clamp(18px, 5vw, 25px); letter-spacing: -.6px; }
+  .metric-number span { display: block; margin: 3px 0 0; font-size: 10px; }
+  .metric-summary { font-size: 10px; overflow-wrap: anywhere; }
+  .metric-summary span { display: block; }
+  .metric-caption { font-size: 9px; overflow-wrap: anywhere; }
+}
 @media (max-width: 700px) { .flow-header-actions { width: 100%; justify-content: flex-start; } .flow-tabs { flex-basis: 100%; } .flow-window { width: 116px; flex-shrink: 0; } }
 </style>
