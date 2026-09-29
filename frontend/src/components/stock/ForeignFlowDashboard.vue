@@ -282,7 +282,7 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
       <UiTable v-else :columns="historyColumns" :data="historyRows" size="sm">
         <template #cell-time="{ row }"><UiButton variant="ghost" size="xs" @click="selectRecord(row.record)">{{ row.time }}<template #icon-right><UiIcon name="arrow-up-right" :size="12" /></template></UiButton></template>
         <template #cell-title="{ row }">{{ flowTitle(row.record, windowMinutes) }}</template>
-        <template #cell-change="{ row }"><div class="flow-change-cell">{{ flowReading(row.record, records, windowMinutes).changes }}</div></template>
+        <template #cell-change="{ row }"><div class="flow-change-cell"><span v-for="change in flowReading(row.record, records, windowMinutes).changes.split(' · ')" :key="change" class="flow-change-item"><strong>{{ change.split(' ')[0] }}</strong><span>{{ change.slice(change.indexOf(' ') + 1) }}</span></span></div></template>
         <template #cell-price="{ row }">{{ flowReading(row.record, records, windowMinutes).price }}</template>
       </UiTable>
       <p class="chart-footnote">각 행은 최근 {{ windowMinutes }}분 값입니다. 직전 행과 구간이 겹치며 합산할 수 없습니다. 순매수·순매도 규모 변화는 직전 관측과의 비교입니다.</p>
@@ -316,7 +316,7 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
 
 
 <style scoped>
-.flow-change-cell{min-width:420px;line-height:1.7;white-space:normal}
+.flow-change-cell{min-width:420px;display:grid;gap:4px;line-height:1.6;white-space:normal;letter-spacing:-0.2px}.flow-change-item{display:flex;align-items:center;gap:9px}.flow-change-item strong{display:inline-block;min-width:44px;padding:1px 6px;border-radius:4px;background:#f0f4fa;color:#52647e;font-size:11px;text-align:center;font-weight:600}
 .reading-grid{display:grid;grid-template-columns:120px 1fr;gap:12px;font-size:13px;line-height:1.7;margin:18px 0}.reading-grid dt{color:#64748b}.reading-grid dd{margin:0;font-weight:500}@media(max-width:600px){.reading-grid{grid-template-columns:1fr;gap:5px}.reading-grid dd{margin-bottom:10px}}
 .flow-page { --accent: #4f6af6; color: #19253b; display: flex; flex-direction: column; gap: 16px; padding-bottom: 24px; }
 .flow-page * { box-sizing: border-box; }
