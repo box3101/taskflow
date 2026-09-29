@@ -1,7 +1,7 @@
 <script setup>
 // Ported from C:/Average/index.html: preserve original first-alert and grading rules.
 import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { UiPageHeader, UiButton, UiIcon, UiBadge, UiTab, UiTable, UiEmpty, UiDrawer, UiAlert } from '@leechanyong/ispark-ui'
+import { UiPageHeader, UiButton, UiIcon, UiBadge, UiTab, UiTable, UiEmpty, UiDrawer, UiAlert, UiSelect } from '@leechanyong/ispark-ui'
 import api from '../api/client'
 import { marketCells } from '../utils/spikeMarket.mjs'
 import SpikeLeaderPanel from '../components/stock/SpikeLeaderPanel.vue'
@@ -245,8 +245,8 @@ onUnmounted(() => { disposed = true; clearInterval(timer); controller?.abort() }
     <UiTab v-model="screen" :tabs="screenTabs" size="sm" aria-label="급등 탐지기 보기" />
     <SpikeLeaderPanel v-if="screen === 'leader'" :rows="spikeRows" :board="leaderData.board || []" :loading="loading" :last-captured-at="leaderData.lastCapturedAt" :fee="spike?.rule?.fee" @detail="spikeSel = $event">
       <template #filters>
-        <UiTab v-model="spikeLabel" :tabs="SPIKE_LABEL_TABS.filter(t => t.value !== '실매매')" size="sm" aria-label="신호 라벨" />
-        <UiTab v-if="spikeDayTabs.length" v-model="spikeDay" :tabs="spikeDayTabs" size="sm" aria-label="신호 날짜" />
+        <UiSelect v-model="spikeLabel" :options="SPIKE_LABEL_TABS.filter(t => t.value !== '실매매')" label="신호 라벨" label-hidden size="sm" class="spike-label-select" />
+        <UiSelect v-if="spikeDayTabs.length" v-model="spikeDay" :options="spikeDayTabs" label="신호 날짜" label-hidden size="sm" class="spike-date-select" />
       </template>
     </SpikeLeaderPanel>
 
