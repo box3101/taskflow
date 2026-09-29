@@ -7,6 +7,30 @@ datasource db {
   provider = "postgresql"
 }
 
+model SpikeCloudDay {
+  date      String   @id
+  payload   Json
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  @@map("spike_cloud_days")
+}
+
+model SpikeCloudSnapshot {
+  id         BigInt   @id @default(autoincrement())
+  date       String
+  capturedAt DateTime @map("captured_at") @db.Timestamptz
+  payload    Json
+  @@index([date, capturedAt], map: "spike_cloud_snapshots_date_idx")
+  @@map("spike_cloud_snapshots")
+}
+
+model SpikeCloudSignal {
+  key     String @id
+  date    String
+  payload Json
+  @@index([date], map: "spike_cloud_signals_date_idx")
+  @@map("spike_cloud_signals")
+}
+
 // 사용자
 model User {
   id        Int      @id @default(autoincrement())
