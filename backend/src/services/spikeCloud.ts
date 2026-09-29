@@ -4,6 +4,7 @@ import poolConfig from '../data/spike-pool.json'
 import leaderPoolConfig from '../data/spike-leader-pool.json'
 import { recordLeaderQuotes, researchLeader } from './spikeLeaderResearch'
 import { tickLeaderStrategy, leaderStrategyDashboard } from './leaderStrategy'
+import { collectionCodes, freezeStrategyUniverse } from './leaderUniverse'
 import archive from '../data/spike-archive.json'
 import { clock, fresh, parseQuotes, signalsForTick } from './spikeCloudRules'
 import { isKisTradingDay, kisConfigured } from './kisFlow'
@@ -14,7 +15,12 @@ export const cloudEnabled=()=>process.env.SPIKE_CLOUD_ENABLED==='true'||(process
 export const cloudMode=()=>cloudEnabled()||process.env.SPIKE_SOURCE==='cloud'
 const headers={'User-Agent':'Mozilla/5.0',Referer:'https://m.stock.naver.com'}
 async function fetchText(url:string){const r=await fetch(url,{headers,signal:AbortSignal.timeout(8000)});if(!r.ok)throw new Error('SPIKE_SOURCE_UNAVAILABLE');return r.text()}
-export async function fetchCloudQuotes(){return parseQuotes(JSON.parse(await fetchText(`https://polling.finance.naver.com/api/realtime/domestic/stock/${Object.keys(poolConfig).join(',')}`)),Date.now())}
+export async function fetchCloudQuotes(codes=collectionCodes()){
+  // Keep URLs bounded; a failed batch never contaminates rankings with a partial universe.
+  const batches=Array.from({length:Math.ceil(codes.length/50)},(_,i)=>codes.slice(i*50,(i+1)*50))
+  const results=await Promise.all(batches.map(async batch=>parseQuotes(JSON.parse(await fetchText(`https://polling.finance.naver.com/api/realtime/domestic/stock/${batch.join(',')}`)),Date.now())))
+  return Object.assign({},...results) as ReturnType<typeof parseQuotes>
+}
 async function prepare(date:string){
   const codes=Object.keys(poolConfig),chg20:Record<string,number|null>={}
   const start=new Date(Date.parse(date)-60*86400000).toISOString().slice(0,10).replace(/-/g,'')
@@ -57,12 +63,13 @@ export async function collectSpikeCloud(now=new Date()){
       if(!locks[0]?.locked)return
       const rows=await tx.$queryRaw<{payload:any}[]>`SELECT payload FROM spike_cloud_days WHERE date=${date}`
       const state=rows[0]?.payload||await prepare(date)
+      freezeStrategyUniverse(state)
       if(time<'09:00:00'){
         if(!rows.length)await tx.$executeRaw`INSERT INTO spike_cloud_days(date,payload) VALUES (${date},${JSON.stringify(state)}::jsonb)`
         return
       }
       if(Date.now()-state.lastAt<8000)return
-      const quotes=await fetchCloudQuotes(),at=Date.now()
+      const quotes=await fetchCloudQuotes(collectionCodes(state)),at=Date.now()
       if(clock(at).slice(0,10)!==date)return
       if(!Object.values(quotes).some(q=>fresh(q,at)))throw new Error('시세 수집 지연')
       updateOutcomes(state.alerts,quotes,at)
@@ -71,7 +78,8 @@ export async function collectSpikeCloud(now=new Date()){
       state.leaderHistory ||= {}
       recordLeaderQuotes(state.leaderHistory,quotes,at)
       state.leaderQuotes=quotes
-      state.leaderStrategy=tickLeaderStrategy(state.leaderStrategy,state.leaderPool,quotes,state.leaderHistory,at)
+      state.leaderStrategy=tickLeaderStrategy(state.leaderStrategy,state.strategyPool,quotes,state.leaderHistory,at)
+      state.leaderStrategy.universeVersion=state.strategyUniverseVersion
       const alerts=time<'15:30:00'?signalsForTick(state,quotes,at):[]
       for(const alert of alerts) alert.leader=researchLeader(state.leaderPool,quotes,state.leaderHistory,alert.code,at) as any
       state.alerts.push(...alerts);state.lastAt=at

@@ -1,0 +1,523 @@
+{
+  "checkedAt": "2026-09-29T08:00:29.485Z",
+  "baseCount": 122,
+  "addedCount": 57,
+  "totalCount": 179,
+  "missing": [],
+  "issues": [],
+  "rows": [
+    {
+      "code": "108490",
+      "name": "로보티즈",
+      "configuredName": "로보티즈",
+      "theme": "로봇",
+      "sourceAt": "2026-09-29T17:00:29.899977+09:00",
+      "turnoverWon": 145316000000,
+      "halted": false
+    },
+    {
+      "code": "122870",
+      "name": "와이지엔터테인먼트",
+      "configuredName": "와이지엔터테인먼트",
+      "theme": "엔터테인먼트",
+      "sourceAt": "2026-09-29T17:00:29.899993+09:00",
+      "turnoverWon": 5348000000,
+      "halted": false
+    },
+    {
+      "code": "128940",
+      "name": "한미약품",
+      "configuredName": "한미약품",
+      "theme": "바이오 의약품·생산",
+      "sourceAt": "2026-09-29T17:00:29.900005+09:00",
+      "turnoverWon": 40069000000,
+      "halted": false
+    },
+    {
+      "code": "141080",
+      "name": "리가켐바이오",
+      "configuredName": "리가켐바이오",
+      "theme": "바이오 신약·플랫폼",
+      "sourceAt": "2026-09-29T17:00:29.900018+09:00",
+      "turnoverWon": 19504000000,
+      "halted": false
+    },
+    {
+      "code": "160190",
+      "name": "하이젠알앤엠",
+      "configuredName": "하이젠알앤엠",
+      "theme": "로봇",
+      "sourceAt": "2026-09-29T17:00:29.90003+09:00",
+      "turnoverWon": 4531000000,
+      "halted": false
+    },
+    {
+      "code": "161890",
+      "name": "한국콜마",
+      "configuredName": "한국콜마",
+      "theme": "화장품 ODM",
+      "sourceAt": "2026-09-29T17:00:29.900041+09:00",
+      "turnoverWon": 29368000000,
+      "halted": false
+    },
+    {
+      "code": "181710",
+      "name": "NHN",
+      "configuredName": "NHN",
+      "theme": "인터넷 플랫폼",
+      "sourceAt": "2026-09-29T17:00:29.900052+09:00",
+      "turnoverWon": 8911000000,
+      "halted": false
+    },
+    {
+      "code": "192820",
+      "name": "코스맥스",
+      "configuredName": "코스맥스",
+      "theme": "화장품 ODM",
+      "sourceAt": "2026-09-29T17:00:29.900063+09:00",
+      "turnoverWon": 20051000000,
+      "halted": false
+    },
+    {
+      "code": "196170",
+      "name": "알테오젠",
+      "configuredName": "알테오젠",
+      "theme": "바이오 신약·플랫폼",
+      "sourceAt": "2026-09-29T17:00:29.900074+09:00",
+      "turnoverWon": 122940000000,
+      "halted": false
+    },
+    {
+      "code": "207940",
+      "name": "삼성바이오로직스",
+      "configuredName": "삼성바이오로직스",
+      "theme": "바이오 의약품·생산",
+      "sourceAt": "2026-09-29T17:00:29.900085+09:00",
+      "turnoverWon": 49246000000,
+      "halted": false
+    },
+    {
+      "code": "226950",
+      "name": "올릭스",
+      "configuredName": "올릭스",
+      "theme": "바이오 신약·플랫폼",
+      "sourceAt": "2026-09-29T17:00:29.900097+09:00",
+      "turnoverWon": 22643000000,
+      "halted": false
+    },
+    {
+      "code": "237690",
+      "name": "에스티팜",
+      "configuredName": "에스티팜",
+      "theme": "바이오 의약품·생산",
+      "sourceAt": "2026-09-29T17:00:29.900108+09:00",
+      "turnoverWon": 6904000000,
+      "halted": false
+    },
+    {
+      "code": "237880",
+      "name": "클리오",
+      "configuredName": "클리오",
+      "theme": "화장품 브랜드·유통",
+      "sourceAt": "2026-09-29T17:00:29.900129+09:00",
+      "turnoverWon": 726000000,
+      "halted": false
+    },
+    {
+      "code": "241710",
+      "name": "코스메카코리아",
+      "configuredName": "코스메카코리아",
+      "theme": "화장품 ODM",
+      "sourceAt": "2026-09-29T17:00:29.900139+09:00",
+      "turnoverWon": 11469000000,
+      "halted": false
+    },
+    {
+      "code": "251270",
+      "name": "넷마블",
+      "configuredName": "넷마블",
+      "theme": "게임",
+      "sourceAt": "2026-09-29T17:00:29.900149+09:00",
+      "turnoverWon": 3848000000,
+      "halted": false
+    },
+    {
+      "code": "257720",
+      "name": "실리콘투",
+      "configuredName": "실리콘투",
+      "theme": "화장품 브랜드·유통",
+      "sourceAt": "2026-09-29T17:00:29.90016+09:00",
+      "turnoverWon": 30297000000,
+      "halted": false
+    },
+    {
+      "code": "259960",
+      "name": "크래프톤",
+      "configuredName": "크래프톤",
+      "theme": "게임",
+      "sourceAt": "2026-09-29T17:00:29.900171+09:00",
+      "turnoverWon": 16477000000,
+      "halted": false
+    },
+    {
+      "code": "263750",
+      "name": "펄어비스",
+      "configuredName": "펄어비스",
+      "theme": "게임",
+      "sourceAt": "2026-09-29T17:00:29.900179+09:00",
+      "turnoverWon": 8188000000,
+      "halted": false
+    },
+    {
+      "code": "278470",
+      "name": "에이피알",
+      "configuredName": "에이피알",
+      "theme": "화장품 브랜드·유통",
+      "sourceAt": "2026-09-29T17:00:29.900185+09:00",
+      "turnoverWon": 63771000000,
+      "halted": false
+    },
+    {
+      "code": "298380",
+      "name": "에이비엘바이오",
+      "configuredName": "에이비엘바이오",
+      "theme": "바이오 신약·플랫폼",
+      "sourceAt": "2026-09-29T17:00:29.900192+09:00",
+      "turnoverWon": 26572000000,
+      "halted": false
+    },
+    {
+      "code": "326030",
+      "name": "SK바이오팜",
+      "configuredName": "SK바이오팜",
+      "theme": "바이오 의약품·생산",
+      "sourceAt": "2026-09-29T17:00:29.900199+09:00",
+      "turnoverWon": 10602000000,
+      "halted": false
+    },
+    {
+      "code": "329180",
+      "name": "HD현대중공업",
+      "configuredName": "HD현대중공업",
+      "theme": "조선",
+      "sourceAt": "2026-09-29T17:00:29.900206+09:00",
+      "turnoverWon": 110776000000,
+      "halted": false
+    },
+    {
+      "code": "348340",
+      "name": "뉴로메카",
+      "configuredName": "뉴로메카",
+      "theme": "로봇",
+      "sourceAt": "2026-09-29T17:00:29.900212+09:00",
+      "turnoverWon": 4324000000,
+      "halted": false
+    },
+    {
+      "code": "352480",
+      "name": "씨앤씨인터내셔널",
+      "configuredName": "씨앤씨인터내셔널",
+      "theme": "화장품 ODM",
+      "sourceAt": "2026-09-29T17:00:29.900219+09:00",
+      "turnoverWon": 370000000,
+      "halted": false
+    },
+    {
+      "code": "352820",
+      "name": "하이브",
+      "configuredName": "하이브",
+      "theme": "엔터테인먼트",
+      "sourceAt": "2026-09-29T17:00:29.900225+09:00",
+      "turnoverWon": 33347000000,
+      "halted": false
+    },
+    {
+      "code": "399720",
+      "name": "가온칩스",
+      "configuredName": "가온칩스",
+      "theme": "반도체 설계",
+      "sourceAt": "2026-09-29T17:00:29.900232+09:00",
+      "turnoverWon": 8742000000,
+      "halted": false
+    },
+    {
+      "code": "462870",
+      "name": "시프트업",
+      "configuredName": "시프트업",
+      "theme": "게임",
+      "sourceAt": "2026-09-29T17:00:29.900239+09:00",
+      "turnoverWon": 1114000000,
+      "halted": false
+    },
+    {
+      "code": "466100",
+      "name": "클로봇",
+      "configuredName": "클로봇",
+      "theme": "로봇",
+      "sourceAt": "2026-09-29T17:00:29.900245+09:00",
+      "turnoverWon": 10745000000,
+      "halted": false
+    },
+    {
+      "code": "058610",
+      "name": "에스피지",
+      "configuredName": "에스피지",
+      "theme": "로봇",
+      "sourceAt": "2026-09-29T17:00:29.900251+09:00",
+      "turnoverWon": 33516000000,
+      "halted": false
+    },
+    {
+      "code": "087010",
+      "name": "펩트론",
+      "configuredName": "펩트론",
+      "theme": "바이오 신약·플랫폼",
+      "sourceAt": "2026-09-29T17:00:29.900258+09:00",
+      "turnoverWon": 41321000000,
+      "halted": false
+    },
+    {
+      "code": "068270",
+      "name": "셀트리온",
+      "configuredName": "셀트리온",
+      "theme": "바이오 의약품·생산",
+      "sourceAt": "2026-09-29T17:00:29.900264+09:00",
+      "turnoverWon": 63980000000,
+      "halted": false
+    },
+    {
+      "code": "042660",
+      "name": "한화오션",
+      "configuredName": "한화오션",
+      "theme": "조선",
+      "sourceAt": "2026-09-29T17:00:29.900271+09:00",
+      "turnoverWon": 102049000000,
+      "halted": false
+    },
+    {
+      "code": "010140",
+      "name": "삼성중공업",
+      "configuredName": "삼성중공업",
+      "theme": "조선",
+      "sourceAt": "2026-09-29T17:00:29.900277+09:00",
+      "turnoverWon": 169354000000,
+      "halted": false
+    },
+    {
+      "code": "009540",
+      "name": "HD한국조선해양",
+      "configuredName": "HD한국조선해양",
+      "theme": "조선",
+      "sourceAt": "2026-09-29T17:00:29.900284+09:00",
+      "turnoverWon": 48446000000,
+      "halted": false
+    },
+    {
+      "code": "097230",
+      "name": "HJ중공업",
+      "configuredName": "HJ중공업",
+      "theme": "조선",
+      "sourceAt": "2026-09-29T17:00:29.90029+09:00",
+      "turnoverWon": 2657000000,
+      "halted": false
+    },
+    {
+      "code": "082740",
+      "name": "한화엔진",
+      "configuredName": "한화엔진",
+      "theme": "조선 기자재",
+      "sourceAt": "2026-09-29T17:00:29.900296+09:00",
+      "turnoverWon": 37402000000,
+      "halted": false
+    },
+    {
+      "code": "071970",
+      "name": "HD현대마린엔진",
+      "configuredName": "HD현대마린엔진",
+      "theme": "조선 기자재",
+      "sourceAt": "2026-09-29T17:00:29.900303+09:00",
+      "turnoverWon": 16936000000,
+      "halted": false
+    },
+    {
+      "code": "077970",
+      "name": "STX엔진",
+      "configuredName": "STX엔진",
+      "theme": "조선 기자재",
+      "sourceAt": "2026-09-29T17:00:29.900309+09:00",
+      "turnoverWon": 4192000000,
+      "halted": false
+    },
+    {
+      "code": "033500",
+      "name": "동성화인텍",
+      "configuredName": "동성화인텍",
+      "theme": "조선 기자재",
+      "sourceAt": "2026-09-29T17:00:29.900316+09:00",
+      "turnoverWon": 3134000000,
+      "halted": false
+    },
+    {
+      "code": "017960",
+      "name": "한국카본",
+      "configuredName": "한국카본",
+      "theme": "조선 기자재",
+      "sourceAt": "2026-09-29T17:00:29.900322+09:00",
+      "turnoverWon": 4632000000,
+      "halted": false
+    },
+    {
+      "code": "090430",
+      "name": "아모레퍼시픽",
+      "configuredName": "아모레퍼시픽",
+      "theme": "화장품 브랜드·유통",
+      "sourceAt": "2026-09-29T17:00:29.900329+09:00",
+      "turnoverWon": 21843000000,
+      "halted": false
+    },
+    {
+      "code": "051900",
+      "name": "LG생활건강",
+      "configuredName": "LG생활건강",
+      "theme": "화장품 브랜드·유통",
+      "sourceAt": "2026-09-29T17:00:29.900336+09:00",
+      "turnoverWon": 28489000000,
+      "halted": false
+    },
+    {
+      "code": "041510",
+      "name": "에스엠",
+      "configuredName": "에스엠",
+      "theme": "엔터테인먼트",
+      "sourceAt": "2026-09-29T17:00:29.900342+09:00",
+      "turnoverWon": 11079000000,
+      "halted": false
+    },
+    {
+      "code": "035900",
+      "name": "JYP Ent.",
+      "configuredName": "JYP Ent.",
+      "theme": "엔터테인먼트",
+      "sourceAt": "2026-09-29T17:00:29.900353+09:00",
+      "turnoverWon": 8308000000,
+      "halted": false
+    },
+    {
+      "code": "036570",
+      "name": "NC",
+      "configuredName": "NC",
+      "theme": "게임",
+      "sourceAt": "2026-09-29T17:00:29.90036+09:00",
+      "turnoverWon": 21587000000,
+      "halted": false
+    },
+    {
+      "code": "035420",
+      "name": "NAVER",
+      "configuredName": "NAVER",
+      "theme": "인터넷 플랫폼",
+      "sourceAt": "2026-09-29T17:00:29.900366+09:00",
+      "turnoverWon": 156422000000,
+      "halted": false
+    },
+    {
+      "code": "035720",
+      "name": "카카오",
+      "configuredName": "카카오",
+      "theme": "인터넷 플랫폼",
+      "sourceAt": "2026-09-29T17:00:29.900373+09:00",
+      "turnoverWon": 36568000000,
+      "halted": false
+    },
+    {
+      "code": "067160",
+      "name": "SOOP",
+      "configuredName": "SOOP",
+      "theme": "인터넷 플랫폼",
+      "sourceAt": "2026-09-29T17:00:29.90038+09:00",
+      "turnoverWon": 1813000000,
+      "halted": false
+    },
+    {
+      "code": "018260",
+      "name": "삼성에스디에스",
+      "configuredName": "삼성에스디에스",
+      "theme": "기업 IT·소프트웨어",
+      "sourceAt": "2026-09-29T17:00:29.900387+09:00",
+      "turnoverWon": 34914000000,
+      "halted": false
+    },
+    {
+      "code": "064400",
+      "name": "LG씨엔에스",
+      "configuredName": "LG씨엔에스",
+      "theme": "기업 IT·소프트웨어",
+      "sourceAt": "2026-09-29T17:00:29.900393+09:00",
+      "turnoverWon": 22044000000,
+      "halted": false
+    },
+    {
+      "code": "022100",
+      "name": "포스코DX",
+      "configuredName": "포스코DX",
+      "theme": "기업 IT·소프트웨어",
+      "sourceAt": "2026-09-29T17:00:29.92232+09:00",
+      "turnoverWon": 5734000000,
+      "halted": false
+    },
+    {
+      "code": "030520",
+      "name": "한컴",
+      "configuredName": "한컴",
+      "theme": "기업 IT·소프트웨어",
+      "sourceAt": "2026-09-29T17:00:29.922334+09:00",
+      "turnoverWon": 2133000000,
+      "halted": false
+    },
+    {
+      "code": "054450",
+      "name": "텔레칩스",
+      "configuredName": "텔레칩스",
+      "theme": "반도체 설계",
+      "sourceAt": "2026-09-29T17:00:29.922344+09:00",
+      "turnoverWon": 456000000,
+      "halted": false
+    },
+    {
+      "code": "094360",
+      "name": "칩스앤미디어",
+      "configuredName": "칩스앤미디어",
+      "theme": "반도체 설계",
+      "sourceAt": "2026-09-29T17:00:29.922353+09:00",
+      "turnoverWon": 5054000000,
+      "halted": false
+    },
+    {
+      "code": "096770",
+      "name": "SK이노베이션",
+      "configuredName": "SK이노베이션",
+      "theme": "배터리 셀",
+      "sourceAt": "2026-09-29T17:00:29.922362+09:00",
+      "turnoverWon": 166278000000,
+      "halted": false
+    },
+    {
+      "code": "036460",
+      "name": "한국가스공사",
+      "configuredName": "한국가스공사",
+      "theme": "전력 유틸리티",
+      "sourceAt": "2026-09-29T17:00:29.922372+09:00",
+      "turnoverWon": 5885000000,
+      "halted": false
+    },
+    {
+      "code": "071320",
+      "name": "지역난방공사",
+      "configuredName": "지역난방공사",
+      "theme": "전력 유틸리티",
+      "sourceAt": "2026-09-29T17:00:29.922381+09:00",
+      "turnoverWon": 1558000000,
+      "halted": false
+    }
+  ]
+}

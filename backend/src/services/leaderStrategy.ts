@@ -1,15 +1,16 @@
 import { clock, fresh, Pool, Quote } from './spikeCloudRules'
 import { LeaderHistory, researchLeader } from './spikeLeaderResearch'
+import { universeSummary } from './leaderUniverse'
 
 export const LEADER_RULE = { version:'leader-pullback-v1', start:'09:10:00', end:'10:00:00', feePct:0.21,
   turnoverRatio:1.2, relative5m:0.1, pullbackPct:0.3, minRiskPct:0.3, maxRiskPct:2, rewardR:2, holdMinutes:30 }
 type Metrics = ReturnType<typeof researchLeader>
-export type LeaderTrade = { version:string; code:string; name:string; theme:string; date:string; signalAt:number; entryAt:number;
+export type LeaderTrade = { version:string; universeVersion?:string; code:string; name:string; theme:string; date:string; signalAt:number; entryAt:number;
   entry:number; stop:number; target:number; lastAt:number; lastSourceAt:number; metrics:Metrics;
   exitAt?:number; exit?:number; reason?:string; netPct?:number; invalid?:boolean }
 type Setup = { level:number; peak:number; low:number; at:number; lastAt:number; lastSourceAt:number;
   stage:'breakout'|'pullback'|'pending'; signalAt?:number; metrics:Metrics }
-export type LeaderState = { date:string; rule:typeof LEADER_RULE; setups:Record<string,Setup>; trades:LeaderTrade[] }
+export type LeaderState = { date:string; universeVersion?:string; rule:typeof LEADER_RULE; setups:Record<string,Setup>; trades:LeaderTrade[] }
 const quoteOk=(q:Quote|undefined,at:number)=>fresh(q,at)&&!q!.halted&&at-q!.sourceAt<=20000
 export function eligibleLeader(m:Metrics, q:Quote) {
   return m.total>=3 && m.rank!==null && m.rank<=3 && m.comparisonReady && q.dayPct>0
@@ -47,7 +48,7 @@ export function tickLeaderStrategy(previous:LeaderState|undefined,pool:Pool,quot
       if(setup.stage==='pending') {
         const risk=(q.price-setup.low)/q.price*100
         if(q.price>=setup.level && risk>=LEADER_RULE.minRiskPct && risk<=LEADER_RULE.maxRiskPct) {
-          state.trades.push({version:LEADER_RULE.version,code,name:pool[code].name,theme:m.theme,date,signalAt:setup.signalAt!,entryAt:at,
+          state.trades.push({version:LEADER_RULE.version,universeVersion:state.universeVersion,code,name:pool[code].name,theme:m.theme,date,signalAt:setup.signalAt!,entryAt:at,
             entry:q.price,stop:setup.low,target:q.price+LEADER_RULE.rewardR*(q.price-setup.low),lastAt:at,lastSourceAt:q.sourceAt,metrics:setup.metrics})
         }
         delete state.setups[code];continue
@@ -77,6 +78,6 @@ export function leaderStrategyDashboard(days:{date:string;payload:any}[],now=Dat
   const trades:LeaderTrade[]=days.flatMap(d=>d.payload.leaderStrategy?.trades||[]).map(t=>
     !t.exitAt&&now-t.lastAt>30000?{...t,invalid:true,reason:'수집 공백 · 성적 제외'}:t)
   const latest=days[days.length-1]?.payload
-  return {rule:LEADER_RULE,trades:trades.sort((a,b)=>b.entryAt-a.entryAt),
+  return {rule:LEADER_RULE,universe:universeSummary(latest?.strategyPool,latest?.strategyUniverseVersion),trades:trades.sort((a,b)=>b.entryAt-a.entryAt),
     setups:latest?.leaderStrategy?.setups||{},lastCapturedAt:latest?.lastAt?new Date(latest.lastAt).toISOString():null}
 }

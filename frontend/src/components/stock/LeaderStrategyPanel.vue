@@ -16,6 +16,11 @@ const time=n=>new Date(n).toLocaleTimeString('ko-KR',{timeZone:'Asia/Seoul',hour
 <template>
   <section class="strategy">
     <div class="intro"><div><UiBadge variant="primary" size="sm">독립 전략 · 모의 관측</UiBadge><h3>주도주 돌파 후 눌림</h3><p>오전 9:10–10:00 · 종목당 하루 1회 · 실제 주문 없음</p></div><UiSelect v-model="day" :options="dates" label="전략 날짜" label-hidden size="sm" /></div>
+    <details v-if="data?.universe" class="universe">
+      <summary>관찰 {{ data.universe.count }}종목 · {{ data.universe.themes.length }}개 비교군 · 추가 {{ data.universe.addedCount }}종목 <span>목록 보기</span></summary>
+      <p>매 거래일 목록을 고정합니다. 시장 전체 순위가 아닌 등록 종목 내 비교이며, 3종목 미만인 비교군은 진입 대상에서 제외합니다. ‘추가’는 기존 점화 122종목에 없던 종목입니다.</p>
+      <div class="universe-grid"><div v-for="group in data.universe.themes" :key="group.name"><b>{{ group.name }} · {{ group.stocks.length }}종목</b><small v-if="!group.eligible"> · 비교 부족</small><p><span v-for="stock in group.stocks" :key="stock.code" class="stock-name">{{ stock.name }}<em v-if="stock.added">추가</em></span></p></div></div>
+    </details>
     <div class="steps">
       <div><b>01 · 후보 선정</b><p>세부 테마 3종목 이상 · 거래대금 상위 3위<br>직전 5분 대비 거래대금 1.2배 이상<br>테마 대비 5분 수익률 +0.1%p 이상</p></div>
       <div><b>02 · 눌림 확인</b><p>당일 등락·테마 5분 수익률 모두 양수<br>직전 5분 관측 고점 돌파 → 0.3% 눌림<br>돌파 가격 회복·눌림 저점 대비 0.3% 반등</p></div>
@@ -40,5 +45,6 @@ const time=n=>new Date(n).toLocaleTimeString('ko-KR',{timeZone:'Asia/Seoul',hour
   </section>
 </template>
 <style scoped>
+.universe{border:1px solid #e1e7f2;border-radius:12px;padding:14px 16px}.universe summary{cursor:pointer;font-weight:600;line-height:1.8}.universe summary span{font-size:12px;color:#687990;margin-left:12px}.universe-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:16px}.stock-name{display:inline-block;margin-right:10px}.stock-name em{font-size:10px;font-style:normal;color:#5360ec;margin-left:3px}
 .strategy{display:grid;gap:16px;min-width:0;font-size:13px}.intro{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.intro>:last-child{max-width:180px}h3{font-size:18px;margin:10px 0 4px}p{color:#687990;font-size:12px;line-height:1.8;margin:6px 0}.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.steps>div{background:#f5f7ff;border-radius:12px;padding:16px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.stats>div{border:1px solid #e1e7f2;border-radius:12px;padding:16px}.stats span{display:block;color:#687990;font-size:12px}.stats strong{display:block;font-size:23px;margin-top:8px}.caption{margin:0}.trades{display:grid;gap:10px}.trades article{border:1px solid #e1e7f2;border-radius:12px;padding:16px;min-width:0}.trade-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}small{font-weight:400;color:#687990;margin-left:6px}.prices{display:flex;flex-wrap:wrap;gap:12px 24px;font-size:12px}.prices b{margin-left:6px;font-variant-numeric:tabular-nums}.up{color:#d1394b}.down{color:#2563c5}@media(max-width:760px){.steps{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stats strong{font-size:20px}}
 </style>
