@@ -9,7 +9,7 @@ import FlowMiniChart from './FlowMiniChart.vue'
 import HistoricalMarketReview from './HistoricalMarketReview.vue'
 import FlowCalendarDashboard from './FlowCalendarDashboard.vue'
 import FlowAgentPanel from './FlowAgentPanel.vue'
-import { flowReading, flowTitle } from '../../utils/flowReading'
+import { flowReading, flowTitle, flowChangeTone } from '../../utils/flowReading'
 
 function today() { return new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10) }
 function time(value?: string | null) {
@@ -282,9 +282,10 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
       <UiTable v-else :columns="historyColumns" :data="historyRows" size="sm">
         <template #cell-time="{ row }"><UiButton variant="ghost" size="xs" @click="selectRecord(row.record)">{{ row.time }}<template #icon-right><UiIcon name="arrow-up-right" :size="12" /></template></UiButton></template>
         <template #cell-title="{ row }">{{ flowTitle(row.record, windowMinutes) }}</template>
-        <template #cell-change="{ row }"><div class="flow-change-cell"><span v-for="change in flowReading(row.record, records, windowMinutes).changes.split(' · ')" :key="change" class="flow-change-item"><strong>{{ change.split(' ')[0] }}</strong><span>{{ change.slice(change.indexOf(' ') + 1) }}</span></span></div></template>
+        <template #cell-change="{ row }"><div class="flow-change-cell"><span v-for="change in flowReading(row.record, records, windowMinutes).changes.split(' · ')" :key="change" class="flow-change-item" :class="`flow-change-${flowChangeTone(change)}`"><strong>{{ change.split(' ')[0] }}</strong><span>{{ change.slice(change.indexOf(' ') + 1) }}</span></span></div></template>
         <template #cell-price="{ row }">{{ flowReading(row.record, records, windowMinutes).price }}</template>
       </UiTable>
+      <p class="chart-footnote"><span class="flow-change-buy">빨강: 순매수 증가·순매도 감소</span> · <span class="flow-change-sell">파랑: 순매도 증가·순매수 감소</span> · 회색: 동일·자료 부족. 색은 수급 변화 방향이며 수익을 뜻하지 않습니다.</p>
       <p class="chart-footnote">각 행은 최근 {{ windowMinutes }}분 값입니다. 직전 행과 구간이 겹치며 합산할 수 없습니다. 순매수·순매도 규모 변화는 직전 관측과의 비교입니다.</p>
     </section>
     <template v-else-if="activeTab === 'review'">
@@ -316,6 +317,7 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
 
 
 <style scoped>
+.flow-change-buy{color:#c62828;font-weight:600}.flow-change-sell{color:#205bc2;font-weight:600}.flow-change-neutral{color:#64748b}
 .flow-change-cell{min-width:420px;display:flex;align-items:center;flex-wrap:nowrap;gap:10px;line-height:1.6;white-space:nowrap;letter-spacing:-0.2px}.flow-change-item{display:inline-flex;align-items:center;gap:6px;flex-shrink:0}.flow-change-item+.flow-change-item{border-left:1px solid #dce3ed;padding-left:10px}.flow-change-item strong{display:inline-block;padding:1px 6px;border-radius:4px;background:#f0f4fa;color:#52647e;font-size:11px;text-align:center;font-weight:600}
 .reading-grid{display:grid;grid-template-columns:120px 1fr;gap:12px;font-size:13px;line-height:1.7;margin:18px 0}.reading-grid dt{color:#64748b}.reading-grid dd{margin:0;font-weight:500}@media(max-width:600px){.reading-grid{grid-template-columns:1fr;gap:5px}.reading-grid dd{margin-bottom:10px}}
 .flow-page { --accent: #4f6af6; color: #19253b; display: flex; flex-direction: column; gap: 16px; padding-bottom: 24px; }

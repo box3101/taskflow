@@ -1,5 +1,12 @@
 import type { FlowRecord } from '../types/marketFlow'
 
+export function flowChangeTone(change: string) {
+  if (/동일|자료 부족|균형/.test(change)) return 'neutral'
+  if (/순매수 (규모 증가|전환)|순매도 규모 감소/.test(change)) return 'buy'
+  if (/순매도 (규모 증가|전환)|순매수 규모 감소/.test(change)) return 'sell'
+  return 'neutral'
+}
+
 export function flowTitle(row: FlowRecord | undefined, minutes: number) {
   const a = row?.analyses[String(minutes)]
   return a?.code === 'futures-only' ? '선물 순매수 · 현물 순매도' : a?.title || '비교 데이터 수집 중'
