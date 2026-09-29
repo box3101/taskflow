@@ -226,7 +226,7 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
     <FlowCalendarDashboard v-if="activeTab === 'calendar'" :date="selectedDate" :refresh-key="data?.serverTime || ''" @select="selectedDate = $event" @open="openCalendarDay" />
     <HistoricalMarketReview v-if="activeTab === 'retrospective'" :date="selectedDate" />
     <template v-if="activeTab === 'agent'">
-      <p class="chart-footnote">새 AI 판단에는 선택한 관측 시점까지의 당일 수급·코스피 기록도 함께 전달됩니다. 15분 간격 대표 기록·최근 15분 상세·수집 공백을 포함하며, 이후 데이터는 제외합니다. 추가 AI 호출 없이 기존 판단의 입력 자료로 사용합니다.</p>
+      <p class="chart-footnote">새 AI 판단에는 관측 시점까지의 당일 수급·코스피 기록과 최근 기록이 있는 전일 장 요약을 함께 전달합니다. 전일 최종 누적·마지막 30분 변화·수집 공백을 배경으로 참고하고 오늘 관측을 우선합니다. 관측 이후 자료는 제외하며 추가 AI 호출 없이 기존 판단의 입력 자료로 사용합니다.</p>
       <FlowAgentPanel :date="selectedDate" :record="current" :refresh-key="data?.serverTime || ''" />
     </template>
     <template v-if="!['calendar', 'retrospective'].includes(activeTab)">

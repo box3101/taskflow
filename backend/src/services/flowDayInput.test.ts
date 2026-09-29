@@ -1,6 +1,6 @@
 import { expect,it,vi } from 'vitest'
-const mocks=vi.hoisted(()=>({snapshots:vi.fn(),json:vi.fn()}))
-vi.mock('../prisma',()=>({default:{flowSnapshot:{findMany:mocks.snapshots}}}))
+const mocks=vi.hoisted(()=>({snapshots:vi.fn(),previous:vi.fn().mockResolvedValue(null),json:vi.fn()}))
+vi.mock('../prisma',()=>({default:{flowSnapshot:{findMany:mocks.snapshots,findFirst:mocks.previous}}}))
 vi.mock('./flowModels',()=>({basicModel:()=>({configured:true,model:'fixture'}),judgmentSchema:{},modelJson:mocks.json}))
 import { generateJudgment } from './flowAgent'
 import type { RecordedFlow } from './flowCollector'
@@ -14,4 +14,17 @@ it('sends and retains the same cutoff-limited day evidence without another model
  expect(mocks.json.mock.calls[0][3].record.dayContext).toEqual(record.dayContext)
  expect(record.dayContext?.observations).toBe(2)
  expect(record.dayContext?.points.every(p=>p.at<=record.sample.observedAt)).toBe(true)
+ expect(record.previousDayContext).toBeNull()
+})
+it('passes prior-session summary in the same paid request and keeps it in the stored record',async()=>{
+ mocks.json.mockClear()
+ const make=(date:string,at:string):RecordedFlow=>({version:1,moneyUnits:{cash:'raw',nonArb:'raw'},analyses:{},sample:{date,observedAt:at,values:{cash:1,futures:2,nonArb:3,totalNonArb:4,kospi:6000,kospiPct:-1},sources:Object.fromEntries(['cash','futures','nonArb','totalNonArb','kospi'].map(k=>[k,{status:'ok',fetchedAt:at,sourceAt:null,message:null}])) as any}})
+ const record=make('2026-09-30','2026-09-30T00:15:00Z')
+ mocks.previous.mockResolvedValue({date:'2026-09-29'})
+ mocks.snapshots.mockImplementation(async({where}:any)=>where.date==='2026-09-29'?[{payload:make('2026-09-29','2026-09-29T06:30:00Z')}]:[])
+ await generateJudgment(record,[],15)
+ expect(mocks.previous).toHaveBeenLastCalledWith({where:{date:{lt:'2026-09-30'}},orderBy:{date:'desc'},select:{date:true}})
+ expect(record.previousDayContext?.date).toBe('2026-09-29')
+ expect(mocks.json).toHaveBeenCalledTimes(1)
+ expect(mocks.json.mock.calls[0][3].record.previousDayContext).toEqual(record.previousDayContext)
 })
