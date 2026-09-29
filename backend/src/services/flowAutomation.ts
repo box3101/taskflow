@@ -4,18 +4,18 @@ import { agentConfig, agentErrorMessage, AGENT_VERSION, AgentPayload, generateJu
 import { koreanClock } from './flowAnalysis'
 import { isKisTradingDay, kisConfigured } from './kisFlow'
 
-// One owner, 24 slots/day, one flow-only call per slot. Reservations survive restart.
+// One owner, 26 slots/day, one flow-only call per slot. Reservations survive restart.
 export function automationConfig() {
   const userId = Number(process.env.FLOW_AUTO_USER_ID)
   return { enabled: process.env.FLOW_AUTO_ENABLED === 'true' && Number.isSafeInteger(userId) && userId > 0,
-    userId, intervalMinutes: 15, horizon: 15, maxCallsPerDay: 24, hours: '09:15–15:00 (한국시간)',
+    userId, intervalMinutes: 15, horizon: 15, maxCallsPerDay: 26, hours: '09:15–15:30 (한국시간)',
     configured: agentConfig().configured && kisConfigured() }
 }
 export function automationSlot(now: Date): number | null {
   const k = koreanClock(now)
   const slot = Math.floor(k.minute / 15) * 15
   // No late catch-up: only fresh data in the first three minutes of a slot.
-  return k.day > 0 && k.day < 6 && slot >= 555 && slot <= 900 && k.minute - slot < 3 ? slot : null
+  return k.day > 0 && k.day < 6 && slot >= 555 && slot <= 930 && k.minute - slot < 3 ? slot : null
 }
 export function usableAutomaticRecord(record: RecordedFlow, now: Date, slot: number) {
   const sample = record.sample, at = new Date(sample.observedAt), age = now.getTime() - at.getTime()

@@ -20,11 +20,14 @@ beforeEach(() => {
 })
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs() })
 describe('durable cloud flow scheduler', () => {
-  it('has exactly 24 weekday slots, excludes weekend, close and late catch-up', () => {
+  it('has exactly 26 weekday slots, excludes weekend, close and late catch-up', () => {
     const slots = Array.from({ length: 1440 }, (_, m) => automationSlot(new Date(Date.UTC(2026, 8, 21, 15, m)))).filter(s => s !== null)
-    expect(new Set(slots).size).toBe(24)
+    expect(new Set(slots).size).toBe(26)
     expect(automationSlot(new Date('2026-09-26T00:15:20Z'))).toBeNull()
-    expect(automationSlot(new Date('2026-09-22T06:15:20Z'))).toBeNull()
+    expect(automationSlot(new Date('2026-09-22T06:15:20Z'))).toBe(915)
+    expect(automationSlot(new Date('2026-09-22T06:30:20Z'))).toBe(930)
+    expect(automationSlot(new Date('2026-09-22T06:33:00Z'))).toBeNull()
+    expect(automationSlot(new Date('2026-09-22T06:45:00Z'))).toBeNull()
     expect(automationSlot(new Date('2026-09-22T00:18:00Z'))).toBeNull()
   })
   it('does not call AI on exchange holidays or when calendar lookup fails', async () => {
