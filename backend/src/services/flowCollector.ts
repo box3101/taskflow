@@ -5,6 +5,8 @@ import { fetchKisFlow, isKisTradingDay, kisConfigured } from './kisFlow'
 
 export type MoneyUnit = 'raw' | 'won' | 'million' | 'eok'
 export interface RecordedFlow {
+  signals?: import('./flowSignals').FlowSignals
+  signalsError?: string
   dayContext?: import('./flowDayContext').DayContext
   previousDayContext?: import('./flowPreviousDay').PreviousDayContext
   version: 1

@@ -3,8 +3,10 @@ import { recordedFlow, RecordedFlow } from './flowCollector'
 import { agentConfig, agentErrorMessage, AGENT_VERSION, AgentPayload, generateJudgment, predictionMode } from './flowAgent'
 import { koreanClock } from './flowAnalysis'
 import { isKisTradingDay, kisConfigured } from './kisFlow'
+import { captureFlowDistribution } from './flowDistributionStore'
+import { retrieveEvidence } from './flowRag'
 
-// One owner, 26 slots/day, one flow-only call per slot. Reservations survive restart.
+// One owner, 26 slots/day, one call with available PDF evidence per slot. Reservations survive restart.
 export function automationConfig() {
   const userId = Number(process.env.FLOW_AUTO_USER_ID)
   return { enabled: process.env.FLOW_AUTO_ENABLED === 'true' && Number.isSafeInteger(userId) && userId > 0,
@@ -42,15 +44,23 @@ export async function runFlowAutomation(now = new Date()): Promise<void> {
     // Atomic reservation comes BEFORE paid requests. Never retry an uncertain/failed slot.
     const job = await prisma.flowAutoRun.create({ data: { userId, date, slot, snapshotId: snapshot.id, reservedCalls: 1 } })
     jobId = job.id
+    const documents = await prisma.flowReport.findMany({
+      where: { userId, ragStatus: 'ready', date: { lte: record.sample.date }, createdAt: { lte: cutoff } },
+      select: { id: true, filename: true, date: true, createdAt: true, ragChunks: true },
+      orderBy: { createdAt: 'desc' }, take: 100,
+    })
+    const query = `코스피 외국인 현물 선물 비차익 전체 수급 ${record.analyses['15'].title} ${record.analyses['15'].hypotheses.join(' ')}`
+    const evidence = retrieveEvidence(documents, query, record.sample.date, cutoff)
     const requested = new Date()
     if (automationSlot(requested) !== slot || !usableAutomaticRecord(record, requested, slot)) {
       await prisma.flowAutoRun.update({ where: { id: job.id }, data: { status: 'skipped', reservedCalls: 0, message: '관측 지연으로 실행 생략', completedAt: new Date() } }); return
     }
-    const judgment = await generateJudgment(record, [], 15)
+    const judgment = await generateJudgment(record, evidence, 15)
     const generated = new Date()
-    const payload: AgentPayload = { record, judgment, evidence: [], requestedAt: requested.toISOString(), generatedAt: generated.toISOString(), cutoff: cutoff.toISOString() }
+    const validationContext = await captureFlowDistribution(record)
+    const payload: AgentPayload = { record, judgment, validationContext, evidence, requestedAt: requested.toISOString(), generatedAt: generated.toISOString(), cutoff: cutoff.toISOString() }
     await prisma.$transaction([
-      prisma.flowPrediction.create({ data: { userId, snapshotId: snapshot.id, date, horizon: 15, variant: 'flow', mode: predictionMode(record.sample, requested, generated),
+      prisma.flowPrediction.create({ data: { userId, snapshotId: snapshot.id, date, horizon: 15, variant: evidence.length ? 'rag' : 'flow', mode: predictionMode(record.sample, requested, generated),
         model: agentConfig().model, version: AGENT_VERSION, payload: JSON.parse(JSON.stringify(payload)) } }),
       prisma.flowAutoRun.update({ where: { id: job.id }, data: { status: 'completed', completedAt: generated } }),
     ])

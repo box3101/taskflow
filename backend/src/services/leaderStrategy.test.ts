@@ -69,3 +69,13 @@ describe('independent leader pullback strategy',()=>{
     expect(s.trades[0].reason).toBe('30분 종료')
   })
 })
+
+it('observation mode blocks new entries but settles existing legacy positions',()=>{
+ const at=start+40000
+ expect(tickLeaderStrategy(undefined,pool,{A:quote(101,at)},history,at,false).setups).toEqual({})
+ const state=enter()
+ const result=tickLeaderStrategy(state,pool,{A:quote(100,at)},history,at,false)
+ expect(result.trades).toHaveLength(1)
+ expect(result.trades[0].reason).toBe('눌림 저점 이탈')
+ expect(result.setups).toEqual({})
+})

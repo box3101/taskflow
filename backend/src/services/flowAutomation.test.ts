@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { analyzeFlow, FlowSample } from './flowAnalysis'
-const mocks = vi.hoisted(() => ({ calendar: vi.fn(), snapshot: vi.fn(), count: vi.fn(), reserve: vi.fn(), update: vi.fn(), create: vi.fn(), transaction: vi.fn(), generate: vi.fn(), jobs: vi.fn() }))
-vi.mock('../prisma', () => ({ default: { flowSnapshot: { findFirst: mocks.snapshot }, flowPrediction: { count: mocks.count, create: mocks.create }, flowAutoRun: { create: mocks.reserve, update: mocks.update, findMany: mocks.jobs }, $transaction: mocks.transaction } }))
+const mocks = vi.hoisted(() => ({ reports: vi.fn(), calendar: vi.fn(), snapshot: vi.fn(), count: vi.fn(), reserve: vi.fn(), update: vi.fn(), create: vi.fn(), transaction: vi.fn(), generate: vi.fn(), jobs: vi.fn() }))
+vi.mock('../prisma', () => ({ default: { flowReport: { findMany: mocks.reports }, flowSnapshot: { findFirst: mocks.snapshot }, flowPrediction: { count: mocks.count, create: mocks.create }, flowAutoRun: { create: mocks.reserve, update: mocks.update, findMany: mocks.jobs }, $transaction: mocks.transaction } }))
 vi.mock('./kisFlow', () => ({ kisConfigured: () => true, isKisTradingDay: mocks.calendar }))
 vi.mock('./flowAgent', async () => ({ ...await vi.importActual<typeof import('./flowAgent')>('./flowAgent'), generateJudgment: mocks.generate, agentConfig: () => ({ configured: true, model: 'fixture' }) }))
 import { automationSlot, runFlowAutomation, automationStatus } from './flowAutomation'
@@ -14,7 +14,7 @@ function record() { const history = Array.from({ length: 16 }, (_, i) => sample(
 beforeEach(() => {
   vi.resetAllMocks(); vi.useFakeTimers(); vi.setSystemTime(at)
   vi.stubEnv('FLOW_AUTO_ENABLED', 'true'); vi.stubEnv('FLOW_AUTO_USER_ID', '41')
-  mocks.calendar.mockResolvedValue(true); mocks.snapshot.mockResolvedValue({ id: 7, payload: record() }); mocks.count.mockResolvedValue(0)
+  mocks.reports.mockResolvedValue([]); mocks.calendar.mockResolvedValue(true); mocks.snapshot.mockResolvedValue({ id: 7, payload: record() }); mocks.count.mockResolvedValue(0)
   mocks.reserve.mockResolvedValue({ id: 1 }); mocks.update.mockResolvedValue({}); mocks.create.mockResolvedValue({ id: 9 }); mocks.transaction.mockImplementation((items: Promise<unknown>[]) => Promise.all(items))
   mocks.generate.mockResolvedValue({ direction: 'up', summary: '수급 유입', reasons: ['관측'], risks: ['변동'], invalidation: ['역전'], citations: [] })
 })
@@ -47,6 +47,8 @@ describe('durable cloud flow scheduler', () => {
     expect(mocks.generate).toHaveBeenCalledWith(record(), [], 15)
     expect(mocks.reserve).toHaveBeenCalledWith({ data: { userId: 41, date: '2026-09-22', slot: 555, snapshotId: 7, reservedCalls: 1 } })
     expect(mocks.create.mock.calls[0][0].data).toMatchObject({ userId: 41, variant: 'flow', mode: 'live', horizon: 15 })
+    expect(mocks.create.mock.calls[0][0].data.payload.validationContext.status).toBe('unavailable')
+    expect(mocks.generate.mock.calls[0][0]).not.toHaveProperty('validationContext')
     expect(mocks.transaction).toHaveBeenCalledOnce()
   })
   it('does not call again when a different process already reserved the slot', async () => {
@@ -68,4 +70,23 @@ describe('durable cloud flow scheduler', () => {
     expect(await automationStatus(45, '2026-09-22')).toEqual({ enabled: false })
     expect(mocks.jobs).not.toHaveBeenCalled()
   })
+})
+
+it('passes only available PDF excerpts to the single paid call and stores the same evidence', async () => {
+  const doc = { id: 1, filename: 'morning.pdf', date: '2026-09-22', createdAt: new Date('2026-09-22T00:00:00Z'), ragChunks: Array.from({length: 9}, (_, i) => ({ page: i + 1, text: '코스피 외국인 현물 선물 비차익 수급 관련 오전 전망' })) }
+  mocks.reports.mockResolvedValue([doc, {...doc,id:2,createdAt:new Date('2026-09-22T00:16:00Z')}, {...doc,id:3,date:'2026-09-23'}])
+  await runFlowAutomation(at)
+  expect(mocks.reports).toHaveBeenCalledWith(expect.objectContaining({where:{userId:41,ragStatus:'ready',date:{lte:'2026-09-22'},createdAt:{lte:new Date(sample(15).observedAt)}}}))
+  expect(mocks.generate).toHaveBeenCalledOnce()
+  const evidence = mocks.generate.mock.calls[0][1]
+  expect(evidence).toHaveLength(6)
+  expect(evidence.every((e: {reportId:number}) => e.reportId === 1)).toBe(true)
+  expect(mocks.create.mock.calls[0][0].data).toMatchObject({variant:'rag',payload:{evidence}})
+  expect(mocks.reserve.mock.calls[0][0].data.reservedCalls).toBe(1)
+})
+it('skips the paid call if PDF retrieval makes the observation stale', async () => {
+  mocks.reports.mockImplementation(async () => {vi.setSystemTime(new Date(at.getTime()+120000));return []})
+  await runFlowAutomation(at)
+  expect(mocks.generate).not.toHaveBeenCalled()
+  expect(mocks.update.mock.calls[0][0].data).toMatchObject({status:'skipped',reservedCalls:0})
 })

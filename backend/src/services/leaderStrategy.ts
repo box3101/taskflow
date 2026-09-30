@@ -1,6 +1,7 @@
 import { clock, fresh, Pool, Quote } from './spikeCloudRules'
 import { LeaderHistory, researchLeader } from './spikeLeaderResearch'
 import { universeSummary } from './leaderUniverse'
+import { leaderSessionDashboard } from './leaderSession'
 
 export const LEADER_RULE = { version:'leader-pullback-v1', start:'09:10:00', end:'10:00:00', feePct:0.21,
   turnoverRatio:1.2, relative5m:0.1, pullbackPct:0.3, minRiskPct:0.3, maxRiskPct:2, rewardR:2, holdMinutes:30 }
@@ -19,7 +20,7 @@ export function eligibleLeader(m:Metrics, q:Quote) {
 }
 
 // Independent paper strategy. Never calls the original spike detector or an order API.
-export function tickLeaderStrategy(previous:LeaderState|undefined,pool:Pool,quotes:Record<string,Quote>,history:LeaderHistory,at:number):LeaderState {
+export function tickLeaderStrategy(previous:LeaderState|undefined,pool:Pool,quotes:Record<string,Quote>,history:LeaderHistory,at:number,allowNewEntries=true):LeaderState {
   const date=clock(at).slice(0,10),time=clock(at).slice(11,19)
   const state:LeaderState=previous?.date===date?previous:{date,rule:{...LEADER_RULE},setups:{},trades:[]}
   for(const t of state.trades) {
@@ -32,7 +33,7 @@ export function tickLeaderStrategy(previous:LeaderState|undefined,pool:Pool,quot
     const reason=q.price<=t.stop?'눌림 저점 이탈':q.price>=t.target?'2R 목표 도달':at-t.entryAt>=LEADER_RULE.holdMinutes*60000?'30분 종료':null
     if(reason) { t.exit=q.price;t.exitAt=at;t.reason=reason;t.netPct=(q.price/t.entry-1)*100-LEADER_RULE.feePct }
   }
-  if(time<LEADER_RULE.start||time>=LEADER_RULE.end) {state.setups={};return state}
+  if(!allowNewEntries||time<LEADER_RULE.start||time>=LEADER_RULE.end) {state.setups={};return state}
   for(const code of Object.keys(pool)) {
     if(state.trades.some(t=>t.code===code))continue // One entry per stock per trading day.
     const q=quotes[code],s=state.setups[code]
@@ -78,6 +79,6 @@ export function leaderStrategyDashboard(days:{date:string;payload:any}[],now=Dat
   const trades:LeaderTrade[]=days.flatMap(d=>d.payload.leaderStrategy?.trades||[]).map(t=>
     !t.exitAt&&now-t.lastAt>30000?{...t,invalid:true,reason:'수집 공백 · 성적 제외'}:t)
   const latest=days[days.length-1]?.payload
-  return {rule:LEADER_RULE,universe:universeSummary(latest?.strategyPool,latest?.strategyUniverseVersion),trades:trades.sort((a,b)=>b.entryAt-a.entryAt),
+  return {observation:leaderSessionDashboard(days,now),rule:LEADER_RULE,universe:universeSummary(latest?.strategyPool,latest?.strategyUniverseVersion),trades:trades.sort((a,b)=>b.entryAt-a.entryAt),
     setups:latest?.leaderStrategy?.setups||{},lastCapturedAt:latest?.lastAt?new Date(latest.lastAt).toISOString():null}
 }

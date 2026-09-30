@@ -6,8 +6,9 @@ import prisma from '../prisma'
 import { recordedFlow } from './flowCollector'
 import { buildDayContext } from './flowDayContext'
 import { buildPreviousDayContext } from './flowPreviousDay'
+import { captureFlowSignals } from './flowSignalsStore'
 
-export const AGENT_VERSION = 'flow-sonnet-v6-previous-day'
+export const AGENT_VERSION = 'flow-sonnet-v7-price-strength'
 export type Direction = 'up' | 'down' | 'neutral' | 'wait'
 export interface AgentJudgment {
   direction: Direction
@@ -26,6 +27,7 @@ export interface AgentPayload {
   cutoff: string
   comparisonId?: string
   completedAt?: string
+  validationContext?: import('./flowDistribution').FlowDistribution
 }
 export function agentConfig() { return { ...basicModel(), version: AGENT_VERSION } }
 
@@ -61,10 +63,16 @@ export async function generateJudgment(record: RecordedFlow, evidence: Evidence[
     const snapshots=previous?await prisma.flowSnapshot.findMany({where:{date:previous.date},orderBy:{observedAt:'asc'}}):[]
     record.previousDayContext=buildPreviousDayContext(record,snapshots.flatMap(s=>{const r=recordedFlow(s.payload);return r?[r]:[]}))
   }
+  if(!record.signals){
+    try { record.signals=await captureFlowSignals(record);delete record.signalsError }
+    catch { record.signalsError='가격 반응·동시간대 수급 강도 조회 실패'; }
+  }
   const instructions = `너는 코스피 수급 분석가다. 제공된 관측 시점 이후 ${horizon}분의 방향을 한국어로 판단한다.
 외국인 현물, 선물, 외국인 비차익, 전체 비차익을 구분한다. 비차익은 현물에 포함되므로 합산하지 않는다.
 record.dayContext는 관측 시점까지의 당일 장 기록이다. 누적 수급의 오전·오후 흐름과 최근 변화를 구분해 참고한다. points는 15분 간격 대표 관측과 최근 15분 관측이며 전체 기록이 아니다. gaps는 실제 원본 수집 공백이다. 구간별 증감을 더해 중복 계산하지 않는다. raw 단위를 임의로 원·억원으로 해석하지 않는다. 시장 전체 외국인 수급을 특정 종목 수급으로 해석하지 않는다. 제공 시각 이후의 종가·뉴스·다음 날 결과는 알 수 없다. dayContext로 현재의 필수 관측 누락을 대체하지 않는다.
 record.previousDayContext는 최근 기록이 있는 과거 거래일의 압축 요약이며 학습된 지식이나 오늘 신호가 아니다. 날짜와 calendarDaysBefore를 확인하고 직전 거래일인지 미확인임을 고려한다. 오늘 가격·수급이 전일 흐름과 충돌하면 오늘 관측을 우선한다. finalObservedValues는 최종 관측값으로 확정 마감 수급이 아니다. reachedClose가 false면 장 마감까지 수집되지 않았고 closing30m이 null이면 마감 전 30분 변화를 판단할 수 없다. 전일과 당일 누적 수급을 빼거나 더하지 않는다. 전일 선물 순매수를 오늘 상승 또는 오버나잇 매수 의도의 증거로 단정하지 않는다. 전일 자료로 오늘 필수 데이터 누락을 보충하지 않는다.
+record.signals는 관측 시점 이전 자료로 계산한 가격 반응과 동시간대 15분 수급 강도다. 5·15·30분 수급과 코스피 반응이 일치하는지, 현물 매도에도 지수가 상승하는지 또는 매수에도 하락하는지를 구분한다. 이미 일어난 동시 움직임을 향후 상승·하락의 원인이나 확정 신호로 설명하지 않는다.
+strength의 signedPercentile은 같은 시간대 과거 순매수 변화의 상대적 위치다. magnitudePercentile은 절댓값 강도다. 높은 백분위를 상승 확률로 읽지 말고 value의 부호와 함께 해석한다. 최소 10일 미만인 insufficient는 비교 근거로 쓰지 않는다. signalsError 또는 누락은 0이 아니다. 기존 필수 수급 조건을 완화하지 않는다.
 수급을 주된 근거로, PDF는 배경과 반대 근거로만 사용한다. PDF 전망과 실제 수급이 충돌하면 전망을 고집하지 않는다.
 수치와 단위는 제공된 데이터만 사용한다. 누락은 0이 아니다. 필수 데이터 부족 또는 모순은 wait로 판단한다. 매번 방향을 정하지 말고 근거가 일치할 때만 방향을 제시한다.
 선물 매수는 숏 청산일 수 있으며 이미 일어난 가격 변화를 미래 예측의 증거로 단정하지 않는다.
@@ -105,7 +113,13 @@ export function evaluatePrediction(prediction: StoredPrediction, samples: FlowSa
   const review = anchor ? reviewFlow(anchor, { ...baseline, direction: payload.judgment.direction } as FlowAnalysis, samples, prediction.horizon, now) : unavailable
   const ruleReview = anchor ? reviewFlow(anchor, baseline, samples, prediction.horizon, now) : unavailable
   const timely = Date.parse(payload.generatedAt) < Date.parse(sample.observedAt) + prediction.horizon * 60_000
-  return { id: prediction.id, horizon: prediction.horizon, variant: prediction.variant || 'rag', mode: prediction.mode, model: prediction.model, version: prediction.version, createdAt: prediction.createdAt, ...payload, evaluationAt: anchor?.observedAt || null, review, ruleReview, eligible: prediction.mode === 'live' && timely }
+  const actualDirection=review.returnPct===null?null:review.returnPct>0?'up':review.returnPct<0?'down':'flat'
+  const reviewLabel=review.state!=='observed'?({pending:'결과 관측 대기',missing:'평가 가격 누락',closed:'평가 구간이 장 마감을 넘음'}[review.state]):review.matched===null?'중립·보류 · 방향 채점 제외':review.matched?'예측 방향 일치':'예측 방향 불일치'
+  const retrospective={status:reviewLabel,actualDirection,contextVersion:payload.record.signals?.version||null,
+    inputReaction:payload.record.signals?.priceReaction.find(w=>w.minutes===15)?.reaction||null,
+    strengthBand:payload.record.signals?.strength.find(s=>s.key==='cash')?.band||null,
+    note:'결과는 관측 가격 비교이며 매매 수익률·실패 원인의 증명이 아닙니다.'}
+  return { retrospective, id: prediction.id, horizon: prediction.horizon, variant: prediction.variant || 'rag', mode: prediction.mode, model: prediction.model, version: prediction.version, createdAt: prediction.createdAt, ...payload, evaluationAt: anchor?.observedAt || null, review, ruleReview, eligible: prediction.mode === 'live' && timely }
 }
 
 // Compare only complete pairs with the same model, input and evaluation anchor.
@@ -150,4 +164,23 @@ export function summarizePredictions(rows: ReturnType<typeof evaluatePrediction>
       paired: paired.length, pairedAiAccuracy: accuracy(paired.map(r => r.review.matched!)), ruleAccuracy: accuracy(paired.map(r => r.ruleReview.matched!)),
     }
   })
+}
+
+// Keep model/version/variant/horizon separate; never pool new and old prompts as an A/B test.
+export function summarizeRetrospectives(rows:ReturnType<typeof evaluatePrediction>[]){
+ const groups=new Map<string,typeof rows>()
+ for(const row of rows){const key=[row.model,row.version,row.variant||'rag',row.horizon].join('|');groups.set(key,[...(groups.get(key)||[]),row])}
+ return [...groups.entries()].map(([key,group])=>{
+  const live=group.filter(r=>r.eligible),observed=live.filter(r=>r.review.state==='observed')
+  const judged=observed.filter(r=>r.review.matched!==null),paired=judged.filter(r=>r.ruleReview.matched!==null)
+  const accuracy=(r:typeof rows,rule=false)=>r.length?r.filter(x=>rule?x.ruleReview.matched:x.review.matched).length/r.length*100:null
+  return {key,model:group[0].model,version:group[0].version,variant:group[0].variant||'rag',horizon:group[0].horizon,
+   live:live.length,replay:group.length-live.length,observed:observed.length,evaluated:judged.length,abstained:observed.length-judged.length,
+   accuracy:accuracy(judged),coverage:observed.length?judged.length/observed.length*100:null,
+   paired:paired.length,pairedAiAccuracy:accuracy(paired),pairedRuleAccuracy:accuracy(paired,true),
+   reactionGroups:[...new Set(observed.map(r=>r.retrospective.inputReaction||'not-recorded'))].map(reaction=>{
+    const matched=observed.filter(r=>(r.retrospective.inputReaction||'not-recorded')===reaction),directional=matched.filter(r=>r.review.matched!==null)
+    return {reaction,observed:matched.length,evaluated:directional.length,accuracy:accuracy(directional),abstained:matched.length-directional.length}
+   })}
+ })
 }

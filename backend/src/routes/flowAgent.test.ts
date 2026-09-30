@@ -35,6 +35,9 @@ describe('flow agent routes', () => {
     expect(flow.payload.comparisonId).toBe(rag.payload.comparisonId)
     expect(flow.payload.evidence).toEqual([])
     expect(rag.payload.evidence).toHaveLength(1)
+    expect(flow.payload.validationContext).toMatchObject({ status: 'insufficient', samples: [] })
+    expect(rag.payload.validationContext).toEqual(flow.payload.validationContext)
+    expect(mocks.generate.mock.calls[0][0]).not.toHaveProperty('validationContext')
   })
   it('does not save half a comparison when one generation fails', async () => {
     mocks.generate.mockRejectedValueOnce(new Error('failed'))
@@ -63,6 +66,13 @@ describe('flow agent routes', () => {
     mocks.generate.mockRejectedValue(new Error('invalid output'))
     expect((await request(app).post('/flow/agent').set('Authorization', authorization).send({ snapshotId: 7, horizon: 15 })).status).toBe(502)
     expect(mocks.create).not.toHaveBeenCalled()
+  })
+  it('preserves a paid judgment even if diagnostic history cannot be read', async () => {
+    mocks.snapshots.mockRejectedValue(new Error('diagnostic query failed'))
+    const response = await request(app).post('/flow/agent').set('Authorization', authorization).send({ snapshotId: 7, horizon: 15 })
+    expect(response.status).toBe(201)
+    expect(mocks.create.mock.calls[0][0].data.payload.validationContext.status).toBe('unavailable')
+    expect(mocks.generate.mock.calls[0][0]).not.toHaveProperty('validationContext')
   })
   it('limits costly generations before making the request', async () => {
     mocks.count.mockResolvedValue(80)

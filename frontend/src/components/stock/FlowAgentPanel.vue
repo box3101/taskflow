@@ -4,14 +4,17 @@ import { UiAlert, UiBadge, UiButton, UiEmpty, UiSelect, UiTable } from '@leechan
 import api from '../../api/client'
 import type { FlowRecord, FlowReview } from '../../types/marketFlow'
 import FlowExpertPanel from './FlowExpertPanel.vue'
+import FlowSignalReview from './FlowSignalReview.vue'
 
 const props = defineProps<{ date: string; record?: FlowRecord; refreshKey: string }>()
 type Direction = 'up' | 'down' | 'neutral' | 'wait'
 interface Evidence { id: string; reportId: number; filename: string; date: string; page: number; text: string }
 interface Prediction {
+  retrospective?: {status:string;actualDirection:string|null;note:string}
   id: number; horizon: number; variant: string; mode: string; model: string; version: string; generatedAt: string; eligible: boolean
   record: FlowRecord; judgment: { direction: Direction; summary: string; reasons: string[]; risks: string[]; invalidation: string[]; citations: string[] }
   evidence: Evidence[]; review: FlowReview; ruleReview: FlowReview; evaluationAt: string | null
+  validationContext?: { status: 'ready' | 'insufficient' | 'unavailable'; percentile: number | null; band: 'upper' | 'middle' | 'lower' | null; samples: { date: string }[] }
 }
 interface Stats {
   horizon: number; total: number; live: number; replay: number; evaluated: number; observed: number; abstained: number
@@ -24,7 +27,10 @@ interface Comparison {
   commonAccuracy: { rule: number | null; flow: number | null; rag: number | null }
   methods: { key: string; label: string; observed: number; evaluated: number; accuracy: number | null; coverage: number | null; abstentionRate: number | null }[]
 }
-const state = ref<{ configured: boolean; rows: Prediction[]; stats: Stats[]; flowStats: Stats[]; comparison: Comparison[]; reports: Report[] } | null>(null)
+interface AutoReview {key:string;model:string;version:string;variant:string;horizon:number;live:number;replay:number;observed:number;evaluated:number;abstained:number;accuracy:number|null;coverage:number|null;paired:number;pairedAiAccuracy:number|null;pairedRuleAccuracy:number|null}
+const reviewColumns=[{key:'method',label:'모델·버전 / 구성'},{key:'horizon',label:'분 후'},{key:'evaluated',label:'방향 평가'},{key:'accuracyText',label:'적중률'},{key:'coverageText',label:'판단 비율'},{key:'pairedText',label:'공통 AI / 규칙'}]
+const reviewRows=computed(()=>(state.value?.autoReview||[]).map(r=>({...r,method:r.model+' · '+r.version+' · '+(r.variant==='flow'?'수급만':'수급+PDF'),accuracyText:percent(r.accuracy),coverageText:percent(r.coverage),pairedText:r.paired+'건 · '+percent(r.pairedAiAccuracy)+' / '+percent(r.pairedRuleAccuracy)})))
+const state = ref<{ autoReview?: AutoReview[]; configured: boolean; rows: Prediction[]; stats: Stats[]; flowStats: Stats[]; comparison: Comparison[]; reports: Report[] } | null>(null)
 const automation = ref<{ enabled: boolean; configured?: boolean; hours?: string; maxCallsPerDay?: number; reservedCalls?: number; jobs?: { slot: number; status: string; message: string | null }[] } | null>(null)
 const automationError = ref('')
 const comparisonColumns = [{ key: 'label', label: '구성' }, { key: 'accuracyText', label: '적중률' }, { key: 'coverageText', label: '판단 비율' }, { key: 'abstentionText', label: '보류·중립 비율' }, { key: 'evaluated', label: '방향 평가 건수' }]
@@ -43,6 +49,24 @@ const options = [{ value: 15, label: '15분 후' }, { value: 30, label: '30분 �
 const isReplay = computed(() => !props.record || props.date !== new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10) || Date.now() - Date.parse(props.record.sample.observedAt) > 90_000)
 const formatTime = (s: string) => new Date(s).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false })
 const percent = (v: number | null) => v === null ? '—' : `${v.toFixed(1)}%`
+const distributionLabels = { upper: '상위권 (80백분위 이상)', middle: '중간권', lower: '하위권 (20백분위 이하)' }
+const distributionColumns = [{ key: 'method', label: '판단' }, { key: 'horizon', label: '분 후' }, { key: 'band', label: '현물 누적 순매수 수준' }, { key: 'evaluated', label: '방향 평가' }, { key: 'accuracy', label: '적중률' }, { key: 'abstained', label: '중립·보류' }]
+const distributionRows = computed(() => {
+  const rows = state.value?.rows || []
+  return ['flow', 'rag'].flatMap(variant => [15, 30].flatMap(horizon => (['upper', 'middle', 'lower'] as const).map(band => {
+    const observed = rows.filter(r => r.variant === variant && r.horizon === horizon && r.eligible && r.review.state === 'observed' && r.validationContext?.status === 'ready' && r.validationContext.band === band)
+    const scored = observed.filter(r => r.review.matched !== null)
+    return { key: `${variant}-${horizon}-${band}`, method: variant === 'flow' ? '수급만' : '수급 + PDF', horizon, band: distributionLabels[band], evaluated: scored.length,
+      accuracy: percent(scored.length ? scored.filter(r => r.review.matched).length / scored.length * 100 : null), abstained: observed.length - scored.length, observed: observed.length }
+  }))).filter(r => r.observed > 0)
+})
+function distributionText(row: Prediction) {
+  const context = row.validationContext
+  if (!context) return '동시간대 비교: 저장 전 기록'
+  if (context.status === 'unavailable') return '동시간대 비교: 자료 조회 실패'
+  if (context.status !== 'ready' || !context.band) return `동시간대 비교: 자료 부족 (${context.samples.length}/최소 10일)`
+  return `외국인 현물 누적 순매수: ${distributionLabels[context.band]} · ${context.percentile!.toFixed(1)}백분위 · 비교 ${context.samples.length}일`
+}
 function outcome(review: FlowReview) {
   if (review.state !== 'observed') return { pending: '관측 대기', missing: '결과 누락', closed: '장 종료' }[review.state]
   return `${review.returnPct!.toFixed(2)}% · ${review.matched === null ? '방향 평가 제외' : review.matched ? '일치' : '불일치'}`
@@ -105,8 +129,9 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
     <UiAlert v-if="error" variant="error" :description="error" role="alert" />
     <UiAlert v-if="automationError" variant="info" :description="automationError" />
     <div v-if="automation?.enabled" class="comparison-panel">
-      <h3>서버 자동 분석 · 수급만</h3>
+      <h3>서버 자동 분석 · 수급 + PDF</h3>
       <p>거래일 {{ automation.hours }} · 15분 간격 · 하루 최대 {{ automation.maxCallsPerDay }}회 · 노트북과 브라우저를 꺼도 실행</p>
+      <p class="note">관측 전에 업로드되고 검색 준비가 완료된 PDF에서 관련 발췌문을 최대 6개 참고합니다. PDF는 배경 자료이며 실제 가격·수급을 우선합니다. 관련 자료가 없으면 수급만 분석합니다.</p>
       <p>조회일 실행 예약 {{ automation.reservedCalls }}회(실패 포함) · 데이터 누락·수집 지연 시 생략 · Claude API 비용 별도</p>
       <p v-if="!automation.configured">API 연결 설정이 필요합니다.</p>
       <p v-if="automation.jobs?.length">최근 실행: {{ Math.floor(automation.jobs[0].slot / 60) }}:{{ String(automation.jobs[0].slot % 60).padStart(2, '0') }} · {{ ({ running: '생성 중', completed: '저장 완료', failed: '실패', skipped: '생략', interrupted: '중단 · 자동 재시도 없음' } as Record<string, string>)[automation.jobs[0].status] || automation.jobs[0].status }} {{ automation.jobs[0].message }}</p>
@@ -140,6 +165,19 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
     </div>
     <p class="note">실시간 성적은 AI 생성 이후 첫 관측 가격부터 계산합니다. 중립·보류는 적중률에서 제외합니다. 표본이 겹칠 수 있으며, 표시된 지수 변화율은 매매 수익률이 아닙니다.</p>
 
+    <section class="comparison-panel">
+      <h3>동시간대 수급 수준별 검증 · {{ date }}</h3>
+      <p class="note">외국인 현물 누적 순매수를 최근 기록일 최대 20일의 같은 시각과 비교합니다(최근 60일 이내, 시각 차이 최대 90초). 같은 단위의 유효 표본 10일 이상에서만 분류합니다. 높은 백분위는 상대적으로 큰 순매수 값이며, 순매수 여부나 상승 확률을 뜻하지 않습니다.</p>
+      <UiTable v-if="distributionRows.length" :columns="distributionColumns" :data="distributionRows" row-key="key" />
+      <UiEmpty v-else description="수급 수준이 저장된 실시간 판단과 이후 지수 관측이 쌓이면 비교 결과가 표시됩니다." />
+      <p class="note">AI 입력에 사용하지 않는 검증용 기록입니다. 조회일의 결과만 집계하며 과거 재실행·자료 부족은 제외합니다. 중립·보류는 적중률에서 제외합니다. 표본이 적거나 구간이 겹치므로 차이를 예측력 개선의 증거로 단정하지 않습니다.</p>
+    </section>
+    <section class="comparison-panel">
+      <h3>자동 복기 · 모델 버전별 검증</h3>
+      <UiTable v-if="reviewRows.length" :columns="reviewColumns" :data="reviewRows" row-key="key" />
+      <UiEmpty v-else description="저장된 판단과 이후 관측으로 자동 계산합니다. 추가 AI 호출은 없습니다." />
+      <p class="note">AI 응답 후 첫 관측부터 평가합니다. 중립·보류·과거 재생은 방향 적중률에서 제외하며, 규칙 비교는 둘 다 방향을 제시한 같은 관측만 사용합니다. 버전별 날짜·장세가 달라 단순 적중률 차이는 개선의 증거가 아닙니다. 입력 자료 저장은 다음 새 판단부터 적용됩니다.</p>
+    </section>
     <FlowExpertPanel :date="date" :record="record" :refresh-key="refreshKey" />
     <h3>저장된 기본 판단과 근거</h3>
     <UiEmpty v-if="state && !state.rows.length" description="아직 저장된 AI 판단이 없습니다. 판단 생성 후 결과와 근거가 여기에 남습니다." />
@@ -149,6 +187,8 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
         <span class="result">{{ outcome(row.review) }}</span>
       </div>
       <h4>{{ row.judgment.summary }}</h4>
+      <FlowSignalReview :signals="row.record.signals" :error="row.record.signalsError" :retrospective="row.retrospective" />
+      <p class="note">{{ distributionText(row) }} · 검증용 / AI 미제공</p>
       <ul><li v-for="reason in row.judgment.reasons" :key="reason">{{ reason }}</li></ul>
       <div class="conditions"><div><h4>반대 신호</h4><ul><li v-for="risk in row.judgment.risks" :key="risk">{{ risk }}</li></ul></div><div><h4>판단을 바꿀 조건</h4><ul><li v-for="condition in row.judgment.invalidation" :key="condition">{{ condition }}</li></ul></div></div>
       <p class="note">생성 {{ formatTime(row.generatedAt) }} · 평가 시작 {{ row.evaluationAt ? formatTime(row.evaluationAt) : '관측 대기' }} · {{ row.model }} · {{ row.version }} · 규칙 결과: {{ outcome(row.ruleReview) }}</p>

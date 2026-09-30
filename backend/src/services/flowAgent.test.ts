@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { analyzeFlow, FlowSample } from './flowAnalysis'
-import { AgentPayload, agentErrorMessage, evaluatePrediction, parseJudgment, predictionMode, summarizePredictions, summarizeComparison } from './flowAgent'
+import { AgentPayload, agentErrorMessage, evaluatePrediction, parseJudgment, predictionMode, summarizePredictions, summarizeComparison, summarizeRetrospectives } from './flowAgent'
 import { chunkPages, extractPdf, retrieveEvidence } from './flowRag'
 
 vi.mock('../prisma', () => ({ default: {} }))
@@ -104,4 +104,20 @@ describe('honest forward evaluation', () => {
     expect(evaluatePrediction(late, samples, new Date(samples[60].observedAt)).eligible).toBe(false)
     expect(summarizePredictions([missing])[0]).toMatchObject({ missing: 1, evaluated: 0, accuracy: null })
   })
+})
+
+describe('automatic retrospective',()=>{
+ it('separates versions and excludes replay and abstention from accuracy',()=>{
+  const rows=[prediction(),prediction('live','wait'),{...prediction(),version:'v2'},prediction('replay')].map(p=>evaluatePrediction(p,samples,new Date(samples[60].observedAt)))
+  const groups=summarizeRetrospectives(rows)
+  expect(groups).toHaveLength(2)
+  expect(groups[0]).toMatchObject({live:2,replay:1,evaluated:1,abstained:1,accuracy:100,coverage:50,paired:1})
+  expect(rows[0].retrospective.actualDirection).toBe('up')
+  expect(rows[0].retrospective.status).toBe('예측 방향 일치')
+ })
+ it('does not report an outcome before it is observed',()=>{
+  const r=evaluatePrediction(prediction(),samples,new Date(samples[20].observedAt))
+  expect(r.retrospective.actualDirection).toBeNull()
+  expect(r.retrospective.status).toBe('결과 관측 대기')
+ })
 })

@@ -2,10 +2,11 @@ import { Router } from 'express'
 import { randomUUID } from 'node:crypto'
 import prisma from '../prisma'
 import { recordedFlow } from '../services/flowCollector'
-import { agentConfig, agentErrorMessage, AGENT_VERSION, AgentPayload, evaluatePrediction, generateJudgment, predictionMode, summarizePredictions } from '../services/flowAgent'
+import { agentConfig, agentErrorMessage, AGENT_VERSION, AgentPayload, evaluatePrediction, generateJudgment, predictionMode, summarizePredictions, summarizeRetrospectives } from '../services/flowAgent'
 import { extractPdf, retrieveEvidence } from '../services/flowRag'
 import { summarizeComparison } from '../services/flowAgent'
 import { automationStatus } from '../services/flowAutomation'
+import { captureFlowDistribution } from '../services/flowDistributionStore'
 
 const router = Router()
 const running = new Set<number>()
@@ -31,7 +32,7 @@ router.get('/agent', async (req, res) => {
     ])
     const samples = snapshots.flatMap(s => { const record = recordedFlow(s.payload); return record ? [record.sample] : [] })
     const rows = predictions.map(p => evaluatePrediction(p, samples))
-    res.json({ data: { ...agentConfig(), rows, stats: summarizePredictions(rows.filter(r => r.variant === 'rag')), flowStats: summarizePredictions(rows.filter(r => r.variant === 'flow')), comparison: summarizeComparison(rows), reports } })
+    res.json({ data: { ...agentConfig(), rows, stats: summarizePredictions(rows.filter(r => r.variant === 'rag')), flowStats: summarizePredictions(rows.filter(r => r.variant === 'flow')), comparison: summarizeComparison(rows), autoReview: summarizeRetrospectives(rows), reports } })
   } catch { res.status(503).json({ message: 'AI 기록 저장소를 사용할 수 없습니다. 연결과 마이그레이션을 확인하세요.' }) }
 })
 
@@ -80,7 +81,8 @@ router.post('/agent', async (req, res) => {
     try { judgment = await generateJudgment(record, evidence, horizon) }
     catch (error) { res.status(502).json({ message: agentErrorMessage(error) }); return }
     const generated = new Date()
-    const payload: AgentPayload = { record, judgment, evidence, requestedAt: requested.toISOString(), generatedAt: generated.toISOString(), cutoff: cutoff.toISOString() }
+    const validationContext = await captureFlowDistribution(record)
+    const payload: AgentPayload = { record, judgment, evidence, validationContext, requestedAt: requested.toISOString(), generatedAt: generated.toISOString(), cutoff: cutoff.toISOString() }
     const prediction = await prisma.flowPrediction.create({ data: { userId, snapshotId, date: record.sample.date, horizon, mode: predictionMode(record.sample, requested, generated), model: agentConfig().model, version: AGENT_VERSION, payload: JSON.parse(JSON.stringify(payload)) } })
     res.status(201).json({ data: { id: prediction.id } })
   } catch (error) {
@@ -116,9 +118,10 @@ router.post('/agent/compare', async (req, res) => {
     if (failure?.status === 'rejected') { res.status(502).json({ message: agentErrorMessage(failure.reason) }); return }
     // Both arms share the first available price AFTER both generations complete.
     const generated = new Date(), comparisonId = randomUUID()
+    const validationContext = await captureFlowDistribution(record)
     const rows = await prisma.$transaction(results.map((result, i) => {
       if (result.status !== 'fulfilled') throw new Error('비교 결과 누락')
-      const payload: AgentPayload = { record, ...result.value, evidence: i === 0 ? [] : evidence, requestedAt: requested.toISOString(), generatedAt: generated.toISOString(), cutoff: cutoff.toISOString(), comparisonId }
+      const payload: AgentPayload = { record, ...result.value, validationContext, evidence: i === 0 ? [] : evidence, requestedAt: requested.toISOString(), generatedAt: generated.toISOString(), cutoff: cutoff.toISOString(), comparisonId }
       return prisma.flowPrediction.create({ data: { userId, snapshotId, horizon, variant: i === 0 ? 'flow' : 'rag', date: record.sample.date, mode: predictionMode(record.sample, requested, generated), model: config.model, version: AGENT_VERSION, payload: JSON.parse(JSON.stringify(payload)) } })
     }))
     res.status(201).json({ data: { ids: rows.map(r => r.id), hasPdf: evidence.length > 0 } })
