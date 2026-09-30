@@ -10,6 +10,7 @@ import HistoricalMarketReview from './HistoricalMarketReview.vue'
 import FlowCalendarDashboard from './FlowCalendarDashboard.vue'
 import FlowAgentPanel from './FlowAgentPanel.vue'
 import { flowReading, flowTitle } from '../../utils/flowReading'
+import { flowAiContinuation, selectFlowAi, flowAiTitle, flowAiOutcome, flowAiStats, type FlowAiPrediction } from '../../utils/flowAiReview'
 
 function today() { return new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10) }
 function time(value?: string | null) {
@@ -26,6 +27,10 @@ const data = ref<FlowResponse | null>(null)
 const status = ref<FlowStatus | null>(null)
 const busy = ref(false)
 const error = ref('')
+const aiError = ref('')
+const aiPredictions = ref<FlowAiPrediction[]>([])
+function aiFor(row: FlowRecord, horizon=15) { return selectFlowAi(aiPredictions.value, row.sample.observedAt, horizon) }
+function aiTitle(row: FlowRecord) { return aiError.value ? 'AI 조회 실패' : flowAiTitle(aiFor(row)) }
 const showConnection = ref(false)
 const uploading = ref(false)
 const uploadNote = ref('')
@@ -34,7 +39,7 @@ let timer: ReturnType<typeof setInterval> | undefined
 let requestVersion = 0
 let controller: AbortController | undefined
 let disposed = false
-const tabs: TabItem[] = [{ value: 'calendar', label: '월간 대시보드' }, { value: 'live', label: '수급 해석' }, { value: 'agent', label: 'AI 판단·검증' }, { value: 'history', label: '시간대별 기록' }, { value: 'review', label: '패턴 복기' }, { value: 'retrospective', label: '장전 리포트 비교' }]
+const tabs: TabItem[] = [{ value: 'calendar', label: '월간 대시보드' }, { value: 'live', label: '수급 해석' }, { value: 'agent', label: 'AI 판단·검증' }, { value: 'history', label: '시간대별 기록' }, { value: 'review', label: 'AI 복기' }, { value: 'retrospective', label: '장전 리포트 비교' }]
 const windowOptions = [5, 15, 30].map(value => ({ value, label: `최근 ${value}분` }))
 const dateModel = computed({
   get: (): DateValue => { const [y, m, d] = pendingDate.value.split('-').map(Number); return new CalendarDate(y!, m!, d!) },
@@ -49,7 +54,7 @@ const historyColumns = computed<TableColumn[]>(() => [
   { key: 'title', label: `당시 해석 (${windowMinutes.value}분)` },
 ])
 const historyRows = computed(() => [...records.value].reverse().map(row => ({ id: row.id, time: time(row.sample.observedAt), cash: fmt(row.analyses[String(windowMinutes.value)]?.delta.cash, 'cash', row), futures: fmt(row.analyses[String(windowMinutes.value)]?.delta.futures, 'futures', row), nonArb: fmt(row.analyses[String(windowMinutes.value)]?.delta.nonArb, 'nonArb', row), title: row.analyses[String(windowMinutes.value)]?.title, record: row })))
-const reviewColumns: TableColumn[] = [{ key: 'time', label: '기록 시각', width: '100px' }, { key: 'title', label: '당시 해석' }, { key: 'after15', label: '15분 후' }, { key: 'after30', label: '30분 후' }]
+const reviewColumns: TableColumn[] = [{ key: 'time', label: '기록 시각', width: '10%' }, { key: 'title', label: '저장된 AI 판단', width: '50%' }, { key: 'after15', label: '15분 후', width: '20%' }, { key: 'after30', label: '30분 후 평가', width: '20%' }]
 const records = computed(() => data.value?.records || [])
 const current = computed(() => records.value.find(r => r.id === selectedId.value) || records.value.at(-1))
 const analysis = computed(() => current.value?.analyses[String(windowMinutes.value)])
@@ -103,12 +108,10 @@ const timeline = computed(() => {
   }
   return [...slots.values()]
 })
-const reviewRows = computed(() => timeline.value.map(row => ({ row, analysis: row.analyses['15'], reviews: row.reviews })))
-const reviewStats = computed(() => {
-  const evaluated = reviewRows.value.map(r => r.reviews.find(v => v.horizon === 15)).filter(r => r?.state === 'observed' && r.matched !== null)
-  return { count: evaluated.length, matched: evaluated.filter(r => r?.matched).length, held: reviewRows.value.filter(r => ['wait', 'neutral'].includes(r.analysis?.direction || 'wait')).length }
-})
-const reviewTableRows = computed(() => reviewRows.value.map(item => ({ id: item.row.id, time: time(item.row.sample.observedAt), title: item.analysis?.title, record: item.row, after15: item.reviews.find(r => r.horizon === 15), after30: item.reviews.find(r => r.horizon === 30) })))
+const reviewRows = computed(() => records.value.filter(row => timeline.value.some(t=>t.id===row.id)||aiFor(row)||aiFor(row,30)))
+const reviewStats = computed(() => flowAiStats(reviewRows.value.flatMap(row=>{const ai=aiFor(row);return ai?[ai]:[]})))
+const reviewTableRows = computed(() => reviewRows.value.map(row => ({id:row.id,time:time(row.sample.observedAt),title:aiTitle(row),record:row,after15:aiFor(row),after30:aiFor(row,30) || flowAiContinuation(aiFor(row),records.value,now.value)})))
+const continuationStats = computed(() => flowAiStats(reviewTableRows.value.flatMap(row=>row.after30?.evaluationKind==='continuation'?[row.after30]:[])))
 const nextCheckAt = computed(() => current.value ? new Date(Date.parse(current.value.sample.observedAt) + 15 * 60_000).toISOString() : null)
 
 async function load() {
@@ -117,7 +120,15 @@ async function load() {
   controller = new AbortController()
   busy.value = true
   try {
-    const res = await api.get<{ data: FlowResponse }>('/market-flow', { params: { date: selectedDate.value }, signal: controller.signal, timeout: 10000 })
+    const [raw, ai] = await Promise.allSettled([
+      api.get<{ data: FlowResponse }>('/market-flow', { params: { date: selectedDate.value }, signal: controller.signal, timeout: 10000 }),
+      api.get<{ data: { rows: FlowAiPrediction[] } }>('/market-flow/agent', { params: { date: selectedDate.value }, signal: controller.signal, timeout: 10000 }),
+    ])
+    if (disposed || version !== requestVersion) return
+    aiPredictions.value = ai.status==='fulfilled' ? ai.value.data.data.rows : []
+    aiError.value = ai.status==='fulfilled' ? '' : 'AI 판단을 조회하지 못했습니다. 수급 규칙으로 대체하지 않습니다.'
+    if(raw.status==='rejected')throw raw.reason
+    const res=raw.value
     if (disposed || version !== requestVersion) return
     data.value = res.data.data
     status.value = data.value.status
@@ -130,7 +141,7 @@ async function load() {
 }
 watch(selectedDate, () => {
   pendingDate.value = selectedDate.value
-  data.value = null; selectedId.value = null
+  data.value = null; selectedId.value = null; aiPredictions.value = []; aiError.value = ''
   if (selectedDate.value === '2026-09-22' && activeTab.value !== 'calendar') activeTab.value = 'retrospective'
   const url = new URL(window.location.href); url.searchParams.set('date', selectedDate.value)
   url.searchParams.set('view', activeTab.value)
@@ -219,7 +230,7 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
       <div class="flow-controls">
         <UiButton v-if="activeTab !== 'calendar'" variant="outline" size="sm" @click="activeTab = 'calendar'">달력으로</UiButton>
         <UiButton v-if="activeTab !== 'calendar'" variant="outline" size="sm" @click="openSeptemberReview">9/22 복기 보기</UiButton>
-        <UiSelect v-if="!['calendar', 'retrospective', 'agent'].includes(activeTab)" v-model="windowMinutes" :options="windowOptions" label="비교 구간" label-hidden size="sm" class="flow-window" />
+        <UiSelect v-if="!['calendar', 'retrospective', 'agent', 'review'].includes(activeTab)" v-model="windowMinutes" :options="windowOptions" label="비교 구간" label-hidden size="sm" class="flow-window" />
         <UiButton variant="outline" size="sm" icon-only :loading="busy" @click="load" aria-label="새로고침"><template #icon-left><UiIcon name="refresh-cw" :size="16" /></template></UiButton>
       </div>
     </div>
@@ -231,6 +242,7 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
     </template>
     <template v-if="!['calendar', 'retrospective'].includes(activeTab)">
     <UiAlert v-if="error" variant="error" role="alert" title="연결 확인 필요" :description="error" />
+    <UiAlert v-if="aiError" variant="warning" :description="aiError" />
     <UiAlert v-else-if="status && !status.configured" variant="info" title="한국투자 API 연결을 기다리고 있어요" description="연결 후 정규장에 수급이 쌓이면 해석과 복기가 시작됩니다. 상단 연결 안내에서 설정 상태를 확인하세요." />
     <UiAlert v-else-if="status?.lastError" variant="warning" :description="status.lastError" />
     <UiAlert v-if="stale" variant="warning" :description="`최근 관측 ${time(latest?.sample.observedAt)} · 표시 중인 기록은 현재 수급이 아닐 수 있습니다.`" />
@@ -246,8 +258,9 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
           <div class="metric-caption">{{ current?.sample.sources[card.key].message || card.caption }}</div>
         </article>
       </section>
+      <section v-if="current" class="panel"><h2>AI 최종 판단 · 15분 예측</h2><p>{{ aiTitle(current) }}</p><p class="chart-footnote">해당 관측에 저장된 실시간 AI 판단입니다. 수급+PDF 판단 우선 · 없으면 수급만 AI 판단 · 과거 재분석 제외</p></section>
       <section class="insight">
-        <div class="section-heading"><h2><UiIcon name="lightbulb" :size="22" />{{ flowTitle(current, windowMinutes) }}</h2><UiBadge variant="primary" size="xs">관측 요약</UiBadge></div>
+        <div class="section-heading"><h2><UiIcon name="lightbulb" :size="22" />{{ flowTitle(current, windowMinutes) }}</h2><UiBadge variant="primary" size="xs">수급 규칙 · 참고</UiBadge></div>
         <dl class="reading-grid"><dt>현재 상태</dt><dd>{{ reading.state }}</dd><dt>직전 관측 대비</dt><dd>{{ reading.changes }}</dd><dt>가격 반응</dt><dd>{{ reading.price }}</dd><dt>다음 확인 조건</dt><dd>{{ reading.checks.join(' · ') }}</dd></dl>
         <p class="chart-footnote">직전 관측과 현재의 최근 {{ windowMinutes }}분 값을 비교합니다. 구간이 겹치므로 행을 합산하지 않습니다. 외국인 비차익은 현물에 포함됩니다.</p>
         <div class="hypotheses"><article v-for="(hypothesis, i) in (analysis?.hypotheses || ['외국인 현물과 선물의 방향이 일치하는지 확인합니다.', '외국인 비차익 동참 여부와 실제 지수 반응을 비교합니다.'])" :key="i"><UiBadge variant="info" size="xs">가설 {{ i + 1 }}</UiBadge><p>{{ hypothesis }}</p></article></div>
@@ -272,9 +285,9 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
         </aside>
       </div>
       <section class="panel timeline-panel">
-        <div class="section-heading"><h2><UiIcon name="history" :size="18" />해석 타임라인</h2><UiButton variant="ghost" size="xs" @click="activeTab = 'history'">전체 기록<template #icon-right><UiIcon name="arrow-right" :size="14" /></template></UiButton></div>
+        <div class="section-heading"><h2><UiIcon name="history" :size="18" />AI 판단 타임라인</h2><UiButton variant="ghost" size="xs" @click="activeTab = 'history'">전체 기록<template #icon-right><UiIcon name="arrow-right" :size="14" /></template></UiButton></div>
         <UiEmpty v-if="!timeline.length" description="장중 기록이 쌓이면 시간대별 해석을 다시 볼 수 있어요." class="empty-inline" />
-        <div v-else class="timeline"><article v-for="row in timeline" :key="row.id" class="timeline-item"><UiButton :variant="current?.id === row.id ? 'secondary' : 'outline'" @click="selectRecord(row)">{{ time(row.sample.observedAt) }}</UiButton><p>{{ row.analyses['15']?.title }}</p></article></div>
+        <div v-else class="timeline"><article v-for="row in timeline" :key="row.id" class="timeline-item"><UiButton :variant="current?.id === row.id ? 'secondary' : 'outline'" @click="selectRecord(row)">{{ time(row.sample.observedAt) }}</UiButton><p>{{ aiTitle(row) }}</p></article></div>
       </section>
     </template>
     <section v-else-if="activeTab === 'history'" class="panel history-panel">
@@ -285,17 +298,18 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
       </UiTable>
     </section>
     <template v-else-if="activeTab === 'review'">
-      <section class="review-summary"><article class="panel"><span>방향 예측 평가</span><strong>{{ reviewStats.count }}<small>건</small></strong><p>15분 간격 표본 · 15분 후 결과</p></article><article class="panel"><span>방향 일치</span><strong>{{ reviewStats.matched }}<small>/ {{ reviewStats.count }}건</small></strong><p>기록한 방향과 실제 지수 변화 비교</p></article><article class="panel"><span>판단 보류·혼재</span><strong>{{ reviewStats.held }}<small>건</small></strong><p>방향 적중률 계산에서 제외</p></article></section>
-      <section class="panel history-panel">
-        <div class="section-heading"><h2>가설 이후, 실제로 어떻게 움직였을까?</h2><UiBadge size="xs">15분 수급 해석 기준</UiBadge></div>
-        <UiEmpty v-if="!reviewRows.length" title="첫 복기를 기다리고 있어요" description="해석 시점 이후 15분·30분의 코스피 변화를 비교합니다." />
+      <section class="review-summary"><article class="panel"><span>AI 방향 평가</span><strong>{{ reviewStats.count }}<small>건</small></strong><p>실시간 AI · 15분 예측 결과</p></article><article class="panel"><span>방향 일치</span><strong>{{ reviewStats.matched }}<small>/ {{ reviewStats.count }}건</small></strong><p>기록한 방향과 실제 지수 변화 비교</p></article><article class="panel"><span>AI 판단 보류·중립</span><strong>{{ reviewStats.held }}<small>건</small></strong><p>방향 적중률 계산에서 제외</p></article></section>
+      <section class="panel history-panel ai-review-table">
+        <div class="section-heading"><h2>AI 판단 이후, 실제로 어떻게 움직였을까?</h2><UiBadge size="xs">저장된 AI 판단 기준</UiBadge></div>
+        <UiEmpty v-if="!reviewRows.length" title="첫 복기를 기다리고 있어요" description="저장된 AI 예측 구간별로 결과를 비교합니다." />
         <UiTable v-else :columns="reviewColumns" :data="reviewTableRows" size="sm">
           <template #cell-time="{ row }"><UiButton variant="ghost" size="xs" @click="selectRecord(row.record)">{{ row.time }}</UiButton></template>
           <template v-for="key in (['after15', 'after30'] as const)" #[`cell-${key}`]="{ row }">
-            <template v-if="row[key]"><span v-if="row[key].state === 'observed'" :class="tone(row[key].returnPct)">{{ pct(row[key].returnPct) }}</span><span v-else class="muted">{{ reviewLabels[row[key].state] }}</span><UiBadge v-if="row[key].matched !== null" :variant="row[key].matched ? 'success' : 'warning'" size="xs" class="review-match">{{ row[key].matched ? '방향 일치' : '방향 불일치' }}</UiBadge></template>
+            <template v-if="row[key]"><span v-if="row[key].review.state === 'observed'" :class="tone(row[key].review.returnPct)">{{ pct(row[key].review.returnPct) }}</span><span v-else class="muted">{{ reviewLabels[row[key].review.state] }}</span><UiBadge :variant="row[key].eligible && row[key].review.state === 'observed' && ['up', 'down'].includes(row[key].judgment.direction) && row[key].review.matched !== null ? (row[key].review.matched ? 'success' : 'warning') : 'default'" size="xs" class="review-match">{{ flowAiOutcome(row[key]) }}</UiBadge><small v-if="key === 'after30'" class="muted">{{ row[key].evaluationKind === 'continuation' ? '15분 판단의 지속 평가' : '별도 30분 예측' }}</small><small class="muted">{{ row[key].judgment.direction === 'wait' ? '판단 보류' : row[key].judgment.direction === 'neutral' ? '중립' : row[key].judgment.direction === 'up' ? '상승' : '하락' }} · 평가 시작 {{ time(row[key].evaluationAt) }}</small></template><span v-else class="muted">{{ aiError ? 'AI 조회 실패' : 'AI 미실행' }}</span>
           </template>
         </UiTable>
-        <p class="chart-footnote">겹치는 구간과 작은 표본은 독립적인 검증 결과가 아닙니다. 가설의 인과관계나 수익을 보장하는 점수가 아닙니다.</p>
+        <p class="chart-footnote">30분 지속 평가: 방향 일치 {{ continuationStats.matched }}/{{ continuationStats.count }}건 · 보류·중립 {{ continuationStats.held }}건 제외</p>
+        <p class="chart-footnote">AI 응답 후 첫 관측 가격부터 평가합니다. 보류·중립 및 과거 재분석은 적중률에서 제외합니다. 30분은 별도 예측이 없으면 원래 15분 판단의 방향 지속 여부를 채점합니다. 새 AI 예측이 아니며 추가 호출 비용은 없습니다. 수급+PDF를 우선하며, 없으면 수급만 AI 판단을 사용합니다.</p>
       </section>
     </template>
     <section v-if="activeTab !== 'calendar'" class="panel reports-panel">
@@ -400,7 +414,12 @@ h2 :deep(svg) { color: var(--accent); }
 table { border-collapse: collapse; width: 100%; font-size: 12px; white-space: nowrap; text-align: left; }
 th { background: #f6f8fc; padding: 12px; color: #7b88a1; font-weight: 500; }
 td { padding: 13px 12px; border-bottom: 1px solid #edf0f6; color: #56647f; }
-.review-match { display: block; font-size: 10px; color: #93a0b4; margin-top: 5px; }
+.review-match { display: block; font-size: 10px; margin-top: 5px; }
+.ai-review-table :deep(.ui-table) { width: 100%; min-width: 0; table-layout: fixed; }
+.ai-review-table :deep(.ui-table th), .ai-review-table :deep(.ui-table td) { white-space: normal; overflow-wrap: anywhere; padding: 10px 6px; }
+.ai-review-table :deep(.ui-badge) { max-width: 100%; white-space: normal; height: auto; line-height: 1.5; }
+.ai-review-table .muted { display: block; margin-top: 4px; }
+@media(max-width: 600px) { .ai-review-table { padding: 12px 8px; } .ai-review-table :deep(.ui-table th), .ai-review-table :deep(.ui-table td) { font-size: 11px; padding: 8px 3px; } .ai-review-table :deep(.ui-button) { min-width: 0; padding-inline: 0; font-size: 11px; } }
 .review-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .review-summary article > span { color: #7f8ca3; font-size: 12px; }
 .review-summary strong { display: block; font-size: 29px; margin-top: 15px; }
