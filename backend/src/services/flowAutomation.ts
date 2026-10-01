@@ -45,7 +45,7 @@ export async function runFlowAutomation(now = new Date()): Promise<void> {
     const job = await prisma.flowAutoRun.create({ data: { userId, date, slot, snapshotId: snapshot.id, reservedCalls: 1 } })
     jobId = job.id
     const documents = await prisma.flowReport.findMany({
-      where: { userId, ragStatus: 'ready', date: { lte: record.sample.date }, createdAt: { lte: cutoff } },
+      where: { userId, ragStatus: 'ready', date: record.sample.date, createdAt: { lte: cutoff } },
       select: { id: true, filename: true, date: true, createdAt: true, ragChunks: true },
       orderBy: { createdAt: 'desc' }, take: 100,
     })

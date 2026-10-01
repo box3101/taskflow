@@ -45,7 +45,7 @@ router.post('/expert', async (req, res) => {
     const records = snapshots.flatMap(s => { const r = recordedFlow(s.payload); return r && r.sample.date === date && new Date(r.sample.observedAt) <= cutoff ? [r] : [] })
     const record = chosen || records[records.length - 1]
     if (!record || !records.length) { res.status(404).json({ message: '분석할 수급 기록이 없습니다.' }); return }
-    const documents = await prisma.flowReport.findMany({ where: { userId, ragStatus: 'ready', date: { lte: date }, createdAt: { lte: cutoff } }, select: { id: true, filename: true, date: true, createdAt: true, ragChunks: true }, orderBy: { createdAt: 'desc' }, take: 100 })
+    const documents = await prisma.flowReport.findMany({ where: { userId, ragStatus: 'ready', date, createdAt: { lte: cutoff } }, select: { id: true, filename: true, date: true, createdAt: true, ragChunks: true }, orderBy: { createdAt: 'desc' }, take: 100 })
     const evidence = retrieveEvidence(documents, `코스피 외국인 현물 선물 비차익 장전 시나리오 반도체 금리 상승 하락 무효화 ${record.analyses['15']?.title || ''}`, date, cutoff, 12)
     const predictions = await prisma.flowPrediction.findMany({ where: { userId, date, createdAt: { lte: cutoff } }, orderBy: { createdAt: 'asc' }, take: 80 })
     const basicJudgments = predictions.flatMap(p => {

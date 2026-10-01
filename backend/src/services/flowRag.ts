@@ -72,7 +72,7 @@ function terms(text: string): string[] {
 }
 
 export function retrieveEvidence(documents: RagDocument[], query: string, date: string, cutoff: Date, limit = 6): Evidence[] {
-  const candidates = documents.filter(d => d.date <= date && d.createdAt <= cutoff).flatMap(doc =>
+  const candidates = documents.filter(d => d.date === date && d.createdAt <= cutoff).flatMap(doc =>
     (Array.isArray(doc.ragChunks) ? doc.ragChunks as RagChunk[] : []).map((chunk, i) => ({
       ...chunk, id: `${doc.id}:${i}`, reportId: doc.id, filename: doc.filename, date: doc.date,
     })))

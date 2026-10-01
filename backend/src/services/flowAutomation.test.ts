@@ -74,9 +74,9 @@ describe('durable cloud flow scheduler', () => {
 
 it('passes only available PDF excerpts to the single paid call and stores the same evidence', async () => {
   const doc = { id: 1, filename: 'morning.pdf', date: '2026-09-22', createdAt: new Date('2026-09-22T00:00:00Z'), ragChunks: Array.from({length: 9}, (_, i) => ({ page: i + 1, text: '코스피 외국인 현물 선물 비차익 수급 관련 오전 전망' })) }
-  mocks.reports.mockResolvedValue([doc, {...doc,id:2,createdAt:new Date('2026-09-22T00:16:00Z')}, {...doc,id:3,date:'2026-09-23'}])
+  mocks.reports.mockResolvedValue([doc, {...doc,id:2,createdAt:new Date('2026-09-22T00:16:00Z')}, {...doc,id:3,date:'2026-09-23'}, {...doc,id:4,date:'2026-09-21'}])
   await runFlowAutomation(at)
-  expect(mocks.reports).toHaveBeenCalledWith(expect.objectContaining({where:{userId:41,ragStatus:'ready',date:{lte:'2026-09-22'},createdAt:{lte:new Date(sample(15).observedAt)}}}))
+  expect(mocks.reports).toHaveBeenCalledWith(expect.objectContaining({where:{userId:41,ragStatus:'ready',date:'2026-09-22',createdAt:{lte:new Date(sample(15).observedAt)}}}))
   expect(mocks.generate).toHaveBeenCalledOnce()
   const evidence = mocks.generate.mock.calls[0][1]
   expect(evidence).toHaveLength(6)

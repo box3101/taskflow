@@ -59,7 +59,7 @@ describe('flow agent routes', () => {
   it('only sends owned documents known by the observation and saves a reproducible input', async () => {
     const response = await request(app).post('/flow/agent').set('Authorization', authorization).send({ snapshotId: 7, horizon: 30, userId: 999 })
     expect(response.status).toBe(201)
-    expect(mocks.reports.mock.calls[0][0].where).toMatchObject({ userId: 12, date: { lte: '2026-09-22' }, createdAt: { lte: new Date(at) }, ragStatus: 'ready' })
+    expect(mocks.reports.mock.calls[0][0].where).toMatchObject({ userId: 12, date: '2026-09-22', createdAt: { lte: new Date(at) }, ragStatus: 'ready' })
     expect(mocks.create.mock.calls[0][0].data).toMatchObject({ userId: 12, snapshotId: 7, horizon: 30, payload: { record, cutoff: at } })
   })
   it('does not persist failed model responses', async () => {

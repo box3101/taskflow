@@ -28,7 +28,7 @@ router.get('/agent', async (req, res) => {
     const [predictions, snapshots, reports] = await Promise.all([
       prisma.flowPrediction.findMany({ where: { userId: req.user!.id, date }, orderBy: { createdAt: 'desc' } }),
       prisma.flowSnapshot.findMany({ where: { date }, orderBy: { observedAt: 'asc' } }),
-      prisma.flowReport.findMany({ where: { userId: req.user!.id, date: { lte: date } }, select: { id: true, date: true, filename: true, createdAt: true, ragStatus: true, ragError: true }, orderBy: { createdAt: 'desc' }, take: 100 }),
+      prisma.flowReport.findMany({ where: { userId: req.user!.id, date }, select: { id: true, date: true, filename: true, createdAt: true, ragStatus: true, ragError: true }, orderBy: { createdAt: 'desc' }, take: 100 }),
     ])
     const samples = snapshots.flatMap(s => { const record = recordedFlow(s.payload); return record ? [record.sample] : [] })
     const rows = predictions.map(p => evaluatePrediction(p, samples))
@@ -74,7 +74,7 @@ router.post('/agent', async (req, res) => {
     if (!record || !record.analyses['15']) { res.status(404).json({ message: '분석할 수급 기록이 없습니다.' }); return }
     const cutoff = new Date(record.sample.observedAt)
     if (!Number.isFinite(cutoff.getTime()) || cutoff > requested) { res.status(422).json({ message: '관측 시각을 확인하세요.' }); return }
-    const documents = await prisma.flowReport.findMany({ where: { userId, ragStatus: 'ready', date: { lte: record.sample.date }, createdAt: { lte: cutoff } }, select: { id: true, filename: true, date: true, createdAt: true, ragChunks: true }, orderBy: { createdAt: 'desc' }, take: 100 })
+    const documents = await prisma.flowReport.findMany({ where: { userId, ragStatus: 'ready', date: record.sample.date, createdAt: { lte: cutoff } }, select: { id: true, filename: true, date: true, createdAt: true, ragChunks: true }, orderBy: { createdAt: 'desc' }, take: 100 })
     const query = `코스피 외국인 현물 선물 비차익 전체 수급 ${record.analyses['15'].title} ${record.analyses['15'].hypotheses.join(' ')}`
     const evidence = retrieveEvidence(documents, query, record.sample.date, cutoff)
     let judgment
@@ -111,7 +111,7 @@ router.post('/agent/compare', async (req, res) => {
     if (!record || !record.analyses['15']) { res.status(404).json({ message: '분석할 수급 기록이 없습니다.' }); return }
     const cutoff = new Date(record.sample.observedAt)
     if (!Number.isFinite(cutoff.getTime()) || cutoff > requested) { res.status(422).json({ message: '관측 시각을 확인하세요.' }); return }
-    const documents = await prisma.flowReport.findMany({ where: { userId, ragStatus: 'ready', date: { lte: record.sample.date }, createdAt: { lte: cutoff } }, select: { id: true, filename: true, date: true, createdAt: true, ragChunks: true }, orderBy: { createdAt: 'desc' }, take: 100 })
+    const documents = await prisma.flowReport.findMany({ where: { userId, ragStatus: 'ready', date: record.sample.date, createdAt: { lte: cutoff } }, select: { id: true, filename: true, date: true, createdAt: true, ragChunks: true }, orderBy: { createdAt: 'desc' }, take: 100 })
     const evidence = retrieveEvidence(documents, `코스피 외국인 현물 선물 비차익 ${record.analyses['15'].title} ${record.analyses['15'].hypotheses.join(' ')}`, record.sample.date, cutoff)
     const results = await Promise.allSettled([[], evidence].map(async context => ({ judgment: await generateJudgment(record, context, horizon), completedAt: new Date().toISOString() })))
     const failure = results.find(r => r.status === 'rejected')
