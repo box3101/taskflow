@@ -6,6 +6,8 @@ const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(
 const day=ref(today())
 const dates=computed(()=>[...new Set([today(),...(props.data?.breakout?.days||[]).map(s=>s.date)])].sort().reverse().map(value=>({label:value,value})))
 const record=computed(()=>props.data?.breakout?.days?.find(s=>s.date===day.value))
+const sharedLive=computed(()=>{const r=props.data?.breakout?.days?.find(s=>s.date===today());return r?.lastAt&&Date.now()-r.lastAt>=0&&Date.now()-r.lastAt<90000})
+const collectorMessage=computed(()=>props.data?.breakout?.enabled?'이 서버의 자동 수집이 켜져 있습니다. 거래일에 조건을 충족하면 모의 기록을 만듭니다.':sharedLive.value?'이 환경은 조회 전용입니다. 공유 서버에서 자동 모의 관측이 정상 갱신되고 있습니다.':'이 환경은 조회 전용입니다. 공유 서버의 장중 수집 상태는 최근 관측 시각으로 확인하세요.')
 const session=computed(()=>props.data?.observation?.sessions?.find(s=>s.date===day.value))
 const candidates=computed(()=>session.value?.current?.slice(0,3)||[])
 const pct=n=>Number.isFinite(n)?(n>0?'+':'')+n.toFixed(2)+'%':'—'
@@ -16,7 +18,7 @@ const labels={holding:'모의 보유',closed:'청산 완료',excluded:'성적 �
 <template>
 <section class="strategy">
  <div class="heading"><div><UiBadge variant="primary">서버 자동 모의 · 실제 주문 없음</UiBadge><h3>주도 테마 대장주 · 고점 돌파</h3><p>홍인기 공개 원칙 참고 · 거래일 09:30–15:20 신규 진입 · 하루 최대 3종목</p></div><UiSelect v-model="day" :options="dates" label="전략 날짜" size="sm" /></div>
- <UiAlert :variant="data?.breakout?.enabled?'info':'warning'" :description="data?.breakout?.enabled?'서버 자동 수집에 연결되어 있습니다. 브라우저와 노트북을 꺼도 거래일에 모의 기록을 만듭니다.':'서버 자동 수집이 꺼져 있습니다. 이 환경에서는 자동 모의 기록이 생성되지 않습니다.'" />
+ <UiAlert :variant="data?.breakout?.enabled||sharedLive?'info':'warning'" :description="collectorMessage" />
  <div class="steps"><article><b>01 · 주도 테마와 대장주</b><p>등록 비교군 중 누적 거래대금 상위 3개 테마. 테마 중앙값이 양수이고, 거래대금 단독 1위 종목의 당일 등락률이 테마 중앙값보다 높아야 합니다.</p></article><article><b>02 · 당일 고점 돌파</b><p>09:30 이후 새 관측가가 직전 관측의 당일 고점을 넘으면 신호. 다음 새 시세에서도 돌파 가격 위이며 후보 조건을 유지할 때 진입합니다.</p></article><article><b>03 · 자동 모의 채점</b><p>하루 최대 3종목 · 종목당 1회. 진입가 대비 −3% 손절, 나머지는 당일 마감 시세로 청산. 왕복 비용 0.21% 가정.</p></article></div>
  <p>관찰 {{ data?.universe?.count||0 }}종목 · 등록 목록 내 비교입니다. 시장 전체 대장주 순위와 다를 수 있습니다. 호가·뉴스·일봉에 따른 홍인기 본인의 재량 판단을 복제하지 않습니다.</p>
  <div class="stats"><article><b>{{ record?.trades?.length||0 }} / {{ record?.holding||0 }}</b><span>진입 / 보유</span></article><article><b>{{ record?.completed||0 }} / {{ record?.excluded||0 }}</b><span>청산 완료 / 제외</span></article><article><b>{{ pct(record?.mean) }}</b><span>완료 거래 평균 순수익</span></article><article><b>{{ pct(record?.win) }}</b><span>비용 후 승률</span></article></div>

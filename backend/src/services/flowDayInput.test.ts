@@ -28,3 +28,15 @@ it('passes prior-session summary in the same paid request and keeps it in the st
  expect(mocks.json).toHaveBeenCalledTimes(1)
  expect(mocks.json.mock.calls[0][3].record.previousDayContext).toEqual(record.previousDayContext)
 })
+
+it('includes investor deltas in the same request, with explicit missing-data and unit guidance',async()=>{
+ mocks.json.mockClear();mocks.json.mockResolvedValue(JSON.stringify({direction:'wait',summary:'test',reasons:['data'],risks:['missing'],invalidation:['next'],citations:[]}))
+ const record:RecordedFlow={version:1,moneyUnits:{cash:'raw',nonArb:'raw'},dayContext:{} as any,previousDayContext:null,signals:{} as any,sample:{date:'2026-10-01',observedAt:'2026-10-01T01:48:00Z',values:{cash:-500,futures:10,nonArb:2,totalNonArb:3,kospi:6800,kospiPct:0,institutionCash:-1000,institutionFutures:50,individualCash:300,individualFutures:-10},sources:{} as any},analyses:{'5':{baselineAt:'2026-10-01T01:43:00Z',delta:{cash:-899,futures:-41,nonArb:1843,institutionCash:-22949,institutionFutures:-17,individualCash:3482,individualFutures:47}} as any,'15':{baselineAt:null,delta:{institutionCash:null}} as any}}
+ await generateJudgment(record,[],15)
+ expect(mocks.json).toHaveBeenCalledTimes(1)
+ const call=mocks.json.mock.calls[0]
+ expect(call[2]).toContain('institutionCash/institutionFutures')
+ expect(call[2]).toContain('개인 매수를 무조건 하락 신호로 보지 않는다')
+ expect(call[3].record.analyses['5'].delta).toMatchObject({institutionCash:-22949,individualFutures:47})
+ expect(call[3].record.analyses['15'].delta.institutionCash).toBeNull()
+})

@@ -8,7 +8,11 @@ import { buildDayContext } from './flowDayContext'
 import { buildPreviousDayContext } from './flowPreviousDay'
 import { captureFlowSignals } from './flowSignalsStore'
 
-export const AGENT_VERSION = 'flow-sonnet-v7-price-strength'
+export const AGENT_VERSION = 'flow-sonnet-v8-investor-flow'
+export const INVESTOR_FLOW_INSTRUCTIONS = `투자자별 수급을 함께 판단한다. sample.values의 cash/futures는 외국인 현물/선물, institutionCash/institutionFutures는 기관 현물/선물, individualCash/individualFutures는 개인 현물/선물이다. 현물 금액 단위는 moneyUnits.cash, 선물은 계약 수다. nonArb는 외국인 비차익으로 외국인 현물에 포함되며 합산하지 않는다.
+누적값 sample.values와 최근 변화 analyses['5'/'15'/'30'].delta를 구분한다. 같은 baselineAt과 관측 시각의 외국인·기관·개인 현물/선물을 비교하고 코스피 delta.kospi/kospiPct의 가격 반응을 함께 확인한다. 5분이 존재해도 15·30분이 null이면 그 구간은 모른다. 투자자별 sources가 ok가 아니거나 값이 null/누락이면 0이나 매수·매도 없음으로 해석하지 않는다. 기관·개인 자료가 부족하면 외국인 중심 판단이라는 한계를 밝히고 기존 필수 자료 기준을 유지한다.
+외국인과 기관이 같은 방향인지, 반대 방향인지, 수급과 지수가 엇갈리는지 구분한다. 개인 매수를 무조건 하락 신호로 보지 않는다. 기관 매수만으로 외국인 매도 물량의 직접 인수나 지수 방어 의도를 단정하지 않는다. 선물 순매수만으로 신규 매수와 숏 청산을 구별할 수 없다. 세 주체 합계가 0이 아니어도 다른 투자자 분류와 집계 시각 차이가 있어 오류라고 단정하거나 잔차로 누락값을 추정하지 않는다. 기관 합계와 기관 하위 분류를 중복 합산하지 않는다.
+기관·개인 자료가 유효하면 판단에 영향을 준 동행·충돌 관계를 reasons 또는 risks에 짧게 포함한다. 단순 다수결이나 고정 가중치로 방향을 만들지 않으며 이미 일어난 수급·가격 동행을 미래 수익의 보장으로 설명하지 않는다.`
 export type Direction = 'up' | 'down' | 'neutral' | 'wait'
 export interface AgentJudgment {
   direction: Direction
@@ -68,6 +72,7 @@ export async function generateJudgment(record: RecordedFlow, evidence: Evidence[
     catch { record.signalsError='가격 반응·동시간대 수급 강도 조회 실패'; }
   }
   const instructions = `너는 코스피 수급 분석가다. 제공된 관측 시점 이후 ${horizon}분의 방향을 한국어로 판단한다.
+${INVESTOR_FLOW_INSTRUCTIONS}
 외국인 현물, 선물, 외국인 비차익, 전체 비차익을 구분한다. 비차익은 현물에 포함되므로 합산하지 않는다.
 record.dayContext는 관측 시점까지의 당일 장 기록이다. 누적 수급의 오전·오후 흐름과 최근 변화를 구분해 참고한다. points는 15분 간격 대표 관측과 최근 15분 관측이며 전체 기록이 아니다. gaps는 실제 원본 수집 공백이다. 구간별 증감을 더해 중복 계산하지 않는다. raw 단위를 임의로 원·억원으로 해석하지 않는다. 시장 전체 외국인 수급을 특정 종목 수급으로 해석하지 않는다. 제공 시각 이후의 종가·뉴스·다음 날 결과는 알 수 없다. dayContext로 현재의 필수 관측 누락을 대체하지 않는다.
 record.previousDayContext는 최근 기록이 있는 과거 거래일의 압축 요약이며 학습된 지식이나 오늘 신호가 아니다. 날짜와 calendarDaysBefore를 확인하고 직전 거래일인지 미확인임을 고려한다. 오늘 가격·수급이 전일 흐름과 충돌하면 오늘 관측을 우선한다. finalObservedValues는 최종 관측값으로 확정 마감 수급이 아니다. reachedClose가 false면 장 마감까지 수집되지 않았고 closing30m이 null이면 마감 전 30분 변화를 판단할 수 없다. 전일과 당일 누적 수급을 빼거나 더하지 않는다. 전일 선물 순매수를 오늘 상승 또는 오버나잇 매수 의도의 증거로 단정하지 않는다. 전일 자료로 오늘 필수 데이터 누락을 보충하지 않는다.
