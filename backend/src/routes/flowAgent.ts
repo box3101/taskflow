@@ -1,9 +1,10 @@
+import { loadHistoricalEvidence } from '../services/flowHistorical'
 import { Router } from 'express'
 import { randomUUID } from 'node:crypto'
 import prisma from '../prisma'
 import { recordedFlow } from '../services/flowCollector'
 import { agentConfig, agentErrorMessage, AGENT_VERSION, AgentPayload, evaluatePrediction, generateJudgment, predictionMode, summarizePredictions, summarizeRetrospectives } from '../services/flowAgent'
-import { extractPdf, retrieveEvidence } from '../services/flowRag'
+import { extractPdf, retrieveEvidence, historicalPolicy } from '../services/flowRag'
 import { summarizeComparison } from '../services/flowAgent'
 import { automationStatus } from '../services/flowAutomation'
 import { captureFlowDistribution } from '../services/flowDistributionStore'
@@ -77,12 +78,13 @@ router.post('/agent', async (req, res) => {
     const documents = await prisma.flowReport.findMany({ where: { userId, ragStatus: 'ready', date: record.sample.date, createdAt: { lte: cutoff } }, select: { id: true, filename: true, date: true, createdAt: true, ragChunks: true }, orderBy: { createdAt: 'desc' }, take: 100 })
     const query = `코스피 외국인 현물 선물 비차익 전체 수급 ${record.analyses['15'].title} ${record.analyses['15'].hypotheses.join(' ')}`
     const evidence = retrieveEvidence(documents, query, record.sample.date, cutoff)
+    evidence.push(...await loadHistoricalEvidence(userId, `코스피 외국인 현물 선물 비차익 사례 판별 ${record.analyses['15']?.title || ''}`, record.sample.date, cutoff))
     let judgment
     try { judgment = await generateJudgment(record, evidence, horizon) }
     catch (error) { res.status(502).json({ message: agentErrorMessage(error) }); return }
     const generated = new Date()
     const validationContext = await captureFlowDistribution(record)
-    const payload: AgentPayload = { record, judgment, evidence, validationContext, requestedAt: requested.toISOString(), generatedAt: generated.toISOString(), cutoff: cutoff.toISOString() }
+    const payload: AgentPayload = { referencePolicy: historicalPolicy(evidence), record, judgment, evidence, validationContext, requestedAt: requested.toISOString(), generatedAt: generated.toISOString(), cutoff: cutoff.toISOString() }
     const prediction = await prisma.flowPrediction.create({ data: { userId, snapshotId, date: record.sample.date, horizon, mode: predictionMode(record.sample, requested, generated), model: agentConfig().model, version: AGENT_VERSION, payload: JSON.parse(JSON.stringify(payload)) } })
     res.status(201).json({ data: { id: prediction.id } })
   } catch (error) {
@@ -113,6 +115,7 @@ router.post('/agent/compare', async (req, res) => {
     if (!Number.isFinite(cutoff.getTime()) || cutoff > requested) { res.status(422).json({ message: '관측 시각을 확인하세요.' }); return }
     const documents = await prisma.flowReport.findMany({ where: { userId, ragStatus: 'ready', date: record.sample.date, createdAt: { lte: cutoff } }, select: { id: true, filename: true, date: true, createdAt: true, ragChunks: true }, orderBy: { createdAt: 'desc' }, take: 100 })
     const evidence = retrieveEvidence(documents, `코스피 외국인 현물 선물 비차익 ${record.analyses['15'].title} ${record.analyses['15'].hypotheses.join(' ')}`, record.sample.date, cutoff)
+    evidence.push(...await loadHistoricalEvidence(userId, `코스피 외국인 현물 선물 비차익 사례 판별 ${record.analyses['15']?.title || ''}`, record.sample.date, cutoff))
     const results = await Promise.allSettled([[], evidence].map(async context => ({ judgment: await generateJudgment(record, context, horizon), completedAt: new Date().toISOString() })))
     const failure = results.find(r => r.status === 'rejected')
     if (failure?.status === 'rejected') { res.status(502).json({ message: agentErrorMessage(failure.reason) }); return }
@@ -121,7 +124,7 @@ router.post('/agent/compare', async (req, res) => {
     const validationContext = await captureFlowDistribution(record)
     const rows = await prisma.$transaction(results.map((result, i) => {
       if (result.status !== 'fulfilled') throw new Error('비교 결과 누락')
-      const payload: AgentPayload = { record, ...result.value, validationContext, evidence: i === 0 ? [] : evidence, requestedAt: requested.toISOString(), generatedAt: generated.toISOString(), cutoff: cutoff.toISOString(), comparisonId }
+      const payload: AgentPayload = { referencePolicy: historicalPolicy(i === 0 ? [] : evidence, i !== 0), record, ...result.value, validationContext, evidence: i === 0 ? [] : evidence, requestedAt: requested.toISOString(), generatedAt: generated.toISOString(), cutoff: cutoff.toISOString(), comparisonId }
       return prisma.flowPrediction.create({ data: { userId, snapshotId, horizon, variant: i === 0 ? 'flow' : 'rag', date: record.sample.date, mode: predictionMode(record.sample, requested, generated), model: config.model, version: AGENT_VERSION, payload: JSON.parse(JSON.stringify(payload)) } })
     }))
     res.status(201).json({ data: { ids: rows.map(r => r.id), hasPdf: evidence.length > 0 } })

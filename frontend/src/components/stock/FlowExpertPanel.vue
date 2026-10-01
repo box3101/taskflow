@@ -13,7 +13,7 @@ interface ExpertRow {
   payload: {
     cutoff: string; coverage: { count: number; first: string; last: string }
     judgment: { summary: string; reasons: string[]; risks: string[]; invalidation: string[]; citations: string[] }
-    evidence: { id: string; filename: string; date: string; page: number; text: string }[]
+    evidence: { usage?: 'historical-reference'; id: string; filename: string; date: string; page: number; text: string }[]
   }
 }
 const state = ref<{ models: Model[]; rows: ExpertRow[]; closeAvailable: boolean } | null>(null)
@@ -75,7 +75,7 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
     <p v-if="selected" class="note">선택 모델: {{ selected.model }}</p>
     <UiAlert v-if="selected && !selected.configured" variant="info" :description="`${selected.label} API 키를 서버에 설정하면 사용할 수 있습니다.`" />
     <UiAlert v-if="error" variant="error" :description="error" />
-    <p class="note">버튼을 누르면 수급과 조회 날짜가 같은 PDF 발췌문이 선택한 모델 제공사에 전달됩니다. 심층 검토는 선택 관측까지의 자료만 사용합니다. 장 마감 복기는 15:40 이후 실행하며, 이후 업로드한 PDF도 참고하는 사후 분석입니다. 자동 실행하지 않습니다.</p>
+    <p class="note">버튼을 누르면 수급·당일 PDF 근거·최대 2개의 과거 참고 사례가 선택한 모델 제공사에 전달됩니다. 심층 검토는 선택 관측까지의 자료만 사용합니다. 장 마감 복기는 15:40 이후 실행하며, 이후 업로드한 PDF도 참고하는 사후 분석입니다. 자동 실행하지 않습니다.</p>
     <UiEmpty v-if="state && !state.rows.length" description="저장된 심층 검토·복기가 없습니다." />
     <article v-for="row in state?.rows" :key="row.id" class="review">
       <div class="heading"><UiBadge>{{ row.task === 'close' ? '장 마감 복기' : '심층 검토' }}</UiBadge><span class="note">{{ row.model }} · {{ time(row.createdAt) }}</span></div>
@@ -84,8 +84,9 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
       <h4>반대 시나리오 · 한계</h4><ul><li v-for="risk in row.payload.judgment.risks" :key="risk">{{ risk }}</li></ul>
       <h4>추가 확인 조건</h4><ul><li v-for="condition in row.payload.judgment.invalidation" :key="condition">{{ condition }}</li></ul>
       <p class="note">관측 {{ row.payload.coverage.count }}건 · {{ time(row.payload.coverage.first) }} ~ {{ time(row.payload.coverage.last) }} · 예측 적중률에 포함하지 않음</p>
-      <details v-if="row.payload.evidence.length"><summary>PDF 근거 {{ row.payload.evidence.length }}개</summary><blockquote v-for="e in row.payload.evidence" :key="e.id"><strong>{{ e.filename }} · {{ e.page }}쪽 · 자료 기준일 {{ e.date }}{{ row.payload.judgment.citations.includes(e.id) ? ' · AI 인용' : '' }}</strong><p>{{ e.text }}</p></blockquote></details>
-      <p v-else class="note">사용 가능한 당일 PDF 근거가 없어 수급만 분석했습니다.</p>
+      <details v-if="row.payload.evidence.some(e => e.usage !== 'historical-reference')"><summary>당일 PDF 근거 {{ row.payload.evidence.filter(e => e.usage !== 'historical-reference').length }}개</summary><blockquote v-for="e in row.payload.evidence.filter(e => e.usage !== 'historical-reference')" :key="e.id"><strong>{{ e.filename }} · {{ e.page }}쪽 · 자료 기준일 {{ e.date }}{{ row.payload.judgment.citations.includes(e.id) ? ' · AI 인용' : '' }}</strong><p>{{ e.text }}</p></blockquote></details>
+      <p v-else class="note">당일 PDF 근거 없음 · 과거 사례는 당일 근거를 대체하지 않습니다.</p>
+      <details v-if="row.payload.evidence.some(e => e.usage === 'historical-reference')"><summary>과거 참고 사례 · 오늘 신호 아님</summary><blockquote v-for="e in row.payload.evidence.filter(e => e.usage === 'historical-reference')" :key="e.id"><strong>{{ e.date }} · {{ e.filename }} · {{ e.page }}쪽</strong><p>{{ e.text }}</p></blockquote></details>
     </article>
   </section>
 </template>

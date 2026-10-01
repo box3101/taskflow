@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 
 export interface RagChunk { page: number; text: string }
-export interface Evidence extends RagChunk { id: string; reportId: number; filename: string; date: string }
+export interface Evidence extends RagChunk { usage?: 'historical-reference'; id: string; reportId: number; filename: string; date: string }
 export interface RagDocument { id: number; filename: string; date: string; createdAt: Date; ragChunks: unknown }
 
 export function chunkPages(pages: { num: number; text: string }[]): RagChunk[] {
@@ -76,6 +76,10 @@ export function retrieveEvidence(documents: RagDocument[], query: string, date: 
     (Array.isArray(doc.ragChunks) ? doc.ragChunks as RagChunk[] : []).map((chunk, i) => ({
       ...chunk, id: `${doc.id}:${i}`, reportId: doc.id, filename: doc.filename, date: doc.date,
     })))
+  return rankEvidence(candidates, query, limit)
+}
+
+function rankEvidence(candidates: Evidence[], query: string, limit: number): Evidence[] {
   const tokenized = candidates.map(c => terms(c.text))
   const queryTerms = [...new Set(terms(query))]
   const average = tokenized.reduce((sum, ts) => sum + ts.length, 0) / (tokenized.length || 1)
@@ -89,4 +93,24 @@ export function retrieveEvidence(documents: RagDocument[], query: string, date: 
     }, 0)
     return { chunk, score }
   }).filter(c => c.score > 0).sort((a, b) => b.score - a.score || a.chunk.id.localeCompare(b.chunk.id)).slice(0, limit).map(c => c.chunk)
+}
+
+// Conservative extraction: keep qualitative past cases / analysis frameworks only.
+// Omit numeric sentences, trading thresholds, forecasts and unverified event schedules.
+export function retrieveHistoricalEvidence(documents: RagDocument[], query: string, date: string, cutoff: Date, limit = 2): Evidence[] {
+  const candidates = documents.filter(d => d.date < date && d.createdAt <= cutoff).flatMap(doc =>
+    (Array.isArray(doc.ragChunks) ? doc.ragChunks as RagChunk[] : []).flatMap((chunk, i) => {
+      const text = chunk.text.split(/(?<=[.!?。])\s+|[\n;]+/).map(s => s.trim()).filter(s =>
+        s.length >= 15 && !/[0-9０-９%％₩$]|억원|만원|조원|달러|퍼센트|이상|이하|미만|초과|목표|손절|진입|매수하|매도하|전망|예상|예정|발표|휴장|연휴|내일/.test(s)
+        && /사례|패턴|집중됐|집중되었|몰렸|나타났|보였|했던|확인됐|확인되었|판별|판단 순서|확인 순서|분석 순서|우선 확인|교차 확인/.test(s)
+      ).join(' ').slice(0, 600)
+      return text ? [{id:doc.id+':'+i+':history',reportId:doc.id,filename:doc.filename,date:doc.date,page:chunk.page,text,usage:'historical-reference' as const}] : []
+    }))
+  return rankEvidence(candidates, query, limit)
+}
+
+export const HISTORICAL_REFERENCE_INSTRUCTIONS = 'historicalReferences는 과거 사례·판단 틀 참고 전용이며 오늘 신호나 검증된 규칙이 아니다. 오늘 가격·수급을 우선한다. 사용할 때 자료 날짜와 오늘의 유사점·차이점을 밝힌다. 과거 가격·환율·수급 임계값과 매매 조건을 오늘 기준으로 재사용하거나 과거 사례만으로 방향을 결정하지 않는다. 과거 문서의 일정은 최신 확인이 없으므로 사용하지 않는다. 당일 evidence가 없으면 오늘 장전 리포트 근거 없음이라고 밝힌다. citations에는 evidence와 historicalReferences의 제공된 id만 사용한다.'
+
+export function historicalPolicy(evidence: Evidence[], enabled = true) {
+ return {version: enabled ? 'historical-v1-on' : 'historical-v1-off', enabled, count: evidence.filter(e => e.usage === 'historical-reference').length, limit:2}
 }

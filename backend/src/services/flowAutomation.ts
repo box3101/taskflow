@@ -1,10 +1,11 @@
+import { loadHistoricalEvidence } from './flowHistorical'
 import prisma from '../prisma'
 import { recordedFlow, RecordedFlow } from './flowCollector'
 import { agentConfig, agentErrorMessage, AGENT_VERSION, AgentPayload, generateJudgment, predictionMode } from './flowAgent'
 import { koreanClock } from './flowAnalysis'
 import { isKisTradingDay, kisConfigured } from './kisFlow'
 import { captureFlowDistribution } from './flowDistributionStore'
-import { retrieveEvidence } from './flowRag'
+import { retrieveEvidence, historicalPolicy } from './flowRag'
 
 // One owner, 26 slots/day, one call with available PDF evidence per slot. Reservations survive restart.
 export function automationConfig() {
@@ -51,6 +52,7 @@ export async function runFlowAutomation(now = new Date()): Promise<void> {
     })
     const query = `코스피 외국인 현물 선물 비차익 전체 수급 ${record.analyses['15'].title} ${record.analyses['15'].hypotheses.join(' ')}`
     const evidence = retrieveEvidence(documents, query, record.sample.date, cutoff)
+    evidence.push(...await loadHistoricalEvidence(userId, `코스피 외국인 현물 선물 비차익 사례 판별 ${record.analyses['15']?.title || ''}`, record.sample.date, cutoff))
     const requested = new Date()
     if (automationSlot(requested) !== slot || !usableAutomaticRecord(record, requested, slot)) {
       await prisma.flowAutoRun.update({ where: { id: job.id }, data: { status: 'skipped', reservedCalls: 0, message: '관측 지연으로 실행 생략', completedAt: new Date() } }); return
@@ -58,7 +60,7 @@ export async function runFlowAutomation(now = new Date()): Promise<void> {
     const judgment = await generateJudgment(record, evidence, 15)
     const generated = new Date()
     const validationContext = await captureFlowDistribution(record)
-    const payload: AgentPayload = { record, judgment, validationContext, evidence, requestedAt: requested.toISOString(), generatedAt: generated.toISOString(), cutoff: cutoff.toISOString() }
+    const payload: AgentPayload = { referencePolicy: historicalPolicy(evidence), record, judgment, validationContext, evidence, requestedAt: requested.toISOString(), generatedAt: generated.toISOString(), cutoff: cutoff.toISOString() }
     await prisma.$transaction([
       prisma.flowPrediction.create({ data: { userId, snapshotId: snapshot.id, date, horizon: 15, variant: evidence.length ? 'rag' : 'flow', mode: predictionMode(record.sample, requested, generated),
         model: agentConfig().model, version: AGENT_VERSION, payload: JSON.parse(JSON.stringify(payload)) } }),

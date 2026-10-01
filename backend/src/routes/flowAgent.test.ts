@@ -33,6 +33,8 @@ describe('flow agent routes', () => {
     expect([flow.variant, rag.variant]).toEqual(['flow', 'rag'])
     expect(flow.payload.generatedAt).toBe(rag.payload.generatedAt)
     expect(flow.payload.comparisonId).toBe(rag.payload.comparisonId)
+    expect(flow.payload.referencePolicy).toMatchObject({version:'historical-v1-off',enabled:false,count:0})
+    expect(rag.payload.referencePolicy).toMatchObject({version:'historical-v1-on',enabled:true,count:0})
     expect(flow.payload.evidence).toEqual([])
     expect(rag.payload.evidence).toHaveLength(1)
     expect(flow.payload.validationContext).toMatchObject({ status: 'insufficient', samples: [] })

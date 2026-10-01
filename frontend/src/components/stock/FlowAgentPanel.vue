@@ -8,8 +8,9 @@ import FlowSignalReview from './FlowSignalReview.vue'
 
 const props = defineProps<{ date: string; record?: FlowRecord; refreshKey: string }>()
 type Direction = 'up' | 'down' | 'neutral' | 'wait'
-interface Evidence { id: string; reportId: number; filename: string; date: string; page: number; text: string }
+interface Evidence { usage?: 'historical-reference'; id: string; reportId: number; filename: string; date: string; page: number; text: string }
 interface Prediction {
+  referencePolicy?: {version:string;enabled:boolean;count:number}
   retrospective?: {status:string;actualDirection:string|null;note:string}
   id: number; horizon: number; variant: string; mode: string; model: string; version: string; generatedAt: string; eligible: boolean
   record: FlowRecord; judgment: { direction: Direction; summary: string; reasons: string[]; risks: string[]; invalidation: string[]; citations: string[] }
@@ -125,14 +126,14 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
       </div>
     </div>
     <p v-if="record" class="context">입력 관측: {{ date }} {{ formatTime(record.sample.observedAt) }} · 최근 15분 수급으로 {{ horizon }}분 후 방향 판단</p>
-    <p class="note">기본 판단 실행 시 수급과 조회 날짜가 같은 PDF 발췌문이 Claude Sonnet에 전달됩니다. 관측 이후 업로드된 PDF는 사용하지 않습니다. 과거 분석은 실시간 예측 성적에 포함하지 않습니다.</p>
+    <p class="note">기본 판단 실행 시 수급·당일 PDF 근거·최대 2개의 과거 참고 사례가 Claude Sonnet에 전달됩니다. 관측 이후 업로드된 PDF는 사용하지 않습니다. 과거 분석은 실시간 예측 성적에 포함하지 않습니다.</p>
     <UiAlert v-if="error" variant="error" :description="error" role="alert" />
-    <UiAlert v-if="state && !state.reports.length" variant="info" title="오늘 장전 리포트 없음" :description="date + '에 등록된 PDF가 없습니다. 과거 리포트로 대체하지 않고 수급만 분석합니다.'" />
+    <UiAlert v-if="state && !state.reports.length" variant="info" title="오늘 장전 리포트 없음" :description="date + '에 등록된 PDF가 없습니다. 당일 근거로 대체하지 않으며, 과거 사례는 별도 참고용으로만 사용합니다.'" />
     <UiAlert v-if="automationError" variant="info" :description="automationError" />
     <div v-if="automation?.enabled" class="comparison-panel">
       <h3>서버 자동 분석 · 수급 + PDF</h3>
       <p>거래일 {{ automation.hours }} · 15분 간격 · 하루 최대 {{ automation.maxCallsPerDay }}회 · 노트북과 브라우저를 꺼도 실행</p>
-      <p class="note">조회 날짜가 같고 관측 전에 업로드되어 검색 준비가 완료된 PDF에서 관련 발췌문을 최대 6개 참고합니다. PDF는 배경 자료이며 실제 가격·수급을 우선합니다. 관련 자료가 없으면 수급만 분석합니다.</p>
+      <p class="note">조회 날짜가 같고 관측 전에 업로드되어 검색 준비가 완료된 PDF에서 관련 발췌문을 최대 6개 참고합니다. PDF는 배경 자료이며 실제 가격·수급을 우선합니다. 당일 자료가 없으면 이를 표시하고, 과거 사례는 오늘 신호와 구분해 참고합니다.</p>
       <p>조회일 실행 예약 {{ automation.reservedCalls }}회(실패 포함) · 데이터 누락·수집 지연 시 생략 · Claude API 비용 별도</p>
       <p v-if="!automation.configured">API 연결 설정이 필요합니다.</p>
       <p v-if="automation.jobs?.length">최근 실행: {{ Math.floor(automation.jobs[0].slot / 60) }}:{{ String(automation.jobs[0].slot % 60).padStart(2, '0') }} · {{ ({ running: '생성 중', completed: '저장 완료', failed: '실패', skipped: '생략', interrupted: '중단 · 자동 재시도 없음' } as Record<string, string>)[automation.jobs[0].status] || automation.jobs[0].status }} {{ automation.jobs[0].message }}</p>
@@ -155,7 +156,9 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
         <p>평가 {{ s.evaluated }}건 · 판단 비율 {{ percent(s.coverage) }} · 중립/보류 {{ s.abstained }}건</p>
         <p>대기 {{ s.pending }} · 누락 {{ s.missing }} · 장 종료 {{ s.closed }}</p>
         <div class="comparison">공통 {{ s.paired }}건 비교: AI {{ percent(s.pairedAiAccuracy) }} / 규칙 {{ percent(s.ruleAccuracy) }}</div>
-      </article>
+        <p v-if="row.referencePolicy" class="note">사례 검색 {{ row.referencePolicy.enabled ? '켬' : '끔' }} · {{ row.referencePolicy.version }} · 제공 {{ row.referencePolicy.count }}개</p>
+      <details v-if="row.evidence.some(e => e.usage === 'historical-reference')" class="evidence"><summary>과거 참고 사례 {{ row.evidence.filter(e => e.usage === 'historical-reference').length }}개 · 오늘 신호 아님</summary><blockquote v-for="source in row.evidence.filter(e => e.usage === 'historical-reference')" :key="source.id"><strong>{{ source.date }} · {{ source.filename }} · {{ source.page }}쪽</strong><p>{{ source.text }}</p></blockquote></details>
+    </article>
       <article v-for="s in state?.stats" :key="s.horizon">
         <h3>수급 + PDF · {{ s.horizon }}분 후 · {{ date }}</h3>
         <strong>{{ percent(s.accuracy) }} <small>방향 적중률</small></strong>
@@ -193,20 +196,20 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
       <ul><li v-for="reason in row.judgment.reasons" :key="reason">{{ reason }}</li></ul>
       <div class="conditions"><div><h4>반대 신호</h4><ul><li v-for="risk in row.judgment.risks" :key="risk">{{ risk }}</li></ul></div><div><h4>판단을 바꿀 조건</h4><ul><li v-for="condition in row.judgment.invalidation" :key="condition">{{ condition }}</li></ul></div></div>
       <p class="note">생성 {{ formatTime(row.generatedAt) }} · 평가 시작 {{ row.evaluationAt ? formatTime(row.evaluationAt) : '관측 대기' }} · {{ row.model }} · {{ row.version }} · 규칙 결과: {{ outcome(row.ruleReview) }}</p>
-      <p v-if="row.evidence.some(source => source.date !== row.record.sample.date)" class="note">과거 리포트를 참고한 기존 판단입니다. 아래 자료 기준일을 확인하세요. 새 판단에는 조회 날짜와 같은 날의 PDF만 사용합니다.</p>
-      <UiButton v-if="row.evidence.length" size="xs" variant="ghost" @click="expanded = expanded === row.id ? null : row.id">{{ expanded === row.id ? '근거 접기' : `검색 근거 ${row.evidence.length}개 보기` }}</UiButton>
-      <p v-else class="note">{{ row.variant === 'flow' ? '비교 기준: PDF를 제공하지 않고 수급만 분석했습니다.' : '관측 시점에 사용할 수 있는 당일 PDF 근거가 없어 수급만 분석했습니다.' }}</p>
+      <p v-if="row.evidence.some(source => source.date !== row.record.sample.date && source.usage !== 'historical-reference')" class="note">과거 리포트를 참고한 기존 판단입니다. 아래 자료 기준일을 확인하세요. 새 판단은 당일 근거와 과거 참고 사례를 구분합니다.</p>
+      <UiButton v-if="row.evidence.some(e => e.usage !== 'historical-reference')" size="xs" variant="ghost" @click="expanded = expanded === row.id ? null : row.id">{{ expanded === row.id ? '근거 접기' : `당일 근거 ${row.evidence.filter(e => e.usage !== 'historical-reference').length}개 보기` }}</UiButton>
+      <p v-else class="note">{{ row.variant === 'flow' ? '비교 기준: PDF를 제공하지 않고 수급만 분석했습니다.' : '오늘 장전 리포트 근거 없음 · 과거 사례는 당일 근거를 대체하지 않습니다.' }}</p>
       <div v-if="expanded === row.id" class="evidence">
-        <blockquote v-for="source in row.evidence" :key="source.id"><strong>{{ source.filename }} · {{ source.page }}쪽 · 자료 기준일 {{ source.date }} <span v-if="row.judgment.citations.includes(source.id)">· AI 인용</span></strong><p>{{ source.text }}</p></blockquote>
+        <blockquote v-for="source in row.evidence.filter(e => e.usage !== 'historical-reference')" :key="source.id"><strong>{{ source.filename }} · {{ source.page }}쪽 · 자료 기준일 {{ source.date }} <span v-if="row.judgment.citations.includes(source.id)">· AI 인용</span></strong><p>{{ source.text }}</p></blockquote>
       </div>
     </article>
     <h3>PDF 검색 준비</h3>
-    <p class="note">아래에 PDF를 첨부한 뒤 검색 준비를 실행하세요. 텍스트 PDF 최대 100페이지를 지원합니다. 조회 날짜와 같은 날의 자료에서만 관련 문단을 찾습니다. 과거 리포트로 대체하지 않습니다.</p>
+    <p class="note">아래에 PDF를 첨부한 뒤 검색 준비를 실행하세요. 텍스트 PDF 최대 100페이지를 지원합니다. 조회 날짜와 같은 날의 자료에서만 관련 문단을 찾습니다. 과거 자료는 사례·판단 틀로만 별도 검색합니다.</p>
     <div v-for="report in state?.reports" :key="report.id" class="report">
       <div><strong>{{ report.filename }}</strong><p>{{ report.date }} · {{ report.ragStatus === 'ready' ? '검색 준비 완료' : report.ragStatus === 'error' ? report.ragError : '검색 준비 필요' }}</p></div>
       <UiButton v-if="report.ragStatus !== 'ready'" variant="outline" size="sm" :disabled="indexing !== null" :loading="indexing === report.id" @click="index(report)">{{ report.ragStatus === 'error' ? '다시 준비' : '검색 준비' }}</UiButton>
     </div>
-    <p v-if="state && !state.reports.length" class="note">오늘 장전 리포트 없음 · 조회 날짜에 등록된 PDF가 없어 수급만 분석합니다.</p>
+    <p v-if="state && !state.reports.length" class="note">오늘 장전 리포트 없음 · 조회 날짜에 등록된 PDF가 없습니다. 과거 사례는 별도로 표시합니다.</p>
   </section>
 </template>
 
