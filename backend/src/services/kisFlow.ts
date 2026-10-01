@@ -73,6 +73,7 @@ export async function isKisTradingDay(date: string): Promise<boolean> {
 
 export async function fetchKisFlow(now = new Date()): Promise<FlowSample> {
   const observedAt = now.toISOString()
+  const marketActivity: NonNullable<FlowSample['marketActivity']> = {}
   const values = emptyValues()
   const sources = {} as FlowSample['sources']
   const jobs: { keys: (FlowKey | InvestorFlowKey)[]; fetch: () => Promise<void> }[] = [
@@ -91,6 +92,10 @@ export async function fetchKisFlow(now = new Date()): Promise<FlowSample> {
       values.futures = apiNumber(row?.frgn_ntby_qty)
       values.institutionFutures = apiNumber(row?.orgn_ntby_qty)
       values.individualFutures = apiNumber(row?.prsn_ntby_qty)
+      marketActivity.futures = {
+        market: 'K2I/F001', fetchedAt: new Date().toISOString(), source: 'FHPTJ04030000', denominatorStatus: 'unverified',
+        participants: Object.fromEntries(['frgn','prsn','orgn','scrt','ivtr','pe_fund','bank','insu','mrbn','fund','etc_orgt','etc_corp'].map(key=>[key,{buy:apiNumber(row?.[key+'_shnu_vol']),sell:apiNumber(row?.[key+'_seln_vol'])}])),
+      }
     } },
     { keys: ['nonArb'], fetch: async () => {
       const data = await kisGet('/uapi/domestic-stock/v1/quotations/investor-program-trade-today', 'HHPPG046600C1', { MRKT_DIV_CLS_CODE: '1', EXCH_DIV_CLS_CODE: 'J' })
@@ -110,6 +115,7 @@ export async function fetchKisFlow(now = new Date()): Promise<FlowSample> {
     { keys: ['kospi'], fetch: async () => {
       const data = await kisGet('/uapi/domestic-stock/v1/quotations/inquire-index-price', 'FHPUP02100000', { FID_COND_MRKT_DIV_CODE: 'U', FID_INPUT_ISCD: '0001' })
       const row = rows(data.output)[0]
+      marketActivity.cash = {market:'KSP/0001',turnover:apiNumber(row?.acml_tr_pbmn),unit:'raw',fetchedAt:new Date().toISOString(),source:'FHPUP02100000/0001'}
       values.kospi = apiNumber(row?.bstp_nmix_prpr)
       values.kospiPct = apiNumber(row?.bstp_nmix_prdy_ctrt)
       if (values.kospi !== null && values.kospi <= 0) values.kospi = null
@@ -124,5 +130,5 @@ export async function fetchKisFlow(now = new Date()): Promise<FlowSample> {
       for (const key of job.keys) sources[key] = { status: 'error', fetchedAt: new Date().toISOString(), sourceAt: null, message: '한국투자 조회 실패 · 권한 및 연결 상태를 확인하세요.' }
     }
   }
-  return { date: koreanClock(now).date, observedAt, values, sources }
+  return { date: koreanClock(now).date, observedAt, values, sources, marketActivity }
 }

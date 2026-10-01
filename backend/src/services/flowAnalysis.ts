@@ -23,6 +23,11 @@ export interface FlowSource {
   message: string | null
 }
 export interface FlowSample {
+  // Raw, same-market cumulative activity retained for future normalization.
+  marketActivity?: {
+    cash?: { market: 'KSP/0001'; turnover: number | null; unit: 'raw'; fetchedAt: string; source: string }
+    futures?: { market: 'K2I/F001'; participants: Record<string, { buy: number | null; sell: number | null }>; fetchedAt: string; source: string; denominatorStatus: 'unverified' }
+  }
   date: string
   observedAt: string
   values: FlowValues
