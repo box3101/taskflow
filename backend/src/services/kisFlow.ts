@@ -76,7 +76,7 @@ export async function fetchKisFlow(now = new Date()): Promise<FlowSample> {
   const marketActivity: NonNullable<FlowSample['marketActivity']> = {}
   const values = emptyValues()
   const sources = {} as FlowSample['sources']
-  const jobs: { keys: (FlowKey | InvestorFlowKey)[]; fetch: () => Promise<void> }[] = [
+  const jobs: { keys: (FlowKey | InvestorFlowKey | 'kospi200')[]; fetch: () => Promise<void> }[] = [
     { keys: ['cash', 'institutionCash', 'individualCash', 'securitiesCash', 'fundCash'], fetch: async () => {
       const data = await kisGet('/uapi/domestic-stock/v1/quotations/inquire-investor-time-by-market', 'FHPTJ04030000', { FID_INPUT_ISCD: 'KSP', FID_INPUT_ISCD_2: '0001' })
       const row = rows(data.output)[0]
@@ -93,8 +93,9 @@ export async function fetchKisFlow(now = new Date()): Promise<FlowSample> {
       values.institutionFutures = apiNumber(row?.orgn_ntby_qty)
       values.individualFutures = apiNumber(row?.prsn_ntby_qty)
       marketActivity.futures = {
+        amountUnit: (['won','million','eok'].includes(process.env.KIS_FUTURES_AMOUNT_UNIT || '') ? process.env.KIS_FUTURES_AMOUNT_UNIT : 'raw') as 'raw' | 'won' | 'million' | 'eok',
         market: 'K2I/F001', fetchedAt: new Date().toISOString(), source: 'FHPTJ04030000', denominatorStatus: 'unverified',
-        participants: Object.fromEntries(['frgn','prsn','orgn','scrt','ivtr','pe_fund','bank','insu','mrbn','fund','etc_orgt','etc_corp'].map(key=>[key,{buy:apiNumber(row?.[key+'_shnu_vol']),sell:apiNumber(row?.[key+'_seln_vol'])}])),
+        participants: Object.fromEntries(['frgn','prsn','orgn','scrt','ivtr','pe_fund','bank','insu','mrbn','fund','etc_orgt','etc_corp'].map(key=>[key,{buy:apiNumber(row?.[key+'_shnu_vol']),sell:apiNumber(row?.[key+'_seln_vol']),buyAmount:apiNumber(row?.[key+'_shnu_tr_pbmn']),sellAmount:apiNumber(row?.[key+'_seln_tr_pbmn']),netAmount:apiNumber(row?.[key+'_ntby_tr_pbmn'])}])),
       }
     } },
     { keys: ['nonArb'], fetch: async () => {
@@ -119,6 +120,11 @@ export async function fetchKisFlow(now = new Date()): Promise<FlowSample> {
       values.kospi = apiNumber(row?.bstp_nmix_prpr)
       values.kospiPct = apiNumber(row?.bstp_nmix_prdy_ctrt)
       if (values.kospi !== null && values.kospi <= 0) values.kospi = null
+    } },
+    { keys: ['kospi200'], fetch: async () => {
+      const data = await kisGet('/uapi/domestic-stock/v1/quotations/inquire-index-price', 'FHPUP02100000', { FID_COND_MRKT_DIV_CODE: 'U', FID_INPUT_ISCD: '2001' })
+      values.kospi200 = apiNumber(rows(data.output)[0]?.bstp_nmix_prpr)
+      if (values.kospi200 !== null && values.kospi200 <= 0) values.kospi200 = null
     } },
   ]
   // Small sequential batch: no burst per browser/user, no write/order endpoints.

@@ -14,17 +14,18 @@ export interface FlowValues {
   totalNonArb: number | null
   kospi: number | null
   kospiPct: number | null
+  kospi200?: number | null
 }
 export interface FlowSample {
   // Raw, same-market cumulative activity retained for future normalization.
   marketActivity?: {
     cash?: { market: 'KSP/0001'; turnover: number | null; unit: 'raw'; fetchedAt: string; source: string }
-    futures?: { market: 'K2I/F001'; participants: Record<string, { buy: number | null; sell: number | null }>; fetchedAt: string; source: string; denominatorStatus: 'unverified' }
+    futures?: { market: 'K2I/F001'; amountUnit?: 'raw' | 'won' | 'million' | 'eok'; participants: Record<string, { buy: number | null; sell: number | null; buyAmount?: number | null; sellAmount?: number | null; netAmount?: number | null }>; fetchedAt: string; source: string; denominatorStatus: 'unverified' }
   }
   date: string
   observedAt: string
   values: FlowValues
-  sources: Record<FlowKey, { status: 'ok' | 'error' | 'missing'; fetchedAt: string; sourceAt: string | null; message: string | null }> & Partial<Record<InvestorFlowKey, { status: 'ok' | 'error' | 'missing'; fetchedAt: string; sourceAt: string | null; message: string | null }>>
+  sources: Record<FlowKey, { status: 'ok' | 'error' | 'missing'; fetchedAt: string; sourceAt: string | null; message: string | null }> & Partial<Record<InvestorFlowKey | 'kospi200', { status: 'ok' | 'error' | 'missing'; fetchedAt: string; sourceAt: string | null; message: string | null }>>
 }
 export interface FlowAnalysis {
   code: string

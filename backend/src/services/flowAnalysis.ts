@@ -13,6 +13,8 @@ export interface FlowValues {
   totalNonArb: number | null
   kospi: number | null
   kospiPct: number | null
+  // 선물 계약 수 → 억원 환산용 (구 기록에는 없음)
+  kospi200?: number | null
 }
 export type FlowKey = 'cash' | 'futures' | 'nonArb' | 'totalNonArb' | 'kospi'
 export interface FlowSource {
@@ -26,12 +28,12 @@ export interface FlowSample {
   // Raw, same-market cumulative activity retained for future normalization.
   marketActivity?: {
     cash?: { market: 'KSP/0001'; turnover: number | null; unit: 'raw'; fetchedAt: string; source: string }
-    futures?: { market: 'K2I/F001'; participants: Record<string, { buy: number | null; sell: number | null }>; fetchedAt: string; source: string; denominatorStatus: 'unverified' }
+    futures?: { market: 'K2I/F001'; amountUnit?: 'raw' | 'won' | 'million' | 'eok'; participants: Record<string, { buy: number | null; sell: number | null; buyAmount?: number | null; sellAmount?: number | null; netAmount?: number | null }>; fetchedAt: string; source: string; denominatorStatus: 'unverified' }
   }
   date: string
   observedAt: string
   values: FlowValues
-  sources: Record<FlowKey, FlowSource> & Partial<Record<InvestorFlowKey, FlowSource>>
+  sources: Record<FlowKey, FlowSource> & Partial<Record<InvestorFlowKey | 'kospi200', FlowSource>>
 }
 export interface FlowAnalysis {
   code: string
@@ -44,7 +46,7 @@ export interface FlowAnalysis {
 }
 export const FLOW_WINDOWS = [5, 15, 30] as const
 export function emptyValues(): FlowValues {
-  return { securitiesCash: null, fundCash: null, institutionCash: null, institutionFutures: null, individualCash: null, individualFutures: null, cash: null, futures: null, nonArb: null, totalNonArb: null, kospi: null, kospiPct: null }
+  return { securitiesCash: null, fundCash: null, institutionCash: null, institutionFutures: null, individualCash: null, individualFutures: null, cash: null, futures: null, nonArb: null, totalNonArb: null, kospi: null, kospiPct: null, kospi200: null }
 }
 export function koreanClock(now = new Date()) {
   const local = new Date(now.getTime() + 9 * 3600_000)

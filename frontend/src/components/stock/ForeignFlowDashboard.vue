@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { futuresAmountText } from '../../utils/futuresAmount'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { UiIcon, UiTab, UiButton, UiBadge, UiDatePicker, UiSelect, UiInput, UiTable, UiEmpty, UiFileUpload, UiAlert, openConfirm, openToast } from '@leechanyong/ispark-ui'
 import type { TabItem, TableColumn } from '@leechanyong/ispark-ui'
@@ -48,18 +49,21 @@ const dateModel = computed({
 const maxDate = computed(() => { const [y, m, d] = today().split('-').map(Number); return new CalendarDate(y!, m!, d!) })
 const historyColumns: TableColumn[] = [
   { key: 'time', label: '시각', width: '8%' },
-  { key: 'foreign', label: '외국인', width: '40%' },
-  { key: 'institution', label: '기관', width: '26%' },
-  { key: 'individual', label: '개인', width: '26%' },
+  { key: 'foreign', label: '외국인', width: '34%' },
+  { key: 'institution', label: '기관', width: '36%' },
+  { key: 'individual', label: '개인', width: '22%' },
 ]
 const historyRows = computed(() => [...records.value].reverse().map(row => {
  const d = row.analyses[String(windowMinutes.value)]?.delta
- const metric = (label: string, value: number | null | undefined, key: FlowKey) => ({ label, value: fmt(value, key, row), tone: tone(value) })
+ const metric = (label: string, value: number | null | undefined, key: FlowKey, investor: 'frgn' | 'orgn' | 'prsn' = 'frgn') => {
+  const display = key === 'futures' ? futuresAmountText(value, row, records.value, windowMinutes.value, investor) : null
+  return { label, value: display ? display.text : fmt(value, key, row) + (value == null ? '' : '억'), tone: tone(display ? display.value : value) }
+ }
  return { id: row.id, time: time(row.sample.observedAt), record: row,
   foreign: [metric('현물', d?.cash, 'cash'), metric('선물', d?.futures, 'futures'), metric('비차익', d?.nonArb, 'nonArb')],
-  institution: [metric('현물', d?.institutionCash, 'cash'), metric('선물', d?.institutionFutures, 'futures')],
+  institution: [metric('현물', d?.institutionCash, 'cash'), metric('선물', d?.institutionFutures, 'futures', 'orgn')],
   institutionDetail: [metric('증권', d?.securitiesCash, 'cash'), metric('기금', d?.fundCash, 'cash')],
-  individual: [metric('현물', d?.individualCash, 'cash'), metric('선물', d?.individualFutures, 'futures')],
+  individual: [metric('현물', d?.individualCash, 'cash'), metric('선물', d?.individualFutures, 'futures', 'prsn')],
  }
 }))
 const reviewColumns: TableColumn[] = [{ key: 'time', label: '기록 시각', width: '10%' }, { key: 'title', label: '저장된 AI 판단', width: '50%' }, { key: 'after15', label: '15분 후', width: '20%' }, { key: 'after30', label: '30분 후 평가', width: '20%' }]
@@ -83,14 +87,16 @@ const connectionText = computed(() => {
 const connectionOk = computed(() => !error.value && !stale.value && status.value?.configured && !status.value.lastError && status.value.session === 'collecting')
 const metricCards = [
   { key: 'cash' as const, label: '외국인 현물', market: '코스피', icon: 'layers', color: '#4f6af6', caption: '시장 전체 외국인 순매수 대금' },
-  { key: 'futures' as const, label: '외국인 선물', market: '코스피200', icon: 'activity', color: '#8b5cf6', caption: '외국인 순매수 계약 수' },
+  { key: 'futures' as const, label: '외국인 선물', market: '코스피200', icon: 'activity', color: '#8b5cf6', caption: '선물 순매수 대금 · 약: 명목금액 근사 · 괄호: 계약 수' },
   { key: 'nonArb' as const, label: '외국인 비차익', market: '코스피', icon: 'chart-no-axes-combined', color: '#0d9488', caption: '현물에 포함되는 거래 · 별도 합산 안 함' },
   { key: 'totalNonArb' as const, label: '전체 비차익', market: '코스피', icon: 'chart-no-axes-combined', color: '#d97706', caption: '전체 투자자 비차익 · 외국인 비차익과 구분' },
 ]
 function unit(key: FlowKey, row = current.value): MoneyUnit | 'contracts' | 'points' {
   if (key === 'futures') return 'contracts'
   if (key === 'kospi') return 'points'
-  return (row?.moneyUnits || status.value?.moneyUnits)?.[key === 'cash' ? 'cash' : 'nonArb'] || 'raw'
+  const u = (row?.moneyUnits || status.value?.moneyUnits)?.[key === 'cash' ? 'cash' : 'nonArb'] || 'raw'
+  // 단위 미설정(raw) 기록은 HTS 대조 결과 백만원 단위로 확인됨
+  return u === 'raw' ? 'million' : u
 }
 function converted(value: number | null | undefined, key: FlowKey, row = current.value) {
   if (value === null || value === undefined) return null
@@ -100,7 +106,10 @@ function converted(value: number | null | undefined, key: FlowKey, row = current
 function unitLabel(key: FlowKey) { const u = unit(key); return u === 'contracts' ? '계약' : u === 'points' ? 'pt' : u === 'raw' ? 'API 원단위' : '억원' }
 function fmt(value: number | null | undefined, key: FlowKey, row = current.value) {
   const v = converted(value, key, row)
-  return v === null ? '—' : `${v > 0 ? '+' : ''}${v.toLocaleString('ko-KR', { maximumFractionDigits: key === 'futures' || unit(key, row) === 'raw' ? 0 : 2 })}`
+  return v === null ? '—' : `${v > 0 ? '+' : ''}${v.toLocaleString('ko-KR', { maximumFractionDigits: key === 'kospi' ? 2 : 0 })}`
+}
+function futuresText(value: number | null | undefined, cumulative = false) {
+ return current.value ? futuresAmountText(value, current.value, records.value, windowMinutes.value, 'frgn', cumulative).text : '—'
 }
 function pct(value: number | null | undefined) { return value === null || value === undefined ? '—' : `${value > 0 ? '+' : ''}${value.toFixed(2)}%` }
 function tone(value: number | null | undefined) { return value === null || value === undefined || value === 0 ? '' : value > 0 ? 'positive' : 'negative' }
@@ -260,8 +269,8 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
       <section class="metrics" aria-label="수급 요약">
         <article v-for="card in metricCards" :key="card.key" class="panel metric">
           <div class="metric-heading"><span class="metric-icon" :style="{ color: card.color }"><UiIcon :name="card.icon" :size="20" /></span><div><h2>{{ card.label }}</h2><small>{{ card.market }}</small></div><UiBadge v-if="current?.sample.sources[card.key].status !== 'ok'" size="xs">{{ current ? '조회 확인' : '수집 대기' }}</UiBadge></div>
-          <div class="metric-number" :class="tone(analysis?.delta[card.key])">{{ fmt(analysis?.delta[card.key], card.key) }}<span>{{ unitLabel(card.key) }}</span></div>
-          <p class="metric-summary">최근 {{ windowMinutes }}분 변화 <span>· 누적 {{ fmt(current?.sample.values[card.key], card.key) }}</span></p>
+          <div class="metric-number" :class="tone(analysis?.delta[card.key])">{{ card.key === 'futures' ? futuresText(analysis?.delta.futures) : fmt(analysis?.delta[card.key], card.key) }}<span>{{ card.key === 'futures' ? '' : unitLabel(card.key) }}</span></div>
+          <p class="metric-summary">최근 {{ windowMinutes }}분 변화 <span>· 누적 {{ card.key === 'futures' ? futuresText(current?.sample.values.futures, true) : fmt(current?.sample.values[card.key], card.key) }}</span></p>
           <p class="metric-summary">{{ analysis?.baselineAt ? `${time(analysis.baselineAt)} → ${time(current?.sample.observedAt)} 비교 · 1분마다 갱신` : `${windowMinutes}분 비교 데이터 수집 중` }}</p>
           <div class="metric-caption">{{ current?.sample.sources[card.key].message || card.caption }}</div>
         </article>
@@ -301,11 +310,11 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
     <section v-else-if="activeTab === 'history'" class="panel history-panel investor-history">
       <div class="section-heading"><h2>시간대별 투자자 수급</h2><span class="muted">{{ records.length }}건 · 원래 기록 보존</span></div>
       <UiEmpty v-if="!records.length" title="이 날짜에는 수집 기록이 없어요" description="연결 이후 장중 관측부터 저장합니다. 과거 수급을 예측 기록으로 소급하지 않습니다." />
-      <p class="muted investor-units">최근 {{ windowMinutes }}분 변화 · 현물 {{ unitLabel('cash') }} · 선물 계약 · 외국인 비차익 {{ unitLabel('nonArb') }}. 증권·기금은 기관 현물의 세부 분류이며 중복 합산하지 않습니다. 새 항목은 비교 자료가 쌓이기 전까지 —로 표시합니다.</p>
+      <p class="muted investor-units">최근 {{ windowMinutes }}분 변화 · 현물 {{ unitLabel('cash') }} · 선물 억원(괄호: 계약 수). 실대금은 단위 확인된 매수−매도 대금, ‘약’은 코스피200 × 25만원 명목금액 근사 · 외국인 비차익 {{ unitLabel('nonArb') }}. 증권·기금은 기관 현물의 세부 분류이며 중복 합산하지 않습니다. 새 항목은 비교 자료가 쌓이기 전까지 —로 표시합니다.</p>
       <UiTable v-if="records.length" :columns="historyColumns" :data="historyRows" size="sm">
         <template #cell-time="{ row }"><UiButton variant="ghost" size="xs" @click="selectRecord(row.record)">{{ row.time }}<template #icon-right><UiIcon name="arrow-up-right" :size="12" /></template></UiButton></template>
         <template #cell-foreign="{ row }"><div class="investor-values foreign-values"><span v-for="m in row.foreign" :key="m.label"><small><i class="mobile-investor">외국인 </i>{{ m.label }}</small><b :class="m.tone">{{ m.value }}</b></span></div></template>
-        <template #cell-institution="{ row }"><div class="investor-values"><span v-for="m in row.institution" :key="m.label"><small><i class="mobile-investor">기관 </i>{{ m.label }}</small><b :class="m.tone">{{ m.value }}</b></span></div><div class="institution-detail" title="기관 현물의 세부 분류 · 기관 합계에 추가로 합산하지 않습니다"><span v-for="m in row.institutionDetail" :key="m.label">{{ m.label }} <b :class="m.tone">{{ m.value }}</b></span></div></template>
+        <template #cell-institution="{ row }"><div class="institution-line"><div class="investor-values"><span v-for="m in row.institution" :key="m.label"><small><i class="mobile-investor">기관 </i>{{ m.label }}</small><b :class="m.tone">{{ m.value }}</b></span></div><div class="institution-detail" title="기관 현물의 세부 분류 · 기관 합계에 추가로 합산하지 않습니다"><span v-for="m in row.institutionDetail" :key="m.label">{{ m.label }} <b :class="m.tone">{{ m.value }}</b></span></div></div></template>
         <template #cell-individual="{ row }"><div class="investor-values"><span v-for="m in row.individual" :key="m.label"><small><i class="mobile-investor">개인 </i>{{ m.label }}</small><b :class="m.tone">{{ m.value }}</b></span></div></template>
       </UiTable>
     </section>
@@ -477,7 +486,7 @@ td { padding: 13px 12px; border-bottom: 1px solid #edf0f6; color: #56647f; }
 .investor-history :deep(.ui-table th),.investor-history :deep(.ui-table td){padding:8px 6px;white-space:normal}
 .investor-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;text-align:right}
 .foreign-values{grid-template-columns:repeat(3,minmax(0,1fr))}
-.investor-values span{min-width:0}.investor-values small{display:block;font-size:10px;color:#7c8ba2;font-weight:400}.investor-values b{font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.mobile-investor{display:none;font-style:normal}.investor-units{font-size:11px;line-height:1.6}
+.investor-values span{min-width:0;display:flex;justify-content:flex-end;align-items:baseline;flex-wrap:wrap;gap:0 4px}.investor-values small{font-size:11px;color:#7c8ba2;font-weight:400;white-space:nowrap}.investor-values b{font-size:13px;font-weight:500;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.mobile-investor{display:none;font-style:normal}.investor-units{font-size:11px;line-height:1.6}
 @media(max-width:600px){.investor-history :deep(thead){display:none}.investor-history :deep(tbody){display:block}.investor-history :deep(tbody tr){display:grid;grid-template-columns:52px minmax(0,1fr) minmax(0,1fr);border-bottom:1px solid #e6ecf4}.investor-history :deep(tbody td){display:block;border:0}.investor-history :deep(tbody td:first-child){grid-row:span 2;align-self:center;padding:0}.investor-history :deep(tbody td:nth-child(2)){grid-column:span 2}.mobile-investor{display:inline}}
-.institution-detail{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:4px 12px;font-size:10px;color:#7c8ba2;margin-top:5px}.institution-detail b{font-weight:500;font-variant-numeric:tabular-nums}
+.institution-line{display:flex;justify-content:flex-end;align-items:baseline;flex-wrap:wrap;gap:4px 12px}.institution-line .investor-values{display:flex;flex:0 0 auto;gap:0 12px}.institution-detail{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:4px 12px;font-size:11px;color:#7c8ba2;white-space:nowrap}.institution-detail b{font-weight:500;font-variant-numeric:tabular-nums}
 </style>
