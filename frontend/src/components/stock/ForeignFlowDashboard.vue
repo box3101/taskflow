@@ -46,14 +46,21 @@ const dateModel = computed({
   set: (value: DateValue | undefined) => { if (value) pendingDate.value = `${value.year}-${String(value.month).padStart(2, '0')}-${String(value.day).padStart(2, '0')}` },
 })
 const maxDate = computed(() => { const [y, m, d] = today().split('-').map(Number); return new CalendarDate(y!, m!, d!) })
-const historyColumns = computed<TableColumn[]>(() => [
-  { key: 'time', label: '수집 시각', width: '100px' },
-  { key: 'cash', label: `현물 (${unitLabel('cash')})`, align: 'right' },
-  { key: 'futures', label: '선물 (계약)', align: 'right' },
-  { key: 'nonArb', label: `비차익 (${unitLabel('nonArb')})`, align: 'right' },
-  { key: 'title', label: `당시 해석 (${windowMinutes.value}분)` },
-])
-const historyRows = computed(() => [...records.value].reverse().map(row => ({ id: row.id, time: time(row.sample.observedAt), cash: fmt(row.analyses[String(windowMinutes.value)]?.delta.cash, 'cash', row), futures: fmt(row.analyses[String(windowMinutes.value)]?.delta.futures, 'futures', row), nonArb: fmt(row.analyses[String(windowMinutes.value)]?.delta.nonArb, 'nonArb', row), title: row.analyses[String(windowMinutes.value)]?.title, record: row })))
+const historyColumns: TableColumn[] = [
+  { key: 'time', label: '시각', width: '8%' },
+  { key: 'foreign', label: '외국인', width: '40%' },
+  { key: 'institution', label: '기관', width: '26%' },
+  { key: 'individual', label: '개인', width: '26%' },
+]
+const historyRows = computed(() => [...records.value].reverse().map(row => {
+ const d = row.analyses[String(windowMinutes.value)]?.delta
+ const metric = (label: string, value: number | null | undefined, key: FlowKey) => ({ label, value: fmt(value, key, row), tone: tone(value) })
+ return { id: row.id, time: time(row.sample.observedAt), record: row,
+  foreign: [metric('현물', d?.cash, 'cash'), metric('선물', d?.futures, 'futures'), metric('비차익', d?.nonArb, 'nonArb')],
+  institution: [metric('현물', d?.institutionCash, 'cash'), metric('선물', d?.institutionFutures, 'futures')],
+  individual: [metric('현물', d?.individualCash, 'cash'), metric('선물', d?.individualFutures, 'futures')],
+ }
+}))
 const reviewColumns: TableColumn[] = [{ key: 'time', label: '기록 시각', width: '10%' }, { key: 'title', label: '저장된 AI 판단', width: '50%' }, { key: 'after15', label: '15분 후', width: '20%' }, { key: 'after30', label: '30분 후 평가', width: '20%' }]
 const records = computed(() => data.value?.records || [])
 const current = computed(() => records.value.find(r => r.id === selectedId.value) || records.value.at(-1))
@@ -290,11 +297,15 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
         <div v-else class="timeline"><article v-for="row in timeline" :key="row.id" class="timeline-item"><UiButton :variant="current?.id === row.id ? 'secondary' : 'outline'" @click="selectRecord(row)">{{ time(row.sample.observedAt) }}</UiButton><p>{{ aiTitle(row) }}</p></article></div>
       </section>
     </template>
-    <section v-else-if="activeTab === 'history'" class="panel history-panel">
-      <div class="section-heading"><h2>시간대별 관측과 해석</h2><span class="muted">{{ records.length }}건 · 원래 기록 보존</span></div>
+    <section v-else-if="activeTab === 'history'" class="panel history-panel investor-history">
+      <div class="section-heading"><h2>시간대별 투자자 수급</h2><span class="muted">{{ records.length }}건 · 원래 기록 보존</span></div>
       <UiEmpty v-if="!records.length" title="이 날짜에는 수집 기록이 없어요" description="연결 이후 장중 관측부터 저장합니다. 과거 수급을 예측 기록으로 소급하지 않습니다." />
-      <UiTable v-else :columns="historyColumns" :data="historyRows" size="sm">
+      <p class="muted investor-units">최근 {{ windowMinutes }}분 변화 · 현물 {{ unitLabel('cash') }} · 선물 계약 · 외국인 비차익 {{ unitLabel('nonArb') }}. 기관·개인은 수집 시작 전 기록과 비교 자료 부족 시 —로 표시합니다.</p>
+      <UiTable v-if="records.length" :columns="historyColumns" :data="historyRows" size="sm">
         <template #cell-time="{ row }"><UiButton variant="ghost" size="xs" @click="selectRecord(row.record)">{{ row.time }}<template #icon-right><UiIcon name="arrow-up-right" :size="12" /></template></UiButton></template>
+        <template #cell-foreign="{ row }"><div class="investor-values foreign-values"><span v-for="m in row.foreign" :key="m.label"><small><i class="mobile-investor">외국인 </i>{{ m.label }}</small><b :class="m.tone">{{ m.value }}</b></span></div></template>
+        <template #cell-institution="{ row }"><div class="investor-values"><span v-for="m in row.institution" :key="m.label"><small><i class="mobile-investor">기관 </i>{{ m.label }}</small><b :class="m.tone">{{ m.value }}</b></span></div></template>
+        <template #cell-individual="{ row }"><div class="investor-values"><span v-for="m in row.individual" :key="m.label"><small><i class="mobile-investor">개인 </i>{{ m.label }}</small><b :class="m.tone">{{ m.value }}</b></span></div></template>
       </UiTable>
     </section>
     <template v-else-if="activeTab === 'review'">
@@ -461,4 +472,10 @@ td { padding: 13px 12px; border-bottom: 1px solid #edf0f6; color: #56647f; }
   .metric-caption { font-size: 9px; overflow-wrap: anywhere; }
 }
 @media (max-width: 700px) { .flow-header-actions { width: 100%; justify-content: flex-start; } .flow-tabs { flex-basis: 100%; } .flow-window { width: 116px; flex-shrink: 0; } }
+.investor-history :deep(.ui-table){min-width:0;width:100%;table-layout:fixed}
+.investor-history :deep(.ui-table th),.investor-history :deep(.ui-table td){padding:8px 6px;white-space:normal}
+.investor-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;text-align:right}
+.foreign-values{grid-template-columns:repeat(3,minmax(0,1fr))}
+.investor-values span{min-width:0}.investor-values small{display:block;font-size:10px;color:#7c8ba2;font-weight:400}.investor-values b{font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.mobile-investor{display:none;font-style:normal}.investor-units{font-size:11px;line-height:1.6}
+@media(max-width:600px){.investor-history :deep(thead){display:none}.investor-history :deep(tbody){display:block}.investor-history :deep(tbody tr){display:grid;grid-template-columns:52px minmax(0,1fr) minmax(0,1fr);border-bottom:1px solid #e6ecf4}.investor-history :deep(tbody td){display:block;border:0}.investor-history :deep(tbody td:first-child){grid-row:span 2;align-self:center;padding:0}.investor-history :deep(tbody td:nth-child(2)){grid-column:span 2}.mobile-investor{display:inline}}
 </style>

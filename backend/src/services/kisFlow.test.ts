@@ -21,7 +21,7 @@ describe('KIS response normalization', () => {
       const url = new URL(input)
       if (url.pathname.endsWith('/tokenP')) return new Response(JSON.stringify({ access_token: 'fixture-token', expires_in: 86400 }))
       if (url.pathname.endsWith('/inquire-investor-time-by-market')) {
-        if (url.searchParams.get('FID_INPUT_ISCD') === 'KSP') return new Response(JSON.stringify({ rt_cd: '0', output: [{ frgn_ntby_tr_pbmn: '-32000' }] }))
+        if (url.searchParams.get('FID_INPUT_ISCD') === 'KSP') return new Response(JSON.stringify({ rt_cd: '0', output: [{ frgn_ntby_tr_pbmn: '-32000', orgn_ntby_tr_pbmn: '12000', prsn_ntby_tr_pbmn: '20000' }] }))
         expect(url.searchParams.get('FID_INPUT_ISCD')).toBe('K2I')
         expect(url.searchParams.get('FID_INPUT_ISCD_2')).toBe('F001')
         return new Response(JSON.stringify({ rt_cd: '1', msg_cd: 'ERROR' }))
@@ -41,6 +41,10 @@ describe('KIS response normalization', () => {
     const result = await kis.fetchKisFlow(new Date('2026-09-22T01:00:00Z'))
     expect(result.values).toMatchObject({ cash: -32000, futures: null, nonArb: -700, totalNonArb: 800, kospi: 3000.15 })
     expect(result.sources.futures.status).toBe('error')
+    expect(result.values).toMatchObject({institutionCash:12000,individualCash:20000,institutionFutures:null,individualFutures:null})
+    expect(result.sources.institutionCash?.status).toBe('ok')
+    expect(result.sources.individualFutures?.status).toBe('error')
+    expect(fetchMock.mock.calls.filter(c=>c[0].includes('inquire-investor-time-by-market'))).toHaveLength(2)
     expect(result.sources.cash.sourceAt).toBeNull()
     expect(JSON.stringify(result)).not.toContain('fixture-secret')
     expect(fetchMock.mock.calls.filter(c => c[0].endsWith('/tokenP'))).toHaveLength(1)
@@ -53,4 +57,17 @@ describe('KIS response normalization', () => {
     await expect(kis.kisGet('/unused', 'unused', {})).rejects.toThrow('KIS_NOT_CONFIGURED')
     expect(fetchMock).not.toHaveBeenCalled()
   })
+})
+
+it('reads institution and individual futures contracts without substituting missing cash',async()=>{
+ vi.stubEnv('KIS_APP_KEY','fixture-key');vi.stubEnv('KIS_APP_SECRET','fixture-secret')
+ vi.stubGlobal('fetch',vi.fn(async(input:string)=>{
+ const u=new URL(input)
+ if(u.pathname.endsWith('/tokenP'))return new Response(JSON.stringify({access_token:'fixture',expires_in:86400}))
+ if(u.pathname.endsWith('/inquire-investor-time-by-market'))return new Response(JSON.stringify({rt_cd:'0',output:[u.searchParams.get('FID_INPUT_ISCD')==='K2I'?{frgn_ntby_qty:'-10',orgn_ntby_qty:'7',prsn_ntby_qty:'3'}:{frgn_ntby_tr_pbmn:'0'}]}))
+ return new Response(JSON.stringify({rt_cd:'0',output:[],output1:[]}))
+ }))
+ const {fetchKisFlow}=await import('./kisFlow');const r=await fetchKisFlow()
+ expect(r.values).toMatchObject({futures:-10,institutionFutures:7,individualFutures:3,institutionCash:null,individualCash:null})
+ expect(r.sources.institutionFutures?.status).toBe('ok');expect(r.sources.institutionCash?.status).toBe('missing')
 })

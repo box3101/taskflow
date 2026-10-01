@@ -80,3 +80,20 @@ describe('Korean session clock', () => {
     expect(isCollectionTime(new Date('2026-09-26T00:30:00Z'))).toBe(false)
   })
 })
+
+describe('investor comparison fields',()=>{
+ it('uses the same baseline for all participants and preserves real zero',()=>{
+  const rows=history();for(const [i,r] of rows.entries()){
+   Object.assign(r.values,{institutionCash:i*10,individualCash:-i*20,institutionFutures:i*2,individualFutures:0})
+   for(const k of ['institutionCash','individualCash','institutionFutures','individualFutures'] as const)r.sources[k]={...r.sources.cash}
+  }
+  const result=analyzeFlow(rows[15],rows.slice(0,15),15)
+  expect(result.delta).toMatchObject({institutionCash:150,individualCash:-300,institutionFutures:30,individualFutures:0})
+  rows[7].sources.institutionCash!.status='missing'
+  expect(analyzeFlow(rows[15],rows.slice(0,15),15).delta.institutionCash).toBeNull()
+ })
+ it('keeps legacy fields missing and never produces NaN',()=>{
+  const rows=history(),r=analyzeFlow(rows[15],rows.slice(0,15),15)
+  expect(r.delta.institutionCash).toBeNull();expect(r.delta.individualFutures).toBeNull();expect(r.code).toBe('aligned-buy')
+ })
+})

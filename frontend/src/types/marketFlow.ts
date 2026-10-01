@@ -1,6 +1,11 @@
 export type MoneyUnit = 'raw' | 'won' | 'million' | 'eok'
 export type FlowKey = 'cash' | 'futures' | 'nonArb' | 'totalNonArb' | 'kospi'
+export type InvestorFlowKey = 'institutionCash' | 'institutionFutures' | 'individualCash' | 'individualFutures'
 export interface FlowValues {
+  institutionCash?: number | null
+  institutionFutures?: number | null
+  individualCash?: number | null
+  individualFutures?: number | null
   cash: number | null
   futures: number | null
   nonArb: number | null
@@ -12,7 +17,7 @@ export interface FlowSample {
   date: string
   observedAt: string
   values: FlowValues
-  sources: Record<FlowKey, { status: 'ok' | 'error' | 'missing'; fetchedAt: string; sourceAt: string | null; message: string | null }>
+  sources: Record<FlowKey, { status: 'ok' | 'error' | 'missing'; fetchedAt: string; sourceAt: string | null; message: string | null }> & Partial<Record<InvestorFlowKey, { status: 'ok' | 'error' | 'missing'; fetchedAt: string; sourceAt: string | null; message: string | null }>>
 }
 export interface FlowAnalysis {
   code: string

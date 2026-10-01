@@ -1,4 +1,4 @@
-import { emptyValues, FlowSample, FlowSource, FlowKey, koreanClock } from './flowAnalysis'
+import { emptyValues, FlowSample, FlowSource, FlowKey, InvestorFlowKey, koreanClock } from './flowAnalysis'
 
 const ORIGIN = 'https://openapi.koreainvestment.com:9443'
 type Row = Record<string, unknown>
@@ -74,15 +74,21 @@ export async function isKisTradingDay(date: string): Promise<boolean> {
 export async function fetchKisFlow(now = new Date()): Promise<FlowSample> {
   const observedAt = now.toISOString()
   const values = emptyValues()
-  const sources = {} as Record<FlowKey, FlowSource>
-  const jobs: { keys: FlowKey[]; fetch: () => Promise<void> }[] = [
-    { keys: ['cash'], fetch: async () => {
+  const sources = {} as FlowSample['sources']
+  const jobs: { keys: (FlowKey | InvestorFlowKey)[]; fetch: () => Promise<void> }[] = [
+    { keys: ['cash', 'institutionCash', 'individualCash'], fetch: async () => {
       const data = await kisGet('/uapi/domestic-stock/v1/quotations/inquire-investor-time-by-market', 'FHPTJ04030000', { FID_INPUT_ISCD: 'KSP', FID_INPUT_ISCD_2: '0001' })
-      values.cash = apiNumber(rows(data.output)[0]?.frgn_ntby_tr_pbmn)
+      const row = rows(data.output)[0]
+      values.cash = apiNumber(row?.frgn_ntby_tr_pbmn)
+      values.institutionCash = apiNumber(row?.orgn_ntby_tr_pbmn)
+      values.individualCash = apiNumber(row?.prsn_ntby_tr_pbmn)
     } },
-    { keys: ['futures'], fetch: async () => {
+    { keys: ['futures', 'institutionFutures', 'individualFutures'], fetch: async () => {
       const data = await kisGet('/uapi/domestic-stock/v1/quotations/inquire-investor-time-by-market', 'FHPTJ04030000', { FID_INPUT_ISCD: 'K2I', FID_INPUT_ISCD_2: 'F001' })
-      values.futures = apiNumber(rows(data.output)[0]?.frgn_ntby_qty)
+      const row = rows(data.output)[0]
+      values.futures = apiNumber(row?.frgn_ntby_qty)
+      values.institutionFutures = apiNumber(row?.orgn_ntby_qty)
+      values.individualFutures = apiNumber(row?.prsn_ntby_qty)
     } },
     { keys: ['nonArb'], fetch: async () => {
       const data = await kisGet('/uapi/domestic-stock/v1/quotations/investor-program-trade-today', 'HHPPG046600C1', { MRKT_DIV_CLS_CODE: '1', EXCH_DIV_CLS_CODE: 'J' })
