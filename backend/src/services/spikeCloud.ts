@@ -6,7 +6,8 @@ import { recordLeaderQuotes, researchLeader } from './spikeLeaderResearch'
 import { tickLeaderStrategy, leaderStrategyDashboard } from './leaderStrategy'
 import { collectionCodes, freezeStrategyUniverse } from './leaderUniverse'
 import { leaderSessionDashboard } from './leaderSession'
-import { tickLeaderPaper, replayLeaderPaper, paperSummary, PAPER_RULE } from './leaderPaper'
+import { tickLeaderPaper } from './leaderPaper'
+import { tickLeaderBreakout, breakoutSummary, BREAKOUT_RULE } from './leaderBreakout'
 import archive from '../data/spike-archive.json'
 import { clock, fresh, parseQuotes, signalsForTick } from './spikeCloudRules'
 import { isKisTradingDay, kisConfigured } from './kisFlow'
@@ -87,7 +88,8 @@ export async function collectSpikeCloud(now=new Date()){
       state.leaderQuotes=quotes
       state.leaderStrategy=tickLeaderStrategy(state.leaderStrategy,state.strategyPool,quotes,state.leaderHistory,at,false)
       state.leaderStrategy.universeVersion=state.strategyUniverseVersion
-      state.leaderPaper=tickLeaderPaper(state.leaderPaper,state.strategyPool,quotes,state.paperPrior,at)
+      state.leaderPaper=tickLeaderPaper(state.leaderPaper,state.strategyPool,quotes,state.paperPrior,at,false)
+      state.leaderBreakout=tickLeaderBreakout(state.leaderBreakout,state.strategyPool,quotes,at)
       const alerts=time<'15:30:00'?signalsForTick(state,quotes,at):[]
       for(const alert of alerts) alert.leader=researchLeader(state.leaderPool,quotes,state.leaderHistory,alert.code,at) as any
       state.alerts.push(...alerts);state.lastAt=at
@@ -106,24 +108,6 @@ export function startSpikeCloud(){
   cron.schedule('*/10 * * * * *',()=>{void collectSpikeCloud()},{timezone:'Asia/Seoul'})
   void collectSpikeCloud()
 }
-let paperReplayCache:{key:string;at:number;data:ReturnType<typeof paperSummary>}|undefined
-async function paperDashboard(days:{date:string;payload:any}[]){
-  const now=Date.now(),date=clock(now).slice(0,10)
-  const latest=days.find(d=>d.date===date)
-  const live=days.filter(d=>d.payload.leaderPaper).map(d=>paperSummary(d.payload.leaderPaper,now,'live'))
-  // Today's old raw observations can be replayed without mutating live records.
-  if(!latest?.payload.strategyPool||latest.payload.leaderPaper)return {days:live,replayError:null}
-  const key=date+PAPER_RULE.version
-  try{
-    if(!paperReplayCache||paperReplayCache.key!==key||now-paperReplayCache.at>60000){
-      const rows=await prisma.$queryRaw<{captured_at:Date;payload:any}[]>`SELECT captured_at,payload FROM spike_cloud_snapshots WHERE date=${date} AND captured_at<=${new Date(now)} ORDER BY captured_at`
-      const prior=leaderSessionDashboard(days.filter(d=>d.date<date),now).sessions.find(s=>s.date===date)?.previous||[]
-      const state=replayLeaderPaper(date,latest.payload.strategyPool,prior,rows.map(r=>({at:new Date(r.captured_at).getTime(),quotes:r.payload})),now)
-      paperReplayCache={key,at:now,data:paperSummary(state,now,'replay')}
-    }
-    return {days:[...live,paperReplayCache.data],replayError:null}
-  }catch{return {days:live,replayError:'저장 시세 재생에 실패했습니다. 새로고침해 주세요.'}}
-}
 export async function cloudSpikeDashboard(){
   const days=await prisma.$queryRaw<{date:string;payload:any}[]>`SELECT date,payload FROM spike_cloud_days ORDER BY date`
   const merged=new Map<string,any>((archive.days as any[]).map(d=>[d.date,d]))
@@ -136,7 +120,8 @@ export async function cloudSpikeDashboard(){
   const lastAt=Math.max(0,...days.map(d=>d.payload.lastAt||0))
   const latest=days[days.length-1]?.payload
   const board=latest?.leaderPool&&latest?.leaderQuotes?Object.keys(latest.leaderPool).map(code=>({code,name:latest.leaderPool[code].name,...researchLeader(latest.leaderPool,latest.leaderQuotes,latest.leaderHistory||{},code,latest.lastAt)})):[]
-  return {strategy:{...leaderStrategyDashboard(days),paper:await paperDashboard(days)},spike:{...archive,days:[...merged.values()].sort((a,b)=>a.date.localeCompare(b.date))},leader:{records,board,lastCapturedAt:lastAt?new Date(lastAt).toISOString():null},
+  const reference=leaderStrategyDashboard(days)
+  return {strategy:{universe:reference.universe,observation:reference.observation,breakout:{rule:BREAKOUT_RULE,enabled:cloudEnabled(),days:days.filter(d=>d.payload.leaderBreakout).map(d=>breakoutSummary(d.payload.leaderBreakout))}},spike:{...archive,days:[...merged.values()].sort((a,b)=>a.date.localeCompare(b.date))},leader:{records,board,lastCapturedAt:lastAt?new Date(lastAt).toISOString():null},
     market:null,live:null,auto:null,fills:{},themes:Object.fromEntries(Object.entries(poolConfig).map(([c,p])=>[c,p.themes[0]])),
     loadedAt:new Date().toISOString(),collector:{mode:'cloud',enabled:cloudEnabled(),lastError,intervalSeconds:10,source:'Naver REST',missingChg20:days[days.length-1]?Object.values(days[days.length-1].payload.chg20).filter(v=>v===null).length:null}}
 }

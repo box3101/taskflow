@@ -10,7 +10,7 @@ const time=(at:number)=>clock(at).slice(11,19)
 const good=(q:Quote|undefined,at:number)=>fresh(q,at)&&!q!.halted&&at-q!.sourceAt<=20000
 // Quotes may stop updating during the closing auction. Collection itself must remain continuous.
 const auctionBridge=(before:number,after:number)=>clock(before).slice(0,10)===clock(after).slice(0,10)&&time(before)>='15:19:30'&&time(after)<='15:32:00'
-export function tickLeaderPaper(previous:PaperState|undefined,pool:Pool,quotes:Record<string,Quote>,prior:PaperCandidate[],at:number):PaperState {
+export function tickLeaderPaper(previous:PaperState|undefined,pool:Pool,quotes:Record<string,Quote>,prior:PaperCandidate[],at:number,allowNewEntries=true):PaperState {
  const date=clock(at).slice(0,10),tm=time(at)
  const state=previous?.date===date?previous:{date,version:PAPER_RULE.version,lastAt:at,pending:{},seen:{},trades:[]}
  if(at<state.lastAt)return state
@@ -27,7 +27,7 @@ export function tickLeaderPaper(previous:PaperState|undefined,pool:Pool,quotes:R
   if(reason){t.exit=q.price;t.exitAt=at;t.reason=reason;t.netPct=(q.price/t.entry-1)*100-PAPER_RULE.feePct}
  }
  if(collectionGap){state.pending={};state.seen={}}
- const active=tm>='09:00:00'&&tm<PAPER_RULE.entryEnd
+ const active=allowNewEntries&&tm>='09:00:00'&&tm<PAPER_RULE.entryEnd
  const lane:Pending['lane']=tm<'09:30:00'?'previous':'today'
  const candidates:PaperCandidate[]=!active?[]:lane==='today'?sessionCandidates({date,payload:{strategyPool:pool,leaderQuotes:quotes,lastAt:at}},false,false):prior.filter(c=>c.sourceDate<date&&pool[c.code])
  const eligible=new Map(candidates.filter(c=>good(quotes[c.code],at)).map(c=>[c.code,c]))
