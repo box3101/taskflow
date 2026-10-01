@@ -87,7 +87,7 @@ const connectionText = computed(() => {
 const connectionOk = computed(() => !error.value && !stale.value && status.value?.configured && !status.value.lastError && status.value.session === 'collecting')
 const metricCards = [
   { key: 'cash' as const, label: '외국인 현물', market: '코스피', icon: 'layers', color: '#4f6af6', caption: '시장 전체 외국인 순매수 대금' },
-  { key: 'futures' as const, label: '외국인 선물', market: '코스피200', icon: 'activity', color: '#8b5cf6', caption: '선물 순매수 대금 · 약: 명목금액 근사 · 괄호: 계약 수' },
+  { key: 'futures' as const, label: '외국인 선물', market: '코스피200', icon: 'activity', color: '#8b5cf6', caption: '선물 순매수 대금 · 약: 명목금액 근사' },
   { key: 'nonArb' as const, label: '외국인 비차익', market: '코스피', icon: 'chart-no-axes-combined', color: '#0d9488', caption: '현물에 포함되는 거래 · 별도 합산 안 함' },
   { key: 'totalNonArb' as const, label: '전체 비차익', market: '코스피', icon: 'chart-no-axes-combined', color: '#d97706', caption: '전체 투자자 비차익 · 외국인 비차익과 구분' },
 ]
@@ -310,7 +310,7 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
     <section v-else-if="activeTab === 'history'" class="panel history-panel investor-history">
       <div class="section-heading"><h2>시간대별 투자자 수급</h2><span class="muted">{{ records.length }}건 · 원래 기록 보존</span></div>
       <UiEmpty v-if="!records.length" title="이 날짜에는 수집 기록이 없어요" description="연결 이후 장중 관측부터 저장합니다. 과거 수급을 예측 기록으로 소급하지 않습니다." />
-      <p class="muted investor-units">최근 {{ windowMinutes }}분 변화 · 현물 {{ unitLabel('cash') }} · 선물 억원(괄호: 계약 수). 실대금은 단위 확인된 매수−매도 대금, ‘약’은 코스피200 × 25만원 명목금액 근사 · 외국인 비차익 {{ unitLabel('nonArb') }}. 증권·기금은 기관 현물의 세부 분류이며 중복 합산하지 않습니다. 새 항목은 비교 자료가 쌓이기 전까지 —로 표시합니다.</p>
+      <p class="muted investor-units">최근 {{ windowMinutes }}분 변화 · 현물 {{ unitLabel('cash') }} · 선물 억원. 실대금은 단위 확인된 매수−매도 대금, ‘약’은 코스피200 × 25만원 명목금액 근사 · 외국인 비차익 {{ unitLabel('nonArb') }}. 증권·기금은 기관 현물의 세부 분류이며 중복 합산하지 않습니다. 비교·환산 자료가 없는 값은 —로 표시합니다.</p>
       <UiTable v-if="records.length" :columns="historyColumns" :data="historyRows" size="sm">
         <template #cell-time="{ row }"><UiButton variant="ghost" size="xs" @click="selectRecord(row.record)">{{ row.time }}<template #icon-right><UiIcon name="arrow-up-right" :size="12" /></template></UiButton></template>
         <template #cell-foreign="{ row }"><div class="investor-values foreign-values"><span v-for="m in row.foreign" :key="m.label"><small><i class="mobile-investor">외국인 </i>{{ m.label }}</small><b :class="m.tone">{{ m.value }}</b></span></div></template>

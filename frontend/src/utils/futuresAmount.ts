@@ -3,7 +3,6 @@ type Investor = 'frgn' | 'orgn' | 'prsn'
 const finite=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v)
 const signed=(v:number)=> (v>0?'+':'')+v.toLocaleString('ko-KR',{maximumFractionDigits:1})
 export function futuresAmountText(value:number|null|undefined,row:FlowRecord,records:FlowRecord[],minutes:number,investor:Investor='frgn',cumulative=false) {
- const contracts=finite(value)?signed(value)+'계약':'—'
  const activity=row.sample.marketActivity?.futures
  const unit=activity?.amountUnit
  const baseline=row.analyses[String(minutes)]?.baselineAt
@@ -15,12 +14,12 @@ export function futuresAmountText(value:number|null|undefined,row:FlowRecord,rec
  if(unit&&unit!=='raw'&&finite(current)&&valid&&(cumulative||finite(previous))){
   const delta=cumulative?current:current-previous!
   const eok=delta/(unit==='won'?100000000:unit==='million'?100:1)
-  return {text:signed(eok)+'억 ('+contracts+')',value:eok,kind:'actual' as const}
+  return {text:signed(eok)+'억',value:eok,kind:'actual' as const}
  }
  const index=row.sample.values.kospi200
  if(finite(value)&&finite(index)&&index>0&&row.sample.sources.kospi200?.status==='ok'){
   const eok=value*index*250000/100000000
-  return {text:'약 '+signed(eok)+'억 ('+contracts+')',value:eok,kind:'estimated' as const}
+  return {text:'약 '+signed(eok)+'억',value:eok,kind:'estimated' as const}
  }
- return {text:finite(value)?contracts+' · 환산 불가':'—',value:finite(value)?value:null,kind:'unavailable' as const}
+ return {text:'—',value:finite(value)?value:null,kind:'unavailable' as const}
 }
