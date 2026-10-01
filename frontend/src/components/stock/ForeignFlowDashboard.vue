@@ -58,6 +58,7 @@ const historyRows = computed(() => [...records.value].reverse().map(row => {
  return { id: row.id, time: time(row.sample.observedAt), record: row,
   foreign: [metric('현물', d?.cash, 'cash'), metric('선물', d?.futures, 'futures'), metric('비차익', d?.nonArb, 'nonArb')],
   institution: [metric('현물', d?.institutionCash, 'cash'), metric('선물', d?.institutionFutures, 'futures')],
+  institutionDetail: [metric('증권', d?.securitiesCash, 'cash'), metric('기금', d?.fundCash, 'cash')],
   individual: [metric('현물', d?.individualCash, 'cash'), metric('선물', d?.individualFutures, 'futures')],
  }
 }))
@@ -300,11 +301,11 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
     <section v-else-if="activeTab === 'history'" class="panel history-panel investor-history">
       <div class="section-heading"><h2>시간대별 투자자 수급</h2><span class="muted">{{ records.length }}건 · 원래 기록 보존</span></div>
       <UiEmpty v-if="!records.length" title="이 날짜에는 수집 기록이 없어요" description="연결 이후 장중 관측부터 저장합니다. 과거 수급을 예측 기록으로 소급하지 않습니다." />
-      <p class="muted investor-units">최근 {{ windowMinutes }}분 변화 · 현물 {{ unitLabel('cash') }} · 선물 계약 · 외국인 비차익 {{ unitLabel('nonArb') }}. 기관·개인은 수집 시작 전 기록과 비교 자료 부족 시 —로 표시합니다.</p>
+      <p class="muted investor-units">최근 {{ windowMinutes }}분 변화 · 현물 {{ unitLabel('cash') }} · 선물 계약 · 외국인 비차익 {{ unitLabel('nonArb') }}. 증권·기금은 기관 현물의 세부 분류이며 중복 합산하지 않습니다. 새 항목은 비교 자료가 쌓이기 전까지 —로 표시합니다.</p>
       <UiTable v-if="records.length" :columns="historyColumns" :data="historyRows" size="sm">
         <template #cell-time="{ row }"><UiButton variant="ghost" size="xs" @click="selectRecord(row.record)">{{ row.time }}<template #icon-right><UiIcon name="arrow-up-right" :size="12" /></template></UiButton></template>
         <template #cell-foreign="{ row }"><div class="investor-values foreign-values"><span v-for="m in row.foreign" :key="m.label"><small><i class="mobile-investor">외국인 </i>{{ m.label }}</small><b :class="m.tone">{{ m.value }}</b></span></div></template>
-        <template #cell-institution="{ row }"><div class="investor-values"><span v-for="m in row.institution" :key="m.label"><small><i class="mobile-investor">기관 </i>{{ m.label }}</small><b :class="m.tone">{{ m.value }}</b></span></div></template>
+        <template #cell-institution="{ row }"><div class="investor-values"><span v-for="m in row.institution" :key="m.label"><small><i class="mobile-investor">기관 </i>{{ m.label }}</small><b :class="m.tone">{{ m.value }}</b></span></div><div class="institution-detail" title="기관 현물의 세부 분류 · 기관 합계에 추가로 합산하지 않습니다"><span v-for="m in row.institutionDetail" :key="m.label">{{ m.label }} <b :class="m.tone">{{ m.value }}</b></span></div></template>
         <template #cell-individual="{ row }"><div class="investor-values"><span v-for="m in row.individual" :key="m.label"><small><i class="mobile-investor">개인 </i>{{ m.label }}</small><b :class="m.tone">{{ m.value }}</b></span></div></template>
       </UiTable>
     </section>
@@ -478,4 +479,5 @@ td { padding: 13px 12px; border-bottom: 1px solid #edf0f6; color: #56647f; }
 .foreign-values{grid-template-columns:repeat(3,minmax(0,1fr))}
 .investor-values span{min-width:0}.investor-values small{display:block;font-size:10px;color:#7c8ba2;font-weight:400}.investor-values b{font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.mobile-investor{display:none;font-style:normal}.investor-units{font-size:11px;line-height:1.6}
 @media(max-width:600px){.investor-history :deep(thead){display:none}.investor-history :deep(tbody){display:block}.investor-history :deep(tbody tr){display:grid;grid-template-columns:52px minmax(0,1fr) minmax(0,1fr);border-bottom:1px solid #e6ecf4}.investor-history :deep(tbody td){display:block;border:0}.investor-history :deep(tbody td:first-child){grid-row:span 2;align-self:center;padding:0}.investor-history :deep(tbody td:nth-child(2)){grid-column:span 2}.mobile-investor{display:inline}}
+.institution-detail{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:4px 12px;font-size:10px;color:#7c8ba2;margin-top:5px}.institution-detail b{font-weight:500;font-variant-numeric:tabular-nums}
 </style>

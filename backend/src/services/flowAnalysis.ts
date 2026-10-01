@@ -1,6 +1,8 @@
 // All amounts are cumulative API values. Deltas compare observations, never trading days.
-export type InvestorFlowKey = 'institutionCash' | 'institutionFutures' | 'individualCash' | 'individualFutures'
+export type InvestorFlowKey = 'securitiesCash' | 'fundCash' | 'institutionCash' | 'institutionFutures' | 'individualCash' | 'individualFutures'
 export interface FlowValues {
+  securitiesCash?: number | null
+  fundCash?: number | null
   institutionCash?: number | null
   institutionFutures?: number | null
   individualCash?: number | null
@@ -37,7 +39,7 @@ export interface FlowAnalysis {
 }
 export const FLOW_WINDOWS = [5, 15, 30] as const
 export function emptyValues(): FlowValues {
-  return { institutionCash: null, institutionFutures: null, individualCash: null, individualFutures: null, cash: null, futures: null, nonArb: null, totalNonArb: null, kospi: null, kospiPct: null }
+  return { securitiesCash: null, fundCash: null, institutionCash: null, institutionFutures: null, individualCash: null, individualFutures: null, cash: null, futures: null, nonArb: null, totalNonArb: null, kospi: null, kospiPct: null }
 }
 export function koreanClock(now = new Date()) {
   const local = new Date(now.getTime() + 9 * 3600_000)
@@ -60,7 +62,7 @@ export function analyzeFlow(current: FlowSample, history: FlowSample[], minutes:
   if (!base) return waiting
   const interval = [...history.filter(s => s.date === current.date && s.observedAt >= base.observedAt && s.observedAt < current.observedAt), current].sort((a, b) => a.observedAt.localeCompare(b.observedAt))
   if (interval.some((s, i) => i > 0 && Date.parse(s.observedAt) - Date.parse(interval[i - 1].observedAt) > 180_000)) return { ...waiting, title: '수집 공백 · 연속 데이터 대기' }
-  for (const key of ['cash', 'futures', 'nonArb', 'totalNonArb', 'kospi', 'institutionCash', 'institutionFutures', 'individualCash', 'individualFutures'] as const) {
+  for (const key of ['cash', 'futures', 'nonArb', 'totalNonArb', 'kospi', 'institutionCash', 'institutionFutures', 'individualCash', 'individualFutures', 'securitiesCash', 'fundCash'] as const) {
     const a = base.values[key], b = current.values[key]
     if (typeof a === 'number' && Number.isFinite(a) && typeof b === 'number' && Number.isFinite(b) && interval.every(s => s.sources[key]?.status === 'ok' && Number.isFinite(s.values[key]))) delta[key] = b - a
   }

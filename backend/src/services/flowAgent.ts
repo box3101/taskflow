@@ -8,8 +8,8 @@ import { buildDayContext } from './flowDayContext'
 import { buildPreviousDayContext } from './flowPreviousDay'
 import { captureFlowSignals } from './flowSignalsStore'
 
-export const AGENT_VERSION = 'flow-sonnet-v8-investor-flow'
-export const INVESTOR_FLOW_INSTRUCTIONS = `투자자별 수급을 함께 판단한다. sample.values의 cash/futures는 외국인 현물/선물, institutionCash/institutionFutures는 기관 현물/선물, individualCash/individualFutures는 개인 현물/선물이다. 현물 금액 단위는 moneyUnits.cash, 선물은 계약 수다. nonArb는 외국인 비차익으로 외국인 현물에 포함되며 합산하지 않는다.
+export const AGENT_VERSION = 'flow-sonnet-v9-institution-detail'
+export const INVESTOR_FLOW_INSTRUCTIONS = `투자자별 수급을 함께 판단한다. securitiesCash는 증권(scrt), fundCash는 기금(fund)의 현물 순매수 대금이며 moneyUnits.cash 단위다. 둘은 기관 현물 합계의 세부 분류이므로 기관 합계에 더하지 않는다. 기금(fund)을 투자신탁(ivtr) 또는 사모펀드(pe_fund)와 혼동하지 않는다. 기금 전체를 특정 연기금의 거래라고 단정하지 않는다. 증권의 현물 매도와 기관 전체 선물 매수가 동시에 나타나도 같은 주체의 차익·헤지 거래라는 증거는 아니며 주범이나 의도를 확정하지 않는다. 나머지 기관 분류의 비중이 작다고 미리 가정하지 않는다. 유효한 증권·기금 변화가 있으면 기관 합계의 방향을 어떤 세부 분류가 뒷받침하거나 상쇄하는지 비교한다. sample.values의 cash/futures는 외국인 현물/선물, institutionCash/institutionFutures는 기관 현물/선물, individualCash/individualFutures는 개인 현물/선물이다. 현물 금액 단위는 moneyUnits.cash, 선물은 계약 수다. nonArb는 외국인 비차익으로 외국인 현물에 포함되며 합산하지 않는다.
 누적값 sample.values와 최근 변화 analyses['5'/'15'/'30'].delta를 구분한다. 같은 baselineAt과 관측 시각의 외국인·기관·개인 현물/선물을 비교하고 코스피 delta.kospi/kospiPct의 가격 반응을 함께 확인한다. 5분이 존재해도 15·30분이 null이면 그 구간은 모른다. 투자자별 sources가 ok가 아니거나 값이 null/누락이면 0이나 매수·매도 없음으로 해석하지 않는다. 기관·개인 자료가 부족하면 외국인 중심 판단이라는 한계를 밝히고 기존 필수 자료 기준을 유지한다.
 외국인과 기관이 같은 방향인지, 반대 방향인지, 수급과 지수가 엇갈리는지 구분한다. 개인 매수를 무조건 하락 신호로 보지 않는다. 기관 매수만으로 외국인 매도 물량의 직접 인수나 지수 방어 의도를 단정하지 않는다. 선물 순매수만으로 신규 매수와 숏 청산을 구별할 수 없다. 세 주체 합계가 0이 아니어도 다른 투자자 분류와 집계 시각 차이가 있어 오류라고 단정하거나 잔차로 누락값을 추정하지 않는다. 기관 합계와 기관 하위 분류를 중복 합산하지 않는다.
 기관·개인 자료가 유효하면 판단에 영향을 준 동행·충돌 관계를 reasons 또는 risks에 짧게 포함한다. 단순 다수결이나 고정 가중치로 방향을 만들지 않으며 이미 일어난 수급·가격 동행을 미래 수익의 보장으로 설명하지 않는다.`

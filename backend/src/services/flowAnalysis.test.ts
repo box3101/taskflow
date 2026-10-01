@@ -97,3 +97,15 @@ describe('investor comparison fields',()=>{
   expect(r.delta.institutionCash).toBeNull();expect(r.delta.individualFutures).toBeNull();expect(r.code).toBe('aligned-buy')
  })
 })
+
+it('compares securities and funds on the same window without adding them to institutions',()=>{
+ const rows=history();for(const [i,r] of rows.entries()){
+  Object.assign(r.values,{institutionCash:i*10,securitiesCash:-i*30,fundCash:i*40})
+  for(const k of ['institutionCash','securitiesCash','fundCash'] as const)r.sources[k]={...r.sources.cash}
+ }
+ const d=analyzeFlow(rows[15],rows.slice(0,15),15).delta
+ expect(d).toMatchObject({institutionCash:150,securitiesCash:-450,fundCash:600})
+ delete rows[7].values.fundCash
+ expect(analyzeFlow(rows[15],rows.slice(0,15),15).delta.fundCash).toBeNull()
+ expect(analyzeFlow(make(15),history().slice(0,15),15).delta.securitiesCash).toBeNull()
+})

@@ -4,7 +4,7 @@ import { koreanClock } from './flowAnalysis'
 import { expertModels, ExpertProvider, judgmentSchema, modelJson } from './flowModels'
 import type { Evidence } from './flowRag'
 
-export const EXPERT_VERSION = 'flow-expert-v2-investor-flow'
+export const EXPERT_VERSION = 'flow-expert-v3-institution-detail'
 export type ExpertTask = 'review' | 'close'
 export function closeAvailable(date: string, now = new Date()) {
   const local = koreanClock(now)

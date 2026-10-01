@@ -76,12 +76,14 @@ export async function fetchKisFlow(now = new Date()): Promise<FlowSample> {
   const values = emptyValues()
   const sources = {} as FlowSample['sources']
   const jobs: { keys: (FlowKey | InvestorFlowKey)[]; fetch: () => Promise<void> }[] = [
-    { keys: ['cash', 'institutionCash', 'individualCash'], fetch: async () => {
+    { keys: ['cash', 'institutionCash', 'individualCash', 'securitiesCash', 'fundCash'], fetch: async () => {
       const data = await kisGet('/uapi/domestic-stock/v1/quotations/inquire-investor-time-by-market', 'FHPTJ04030000', { FID_INPUT_ISCD: 'KSP', FID_INPUT_ISCD_2: '0001' })
       const row = rows(data.output)[0]
       values.cash = apiNumber(row?.frgn_ntby_tr_pbmn)
       values.institutionCash = apiNumber(row?.orgn_ntby_tr_pbmn)
       values.individualCash = apiNumber(row?.prsn_ntby_tr_pbmn)
+      values.securitiesCash = apiNumber(row?.scrt_ntby_tr_pbmn)
+      values.fundCash = apiNumber(row?.fund_ntby_tr_pbmn)
     } },
     { keys: ['futures', 'institutionFutures', 'individualFutures'], fetch: async () => {
       const data = await kisGet('/uapi/domestic-stock/v1/quotations/inquire-investor-time-by-market', 'FHPTJ04030000', { FID_INPUT_ISCD: 'K2I', FID_INPUT_ISCD_2: 'F001' })

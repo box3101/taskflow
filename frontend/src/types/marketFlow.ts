@@ -1,7 +1,9 @@
 export type MoneyUnit = 'raw' | 'won' | 'million' | 'eok'
 export type FlowKey = 'cash' | 'futures' | 'nonArb' | 'totalNonArb' | 'kospi'
-export type InvestorFlowKey = 'institutionCash' | 'institutionFutures' | 'individualCash' | 'individualFutures'
+export type InvestorFlowKey = 'securitiesCash' | 'fundCash' | 'institutionCash' | 'institutionFutures' | 'individualCash' | 'individualFutures'
 export interface FlowValues {
+  securitiesCash?: number | null
+  fundCash?: number | null
   institutionCash?: number | null
   institutionFutures?: number | null
   individualCash?: number | null
