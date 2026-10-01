@@ -1,3 +1,4 @@
+import { FUTURES_AB_VERSION, isFuturesABSlot, generateFuturesAB, futuresABInput } from './flowFuturesAB'
 import { attachPriorReview } from './flowCloseReview'
 import { loadHistoricalEvidence } from './flowHistorical'
 import prisma from '../prisma'
@@ -12,7 +13,7 @@ import { retrieveEvidence, historicalPolicy } from './flowRag'
 export function automationConfig() {
   const userId = Number(process.env.FLOW_AUTO_USER_ID)
   return { enabled: process.env.FLOW_AUTO_ENABLED === 'true' && Number.isSafeInteger(userId) && userId > 0,
-    userId, intervalMinutes: 15, horizon: 15, maxCallsPerDay: 26, hours: '09:15–15:30 (한국시간)',
+    userId, intervalMinutes: 15, horizon: 15, maxCallsPerDay: 39, hours: '09:15–15:30 (한국시간)',
     configured: agentConfig().configured && kisConfigured() }
 }
 export function automationSlot(now: Date): number | null {
@@ -44,8 +45,25 @@ export async function runFlowAutomation(now = new Date()): Promise<void> {
     const existing = await prisma.flowPrediction.count({ where: { userId, snapshotId: snapshot.id, horizon: 15 } })
     if (existing) return
     // Atomic reservation comes BEFORE paid requests. Never retry an uncertain/failed slot.
-    const job = await prisma.flowAutoRun.create({ data: { userId, date, slot, snapshotId: snapshot.id, reservedCalls: 1 } })
+    const job = await prisma.flowAutoRun.create({ data: { userId, date, slot, snapshotId: snapshot.id, reservedCalls: isFuturesABSlot(slot) ? 2 : 1 } })
     jobId = job.id
+    if (isFuturesABSlot(slot)) {
+      const requested = new Date()
+      if (!usableAutomaticRecord(record, requested, slot) || automationSlot(requested) !== slot) {
+        await prisma.flowAutoRun.update({where:{id:job.id},data:{status:'skipped',reservedCalls:0,completedAt:new Date()}}); return
+      }
+      const results = await Promise.allSettled((['A','B'] as const).map(async arm => ({arm, judgment:await generateFuturesAB(record,arm), completedAt:new Date().toISOString()})))
+      const generated = new Date(), pairId = date + ':' + slot + ':' + snapshot.id
+      const complete = results.every(r=>r.status==='fulfilled')
+      for (const result of results) {
+        if(result.status !== 'fulfilled') continue
+        const {arm,judgment,completedAt}=result.value
+        const payload: AgentPayload = { record, judgment, evidence:[], requestedAt:requested.toISOString(), generatedAt:complete?generated.toISOString():completedAt, completedAt, cutoff:cutoff.toISOString(), ...(complete?{comparisonId:pairId}:{}) }
+        await prisma.flowPrediction.create({data:{userId,snapshotId:snapshot.id,date,horizon:15,variant:arm==='A'?'cash-a':'futures-b',mode:predictionMode(record.sample,requested,generated),model:agentConfig().model,version:FUTURES_AB_VERSION,payload:JSON.parse(JSON.stringify({...payload,experimentInput:futuresABInput(record,arm)}))}})
+      }
+      await prisma.flowAutoRun.update({where:{id:job.id},data:{status:complete?'completed':'failed',message:complete?null:'A/B 일부 실패 · 성공 응답만 보존 · 쌍 비교 제외 · 자동 재시도 없음',completedAt:generated}})
+      return
+    }
     const documents = await prisma.flowReport.findMany({
       where: { userId, ragStatus: 'ready', date: record.sample.date, createdAt: { lte: cutoff } },
       select: { id: true, filename: true, date: true, createdAt: true, ragChunks: true },

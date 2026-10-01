@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { analyzeFlow, FlowSample } from './flowAnalysis'
-const mocks = vi.hoisted(() => ({ reports: vi.fn(), calendar: vi.fn(), snapshot: vi.fn(), count: vi.fn(), reserve: vi.fn(), update: vi.fn(), create: vi.fn(), transaction: vi.fn(), generate: vi.fn(), jobs: vi.fn() }))
+const mocks = vi.hoisted(() => ({ ab: vi.fn(), reports: vi.fn(), calendar: vi.fn(), snapshot: vi.fn(), count: vi.fn(), reserve: vi.fn(), update: vi.fn(), create: vi.fn(), transaction: vi.fn(), generate: vi.fn(), jobs: vi.fn() }))
 vi.mock('../prisma', () => ({ default: { flowReport: { findMany: mocks.reports }, flowSnapshot: { findFirst: mocks.snapshot }, flowPrediction: { count: mocks.count, create: mocks.create }, flowAutoRun: { create: mocks.reserve, update: mocks.update, findMany: mocks.jobs }, $transaction: mocks.transaction } }))
 vi.mock('./kisFlow', () => ({ kisConfigured: () => true, isKisTradingDay: mocks.calendar }))
 vi.mock('./flowAgent', async () => ({ ...await vi.importActual<typeof import('./flowAgent')>('./flowAgent'), generateJudgment: mocks.generate, agentConfig: () => ({ configured: true, model: 'fixture' }) }))
+vi.mock('./flowFuturesAB', async () => ({...await vi.importActual<typeof import('./flowFuturesAB')>('./flowFuturesAB'),generateFuturesAB:mocks.ab}))
 import { automationSlot, runFlowAutomation, automationStatus } from './flowAutomation'
 const at = new Date('2026-09-22T00:15:20Z')
 function sample(minute: number): FlowSample {
@@ -89,4 +90,27 @@ it('skips the paid call if PDF retrieval makes the observation stale', async () 
   await runFlowAutomation(at)
   expect(mocks.generate).not.toHaveBeenCalled()
   expect(mocks.update.mock.calls[0][0].data).toMatchObject({status:'skipped',reservedCalls:0})
+})
+
+it('reserves two calls and uses a shared completion anchor for half-hour A/B',async()=>{
+ const now=new Date('2026-09-22T00:30:20Z');vi.setSystemTime(now)
+ const r=record();r.sample=sample(30);mocks.snapshot.mockResolvedValue({id:8,payload:r})
+ mocks.ab.mockImplementation(async (_r,arm)=>{expect(mocks.reserve).toHaveBeenCalledOnce();return {direction:arm==='A'?'wait':'up'}})
+ await runFlowAutomation(now)
+ expect(mocks.reserve.mock.calls[0][0].data.reservedCalls).toBe(2)
+ expect(mocks.ab).toHaveBeenCalledTimes(2);expect(mocks.generate).not.toHaveBeenCalled()
+ const rows=mocks.create.mock.calls.map(c=>c[0].data)
+ expect(rows.map(r=>r.variant)).toEqual(['cash-a','futures-b'])
+ expect(rows[0].payload.generatedAt).toBe(rows[1].payload.generatedAt)
+ expect(rows[0].payload.comparisonId).toBe(rows[1].payload.comparisonId)
+ expect(JSON.stringify(rows[0].payload.experimentInput)).not.toMatch(/futures/i)
+})
+it('keeps a successful arm but excludes an incomplete pair and never retries',async()=>{
+ const now=new Date('2026-09-22T00:30:20Z');vi.setSystemTime(now)
+ const r=record();r.sample=sample(30);mocks.snapshot.mockResolvedValue({id:8,payload:r})
+ mocks.ab.mockImplementation(async (_r,arm)=>{if(arm==='A')throw Error('failed');return {direction:'up'}})
+ await runFlowAutomation(now)
+ expect(mocks.create).toHaveBeenCalledOnce();expect(mocks.create.mock.calls[0][0].data.payload.comparisonId).toBeUndefined()
+ expect(mocks.update.mock.calls[0][0].data.status).toBe('failed')
+ mocks.reserve.mockRejectedValue({code:'P2002'});await runFlowAutomation(now);expect(mocks.ab).toHaveBeenCalledTimes(2)
 })

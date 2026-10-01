@@ -1,3 +1,4 @@
+import { evaluateFuturesPairs } from '../services/flowFuturesAB'
 import { attachPriorReview } from '../services/flowCloseReview'
 import { loadHistoricalEvidence } from '../services/flowHistorical'
 import { Router } from 'express'
@@ -39,7 +40,7 @@ router.get('/agent', async (req, res) => {
     ])
     const samples = snapshots.flatMap(s => { const record = recordedFlow(s.payload); return record ? [record.sample] : [] })
     const rows = predictions.map(p => evaluatePrediction(p, samples))
-    res.json({ data: { ...agentConfig(), rows, stats: summarizePredictions(rows.filter(r => r.variant === 'rag')), flowStats: summarizePredictions(rows.filter(r => r.variant === 'flow')), comparison: summarizeComparison(rows), autoReview: summarizeRetrospectives(rows), reports } })
+    res.json({ data: { ...agentConfig(), futuresPairs: evaluateFuturesPairs(predictions, samples), rows, stats: summarizePredictions(rows.filter(r => r.variant === 'rag')), flowStats: summarizePredictions(rows.filter(r => r.variant === 'flow')), comparison: summarizeComparison(rows), autoReview: summarizeRetrospectives(rows), reports } })
   } catch { res.status(503).json({ message: 'AI 기록 저장소를 사용할 수 없습니다. 연결과 마이그레이션을 확인하세요.' }) }
 })
 

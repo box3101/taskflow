@@ -30,8 +30,8 @@ interface Comparison {
 }
 interface AutoReview {key:string;model:string;version:string;variant:string;horizon:number;live:number;replay:number;observed:number;evaluated:number;abstained:number;accuracy:number|null;coverage:number|null;paired:number;pairedAiAccuracy:number|null;pairedRuleAccuracy:number|null}
 const reviewColumns=[{key:'method',label:'모델·버전 / 구성'},{key:'horizon',label:'분 후'},{key:'evaluated',label:'방향 평가'},{key:'accuracyText',label:'적중률'},{key:'coverageText',label:'판단 비율'},{key:'pairedText',label:'공통 AI / 규칙'}]
-const reviewRows=computed(()=>(state.value?.autoReview||[]).map(r=>({...r,method:r.model+' · '+r.version+' · '+(r.variant==='flow'?'수급만':'수급+PDF'),accuracyText:percent(r.accuracy),coverageText:percent(r.coverage),pairedText:r.paired+'건 · '+percent(r.pairedAiAccuracy)+' / '+percent(r.pairedRuleAccuracy)})))
-const state = ref<{ autoReview?: AutoReview[]; configured: boolean; rows: Prediction[]; stats: Stats[]; flowStats: Stats[]; comparison: Comparison[]; reports: Report[] } | null>(null)
+const reviewRows=computed(()=>(state.value?.autoReview||[]).map(r=>({...r,method:r.model+' · '+r.version+' · '+variantLabel(r.variant),accuracyText:percent(r.accuracy),coverageText:percent(r.coverage),pairedText:r.paired+'건 · '+percent(r.pairedAiAccuracy)+' / '+percent(r.pairedRuleAccuracy)})))
+const state = ref<{ futuresPairs?: {key:string;observedAt:string;horizon:number;A:Prediction;B:Prediction}[]; autoReview?: AutoReview[]; configured: boolean; rows: Prediction[]; stats: Stats[]; flowStats: Stats[]; comparison: Comparison[]; reports: Report[] } | null>(null)
 const automation = ref<{ enabled: boolean; configured?: boolean; hours?: string; maxCallsPerDay?: number; reservedCalls?: number; jobs?: { slot: number; status: string; message: string | null }[] } | null>(null)
 const automationError = ref('')
 const closeReview = ref<{payload:{status:string;date:string;summary:string|null;generatedAt?:string;metrics:{key:string;version:string;variant:string;horizon:number;reaction:string;timeBand:string;scored:number;matched:number;held:number;missing:number;closed:number}[];limitations:string[]};createdAt:string}|null>(null)
@@ -48,6 +48,17 @@ let version = 0
 let disposed = false
 let controller: AbortController | undefined
 const labels: Record<Direction, string> = { up: '상승', down: '하락', neutral: '중립', wait: '판단 보류' }
+function variantLabel(v:string) { return ({'cash-a':'A · 현물+가격','futures-b':'B · 현물+가격+선물',flow:'수급만',rag:'수급+PDF'} as Record<string,string>)[v] || v }
+const abColumns=[{key:'time',label:'관측 / 평가'},{key:'a',label:'A 현물·가격'},{key:'b',label:'B +선물'},{key:'outcome',label:'지수 결과'}]
+const abSummaries=computed(()=>[15,30].map(h=>{
+ const pairs=(state.value?.futuresPairs||[]).filter(p=>p.horizon===h&&p.A.eligible&&p.B.eligible&&p.A.review.state==='observed'&&p.B.review.state==='observed')
+ const metric=(rows:Prediction[])=>{const judged=rows.filter(r=>r.review.matched!==null);return judged.filter(r=>r.review.matched).length+'/'+judged.length+'건 일치 · 보류 '+(rows.length-judged.length)+'/'+rows.length}
+ const common=pairs.filter(p=>p.A.review.matched!==null&&p.B.review.matched!==null)
+ const extra=pairs.filter(p=>p.A.review.matched===null&&p.B.review.matched!==null)
+ return {h,text:'완료 '+pairs.length+'쌍 · A '+metric(pairs.map(p=>p.A))+' · B '+metric(pairs.map(p=>p.B)),common:'둘 다 방향 판단 '+common.length+'쌍: A '+metric(common.map(p=>p.A))+' · B '+metric(common.map(p=>p.B)),extra:'A 보류 / B 방향 '+metric(extra.map(p=>p.B))}
+}))
+const abRows=computed(()=>(state.value?.futuresPairs||[]).map(p=>({key:p.key,time:formatTime(p.observedAt)+' / '+p.horizon+'분',a:labels[p.A.judgment.direction]+' · '+abResult(p.A),b:labels[p.B.judgment.direction]+' · '+abResult(p.B),outcome:percent(p.A.review.returnPct)})))
+function abResult(p:Prediction){return p.review.state!=='observed'?'평가 대기·자료 부족':p.review.matched===null?'채점 제외':p.review.matched?'일치':'불일치'}
 const options = [{ value: 15, label: '15분 후' }, { value: 30, label: '30분 후' }]
 const isReplay = computed(() => !props.record || props.date !== new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10) || Date.now() - Date.parse(props.record.sample.observedAt) > 90_000)
 const formatTime = (s: string) => new Date(s).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false })
@@ -134,7 +145,7 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
     <UiAlert v-if="state && !state.reports.length" variant="info" title="오늘 장전 리포트 없음" :description="date + '에 등록된 PDF가 없습니다. 당일 근거로 대체하지 않으며, 과거 사례는 별도 참고용으로만 사용합니다.'" />
     <UiAlert v-if="automationError" variant="info" :description="automationError" />
     <div v-if="automation?.enabled" class="comparison-panel">
-      <h3>서버 자동 분석 · 수급 + PDF</h3>
+      <h3>서버 자동 분석 · 15분 판단 / 30분 A·B 비교</h3>
       <p>거래일 {{ automation.hours }} · 15분 간격 · 하루 최대 {{ automation.maxCallsPerDay }}회 · 노트북과 브라우저를 꺼도 실행</p>
       <p class="note">조회 날짜가 같고 관측 전에 업로드되어 검색 준비가 완료된 PDF에서 관련 발췌문을 최대 6개 참고합니다. PDF는 배경 자료이며 실제 가격·수급을 우선합니다. 당일 자료가 없으면 이를 표시하고, 과거 사례는 오늘 신호와 구분해 참고합니다.</p>
       <p>조회일 실행 예약 {{ automation.reservedCalls }}회(실패 포함) · 데이터 누락·수집 지연 시 생략 · Claude API 비용 별도</p>
@@ -178,6 +189,11 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
       <p class="note">AI 입력에 사용하지 않는 검증용 기록입니다. 조회일의 결과만 집계하며 과거 재실행·자료 부족은 제외합니다. 중립·보류는 적중률에서 제외합니다. 표본이 적거나 구간이 겹치므로 차이를 예측력 개선의 증거로 단정하지 않습니다.</p>
     </section>
     <section class="comparison-panel">
+      <h3>선물 포함 여부 · A/B 비교</h3>
+      <p class="note">09:30부터 30분마다 A(현물·가격) / B(+선물)를 독립 호출합니다. 비교 시에는 양쪽 모두 PDF·과거 요약을 제외합니다. 사이 15분 판단은 기존 PDF·복기 참고 방식을 유지합니다. 하루 최대 39회 + 마감 요약 1회. 둘 다 완료된 뒤 같은 가격부터 15·30분을 채점합니다.</p>
+      <p class="note">관망·보류는 오답이 아닙니다. 겹치는 결과 구간과 작은 표본으로 선물의 효과를 단정하지 않습니다.</p>
+      <p v-for="s in abSummaries" :key="s.h" class="note">{{ s.h }}분: {{ s.text }}<br />{{ s.common }}<br />{{ s.extra }}</p>
+      <UiTable :columns="abColumns" :rows="abRows" empty-text="완료된 실시간 A/B 쌍이 아직 없습니다." />
       <h3>자동 복기 · 모델 버전별 검증</h3>
       <UiTable v-if="reviewRows.length" :columns="reviewColumns" :data="reviewRows" row-key="key" />
       <UiEmpty v-else description="저장된 판단과 이후 관측으로 자동 계산합니다. 추가 AI 호출은 없습니다." />
@@ -200,7 +216,7 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
     <UiEmpty v-if="state && !state.rows.length" description="아직 저장된 AI 판단이 없습니다. 판단 생성 후 결과와 근거가 여기에 남습니다." />
     <article v-for="row in state?.rows" :key="row.id" class="prediction">
       <div class="heading">
-        <div class="actions"><UiBadge>{{ row.variant === 'flow' ? '수급만' : '수급 + PDF' }}</UiBadge><UiBadge :variant="row.judgment.direction === 'up' ? 'success' : row.judgment.direction === 'down' ? 'warning' : 'default'">{{ labels[row.judgment.direction] }}</UiBadge><span>{{ formatTime(row.record.sample.observedAt) }} → {{ row.horizon }}분 후</span><UiBadge v-if="!row.eligible" size="xs">과거 분석 · 성적 제외</UiBadge></div>
+        <div class="actions"><UiBadge>{{ variantLabel(row.variant) }}</UiBadge><UiBadge :variant="row.judgment.direction === 'up' ? 'success' : row.judgment.direction === 'down' ? 'warning' : 'default'">{{ labels[row.judgment.direction] }}</UiBadge><span>{{ formatTime(row.record.sample.observedAt) }} → {{ row.horizon }}분 후</span><UiBadge v-if="!row.eligible" size="xs">과거 분석 · 성적 제외</UiBadge></div>
         <span class="result">{{ outcome(row.review) }}</span>
       </div>
       <h4>{{ row.judgment.summary }}</h4>
@@ -211,7 +227,7 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
       <p class="note">생성 {{ formatTime(row.generatedAt) }} · 평가 시작 {{ row.evaluationAt ? formatTime(row.evaluationAt) : '관측 대기' }} · {{ row.model }} · {{ row.version }} · 규칙 결과: {{ outcome(row.ruleReview) }}</p>
       <p v-if="row.evidence.some(source => source.date !== row.record.sample.date && source.usage !== 'historical-reference')" class="note">과거 리포트를 참고한 기존 판단입니다. 아래 자료 기준일을 확인하세요. 새 판단은 당일 근거와 과거 참고 사례를 구분합니다.</p>
       <UiButton v-if="row.evidence.some(e => e.usage !== 'historical-reference')" size="xs" variant="ghost" @click="expanded = expanded === row.id ? null : row.id">{{ expanded === row.id ? '근거 접기' : `당일 근거 ${row.evidence.filter(e => e.usage !== 'historical-reference').length}개 보기` }}</UiButton>
-      <p v-else class="note">{{ row.variant === 'flow' ? '비교 기준: PDF를 제공하지 않고 수급만 분석했습니다.' : '오늘 장전 리포트 근거 없음 · 과거 사례는 당일 근거를 대체하지 않습니다.' }}</p>
+      <p v-else class="note">{{ ['cash-a','futures-b'].includes(row.variant) ? '선물 효과 비교: PDF·과거 요약 없이 동일 현물·가격 입력, B에만 선물을 추가했습니다.' : row.variant === 'flow' ? '비교 기준: PDF를 제공하지 않고 수급만 분석했습니다.' : '오늘 장전 리포트 근거 없음 · 과거 사례는 당일 근거를 대체하지 않습니다.' }}</p>
       <div v-if="expanded === row.id" class="evidence">
         <blockquote v-for="source in row.evidence.filter(e => e.usage !== 'historical-reference')" :key="source.id"><strong>{{ source.filename }} · {{ source.page }}쪽 · 자료 기준일 {{ source.date }} <span v-if="row.judgment.citations.includes(source.id)">· AI 인용</span></strong><p>{{ source.text }}</p></blockquote>
       </div>
