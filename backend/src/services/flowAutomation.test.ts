@@ -44,7 +44,7 @@ describe('durable cloud flow scheduler', () => {
   it('reserves before the paid call and persists a flow-only live forecast atomically', async () => {
     mocks.generate.mockImplementation(async () => { expect(mocks.reserve).toHaveBeenCalledOnce(); return { direction: 'wait' } })
     await runFlowAutomation(at)
-    expect(mocks.generate).toHaveBeenCalledWith(record(), [], 15)
+    expect(mocks.generate).toHaveBeenCalledWith({ ...record(), priorAiReview:null }, [], 15)
     expect(mocks.reserve).toHaveBeenCalledWith({ data: { userId: 41, date: '2026-09-22', slot: 555, snapshotId: 7, reservedCalls: 1 } })
     expect(mocks.create.mock.calls[0][0].data).toMatchObject({ userId: 41, variant: 'flow', mode: 'live', horizon: 15 })
     expect(mocks.create.mock.calls[0][0].data.payload.validationContext.status).toBe('unavailable')

@@ -1,3 +1,4 @@
+import { attachPriorReview } from './flowCloseReview'
 import { loadHistoricalEvidence } from './flowHistorical'
 import prisma from '../prisma'
 import { recordedFlow, RecordedFlow } from './flowCollector'
@@ -51,6 +52,7 @@ export async function runFlowAutomation(now = new Date()): Promise<void> {
       orderBy: { createdAt: 'desc' }, take: 100,
     })
     const query = `코스피 외국인 현물 선물 비차익 전체 수급 ${record.analyses['15'].title} ${record.analyses['15'].hypotheses.join(' ')}`
+    await attachPriorReview(record, userId)
     const evidence = retrieveEvidence(documents, query, record.sample.date, cutoff)
     evidence.push(...await loadHistoricalEvidence(userId, `코스피 외국인 현물 선물 비차익 사례 판별 ${record.analyses['15']?.title || ''}`, record.sample.date, cutoff))
     const requested = new Date()

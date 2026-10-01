@@ -1,3 +1,4 @@
+import { attachPriorReview } from '../services/flowCloseReview'
 import { loadHistoricalEvidence } from '../services/flowHistorical'
 import { Router } from 'express'
 import prisma from '../prisma'
@@ -16,7 +17,7 @@ router.get('/expert', async (req, res) => {
   const date = req.query.date
   if (!validDate(date)) { res.status(400).json({ message: '조회 날짜를 확인하세요.' }); return }
   try {
-    const rows = await prisma.flowExpertReview.findMany({ where: { userId: req.user!.id, date }, orderBy: { createdAt: 'desc' } })
+    const rows = await prisma.flowExpertReview.findMany({ where: { userId: req.user!.id, date, task: { in: ['review', 'close'] } }, orderBy: { createdAt: 'desc' } })
     res.json({ data: { models: expertModels(), closeAvailable: closeAvailable(date), rows } })
   } catch { res.status(503).json({ message: '심층 검토 저장소를 사용할 수 없습니다. 마이그레이션과 연결을 확인하세요.' }) }
 })
@@ -47,6 +48,7 @@ router.post('/expert', async (req, res) => {
     const record = chosen || records[records.length - 1]
     if (!record || !records.length) { res.status(404).json({ message: '분석할 수급 기록이 없습니다.' }); return }
     const documents = await prisma.flowReport.findMany({ where: { userId, ragStatus: 'ready', date, createdAt: { lte: cutoff } }, select: { id: true, filename: true, date: true, createdAt: true, ragChunks: true }, orderBy: { createdAt: 'desc' }, take: 100 })
+    await attachPriorReview(record, userId)
     const evidence = retrieveEvidence(documents, `코스피 외국인 현물 선물 비차익 장전 시나리오 반도체 금리 상승 하락 무효화 ${record.analyses['15']?.title || ''}`, date, cutoff, 12)
     evidence.push(...await loadHistoricalEvidence(userId, `코스피 외국인 현물 선물 비차익 사례 판별 ${record.analyses['15']?.title || ''}`, record.sample.date, cutoff))
     const predictions = await prisma.flowPrediction.findMany({ where: { userId, date, createdAt: { lte: cutoff } }, orderBy: { createdAt: 'asc' }, take: 80 })

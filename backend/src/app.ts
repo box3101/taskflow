@@ -1,3 +1,4 @@
+import { runCloseReview } from './services/flowCloseReview'
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
@@ -115,7 +116,7 @@ const PORT = process.env.PORT || 4000
 app.listen(PORT, () => {
   console.log(`서버 실행: http://localhost:${PORT}`)
   startStockGuardCron()
-  startFlowCollector(runFlowAutomation)
+  startFlowCollector(async () => { await runFlowAutomation(); await runCloseReview() })
   startSpikeCloud()
   console.log(`[flow-auto] enabled=${automationConfig().enabled} configured=${automationConfig().configured} interval=15m`)
   startScoreMaturityCron()

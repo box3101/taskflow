@@ -8,7 +8,7 @@ import { buildDayContext } from './flowDayContext'
 import { buildPreviousDayContext } from './flowPreviousDay'
 import { captureFlowSignals } from './flowSignalsStore'
 
-export const AGENT_VERSION = 'flow-sonnet-v11-historical-reference'
+export const AGENT_VERSION = 'flow-sonnet-v12-prior-review'
 export const INVESTOR_FLOW_INSTRUCTIONS = `투자자별 수급을 함께 판단한다. securitiesCash는 증권(scrt), fundCash는 기금(fund)의 현물 순매수 대금이며 moneyUnits.cash 단위다. 둘은 기관 현물 합계의 세부 분류이므로 기관 합계에 더하지 않는다. 기금(fund)을 투자신탁(ivtr) 또는 사모펀드(pe_fund)와 혼동하지 않는다. 기금 전체를 특정 연기금의 거래라고 단정하지 않는다. 증권의 현물 매도와 기관 전체 선물 매수가 동시에 나타나도 같은 주체의 차익·헤지 거래라는 증거는 아니며 주범이나 의도를 확정하지 않는다. 나머지 기관 분류의 비중이 작다고 미리 가정하지 않는다. 유효한 증권·기금 변화가 있으면 기관 합계의 방향을 어떤 세부 분류가 뒷받침하거나 상쇄하는지 비교한다. sample.values의 cash/futures는 외국인 현물/선물, institutionCash/institutionFutures는 기관 현물/선물, individualCash/individualFutures는 개인 현물/선물이다. 현물 금액 단위는 moneyUnits.cash, 선물은 계약 수다. nonArb는 외국인 비차익으로 외국인 현물에 포함되며 합산하지 않는다.
 누적값 sample.values와 최근 변화 analyses['5'/'15'/'30'].delta를 구분한다. 같은 baselineAt과 관측 시각의 외국인·기관·개인 현물/선물을 비교하고 코스피 delta.kospi/kospiPct의 가격 반응을 함께 확인한다. 5분이 존재해도 15·30분이 null이면 그 구간은 모른다. 투자자별 sources가 ok가 아니거나 값이 null/누락이면 0이나 매수·매도 없음으로 해석하지 않는다. 기관·개인 자료가 부족하면 외국인 중심 판단이라는 한계를 밝히고 기존 필수 자료 기준을 유지한다.
 외국인과 기관이 같은 방향인지, 반대 방향인지, 수급과 지수가 엇갈리는지 구분한다. 개인 매수를 무조건 하락 신호로 보지 않는다. 기관 매수만으로 외국인 매도 물량의 직접 인수나 지수 방어 의도를 단정하지 않는다. 선물 순매수만으로 신규 매수와 숏 청산을 구별할 수 없다. 세 주체 합계가 0이 아니어도 다른 투자자 분류와 집계 시각 차이가 있어 오류라고 단정하거나 잔차로 누락값을 추정하지 않는다. 기관 합계와 기관 하위 분류를 중복 합산하지 않는다.
@@ -76,6 +76,7 @@ export async function generateJudgment(record: RecordedFlow, evidence: Evidence[
 ${INVESTOR_FLOW_INSTRUCTIONS}
 외국인 현물, 선물, 외국인 비차익, 전체 비차익을 구분한다. 비차익은 현물에 포함되므로 합산하지 않는다.
 record.dayContext는 관측 시점까지의 당일 장 기록이다. 누적 수급의 오전·오후 흐름과 최근 변화를 구분해 참고한다. points는 15분 간격 대표 관측과 최근 15분 관측이며 전체 기록이 아니다. gaps는 실제 원본 수집 공백이다. 구간별 증감을 더해 중복 계산하지 않는다. raw 단위를 임의로 원·억원으로 해석하지 않는다. 시장 전체 외국인 수급을 특정 종목 수급으로 해석하지 않는다. 제공 시각 이후의 종가·뉴스·다음 날 결과는 알 수 없다. dayContext로 현재의 필수 관측 누락을 대체하지 않는다.
+record.priorAiReview는 과거 거래일 AI 판단의 사후 복기다. 날짜·완료 시각·모델 버전·구성·표본 수를 확인한다. 요약은 관측 연관성에 대한 참고이며 원인이나 학습된 규칙이 아니다. 오늘 가격·수급이 우선이며 어제 적중률만으로 방향·가중치·임계값을 바꾸지 않는다. 요약이 없거나 표본이 작으면 통계를 억지로 일반화하지 않는다. 실패한 요약의 통계만 있으면 AI 요약 성공으로 표현하지 않는다.
 record.previousDayContext는 최근 기록이 있는 과거 거래일의 압축 요약이며 학습된 지식이나 오늘 신호가 아니다. 날짜와 calendarDaysBefore를 확인하고 직전 거래일인지 미확인임을 고려한다. 오늘 가격·수급이 전일 흐름과 충돌하면 오늘 관측을 우선한다. finalObservedValues는 최종 관측값으로 확정 마감 수급이 아니다. reachedClose가 false면 장 마감까지 수집되지 않았고 closing30m이 null이면 마감 전 30분 변화를 판단할 수 없다. 전일과 당일 누적 수급을 빼거나 더하지 않는다. 전일 선물 순매수를 오늘 상승 또는 오버나잇 매수 의도의 증거로 단정하지 않는다. 전일 자료로 오늘 필수 데이터 누락을 보충하지 않는다.
 record.signals는 관측 시점 이전 자료로 계산한 가격 반응과 동시간대 15분 수급 강도다. 5·15·30분 수급과 코스피 반응이 일치하는지, 현물 매도에도 지수가 상승하는지 또는 매수에도 하락하는지를 구분한다. 이미 일어난 동시 움직임을 향후 상승·하락의 원인이나 확정 신호로 설명하지 않는다.
 strength의 signedPercentile은 같은 시간대 과거 순매수 변화의 상대적 위치다. magnitudePercentile은 절댓값 강도다. 높은 백분위를 상승 확률로 읽지 말고 value의 부호와 함께 해석한다. 최소 10일 미만인 insufficient는 비교 근거로 쓰지 않는다. signalsError 또는 누락은 0이 아니다. 기존 필수 수급 조건을 완화하지 않는다.

@@ -1,3 +1,4 @@
+import { attachPriorReview } from '../services/flowCloseReview'
 import { loadHistoricalEvidence } from '../services/flowHistorical'
 import { Router } from 'express'
 import { randomUUID } from 'node:crypto'
@@ -16,6 +17,11 @@ router.get('/agent/automation', async (req, res) => {
   if (!validDate(req.query.date)) { res.status(400).json({ message: '조회 날짜를 확인하세요.' }); return }
   try { res.json({ data: await automationStatus(req.user!.id, req.query.date) }) }
   catch { res.status(503).json({ message: '자동 분석 실행 기록을 조회하지 못했습니다.' }) }
+})
+router.get('/agent/close-review', async (req,res)=>{
+ if(!validDate(req.query.date)){res.status(400).json({message:'조회 날짜를 확인하세요.'});return}
+ try{const row=await prisma.flowExpertReview.findFirst({where:{userId:req.user!.id,date:req.query.date,task:'auto-recap'},orderBy:{createdAt:'desc'},select:{payload:true,createdAt:true,version:true}});res.json({data:row})}
+ catch{res.status(503).json({message:'장 마감 복기를 조회하지 못했습니다.'})}
 })
 function validDate(value: unknown): value is string {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value
@@ -77,6 +83,7 @@ router.post('/agent', async (req, res) => {
     if (!Number.isFinite(cutoff.getTime()) || cutoff > requested) { res.status(422).json({ message: '관측 시각을 확인하세요.' }); return }
     const documents = await prisma.flowReport.findMany({ where: { userId, ragStatus: 'ready', date: record.sample.date, createdAt: { lte: cutoff } }, select: { id: true, filename: true, date: true, createdAt: true, ragChunks: true }, orderBy: { createdAt: 'desc' }, take: 100 })
     const query = `코스피 외국인 현물 선물 비차익 전체 수급 ${record.analyses['15'].title} ${record.analyses['15'].hypotheses.join(' ')}`
+    await attachPriorReview(record, userId)
     const evidence = retrieveEvidence(documents, query, record.sample.date, cutoff)
     evidence.push(...await loadHistoricalEvidence(userId, `코스피 외국인 현물 선물 비차익 사례 판별 ${record.analyses['15']?.title || ''}`, record.sample.date, cutoff))
     let judgment
@@ -114,6 +121,7 @@ router.post('/agent/compare', async (req, res) => {
     const cutoff = new Date(record.sample.observedAt)
     if (!Number.isFinite(cutoff.getTime()) || cutoff > requested) { res.status(422).json({ message: '관측 시각을 확인하세요.' }); return }
     const documents = await prisma.flowReport.findMany({ where: { userId, ragStatus: 'ready', date: record.sample.date, createdAt: { lte: cutoff } }, select: { id: true, filename: true, date: true, createdAt: true, ragChunks: true }, orderBy: { createdAt: 'desc' }, take: 100 })
+    await attachPriorReview(record, userId)
     const evidence = retrieveEvidence(documents, `코스피 외국인 현물 선물 비차익 ${record.analyses['15'].title} ${record.analyses['15'].hypotheses.join(' ')}`, record.sample.date, cutoff)
     evidence.push(...await loadHistoricalEvidence(userId, `코스피 외국인 현물 선물 비차익 사례 판별 ${record.analyses['15']?.title || ''}`, record.sample.date, cutoff))
     const results = await Promise.allSettled([[], evidence].map(async context => ({ judgment: await generateJudgment(record, context, horizon), completedAt: new Date().toISOString() })))

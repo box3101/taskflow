@@ -44,6 +44,8 @@ export interface FlowReview {
   outcomeAt: string | null
 }
 export interface FlowRecord {
+  priorAiReview?: {date:string;status:string;summary:string|null;generatedAt?:string;calendarDaysBefore:number;limitations:string[]} | null
+
   signals?: {version:string;asOf:string;priceReaction:{minutes:number;reaction:string;cash:number|null;futures:number|null;nonArb:number|null;kospiPoints:number|null;kospiPct:number|null}[];strength:{key:string;unit:string;value:number|null;status:string;sampleCount:number;signedPercentile:number|null;magnitudePercentile:number|null;band:string|null}[]}
   signalsError?: string
   id: number

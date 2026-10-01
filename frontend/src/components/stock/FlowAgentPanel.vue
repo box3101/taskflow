@@ -34,6 +34,8 @@ const reviewRows=computed(()=>(state.value?.autoReview||[]).map(r=>({...r,method
 const state = ref<{ autoReview?: AutoReview[]; configured: boolean; rows: Prediction[]; stats: Stats[]; flowStats: Stats[]; comparison: Comparison[]; reports: Report[] } | null>(null)
 const automation = ref<{ enabled: boolean; configured?: boolean; hours?: string; maxCallsPerDay?: number; reservedCalls?: number; jobs?: { slot: number; status: string; message: string | null }[] } | null>(null)
 const automationError = ref('')
+const closeReview = ref<{payload:{status:string;date:string;summary:string|null;generatedAt?:string;metrics:{key:string;version:string;variant:string;horizon:number;reaction:string;timeBand:string;scored:number;matched:number;held:number;missing:number;closed:number}[];limitations:string[]};createdAt:string}|null>(null)
+const closeReviewError=ref('')
 const comparisonColumns = [{ key: 'label', label: '구성' }, { key: 'accuracyText', label: '적중률' }, { key: 'coverageText', label: '판단 비율' }, { key: 'abstentionText', label: '보류·중립 비율' }, { key: 'evaluated', label: '방향 평가 건수' }]
 function comparisonRows(c: Comparison) { return c.methods.map(m => ({ ...m, accuracyText: percent(m.accuracy), coverageText: percent(m.coverage), abstentionText: percent(m.abstentionRate) })) }
 const horizon = ref(15)
@@ -80,6 +82,7 @@ async function load() {
     const response = await api.get('/market-flow/agent', { params: { date: props.date }, signal: controller.signal })
     if (request !== version || disposed) return
     state.value = response.data.data
+    try { const recap=await api.get('/market-flow/agent/close-review',{params:{date:props.date},signal:controller.signal});if(request===version&&!disposed){closeReview.value=recap.data.data;closeReviewError.value=''} } catch {if(request===version&&!disposed)closeReviewError.value='장 마감 복기를 불러오지 못했습니다.'}
     error.value = ''
     try {
       const auto = await api.get('/market-flow/agent/automation', { params: { date: props.date }, signal: controller.signal })
@@ -110,7 +113,7 @@ async function index(report: Report) {
   } catch (e: any) { if (!disposed && date === props.date) error.value = e.response?.data?.message || 'PDF 검색 준비에 실패했습니다.' }
   finally { indexing.value = null }
 }
-watch(() => props.date, () => { state.value = null; expanded.value = null; void load() }, { immediate: true })
+watch(() => props.date, () => { state.value = null; closeReview.value = null; closeReviewError.value = ''; expanded.value = null; void load() }, { immediate: true })
 watch(() => props.refreshKey, () => { void load() })
 onUnmounted(() => { disposed = true; version++; controller?.abort() })
 </script>
@@ -181,6 +184,18 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
       <p class="note">AI 응답 후 첫 관측부터 평가합니다. 중립·보류·과거 재생은 방향 적중률에서 제외하며, 규칙 비교는 둘 다 방향을 제시한 같은 관측만 사용합니다. 버전별 날짜·장세가 달라 단순 적중률 차이는 개선의 증거가 아닙니다. 입력 자료 저장은 다음 새 판단부터 적용됩니다.</p>
     </section>
     <FlowExpertPanel :date="date" :record="record" :refresh-key="refreshKey" />
+    <section class="comparison-panel">
+      <h3>장 마감 자동 복기 → 다음 거래일 참고</h3>
+      <p class="note">서버 자동 분석이 켜져 있으면 15:40 이후 하루 한 번 집계하고 Sonnet이 요약합니다. 최대 추가 1회 호출 · 실패 시 자동 재호출 없음. 다음 거래일에는 관측 전에 완성된 과거 요약만 참고하며 규칙을 자동 변경하지 않습니다.</p>
+      <p v-if="closeReviewError" role="alert">{{ closeReviewError }}</p>
+      <template v-else-if="closeReview">
+        <p>{{ ({completed:'복기 완료',failed:'AI 요약 실패 · 통계만 보존',skipped:'채점 가능한 기록 없음',running:'실행 중 · 중단된 실행은 자동 재시도하지 않음'} as Record<string,string>)[closeReview.payload.status] }}</p>
+        <p v-if="closeReview.payload.summary">{{ closeReview.payload.summary }}</p>
+        <details v-if="closeReview.payload.metrics.length"><summary>버전·구성·가격 반응별 집계 보기</summary><p v-for="m in closeReview.payload.metrics" :key="m.key" class="note">{{ m.version }} · {{ m.variant }} · {{ m.horizon }}분 · {{ m.timeBand }} · {{ m.reaction }}: {{ m.matched }}/{{ m.scored }}건 일치 · 보류 {{ m.held }} · 누락 {{ m.missing }} · 장 종료 {{ m.closed }}</p></details>
+        <p class="note">15분 판단의 30분 지속 평가가 포함됩니다. 방향 적중률은 매매 승률이 아니며 작은 표본에서 실패 원인을 확정하지 않습니다.</p>
+      </template>
+      <p v-else class="note">선택 날짜의 장 마감 복기가 아직 없습니다.</p>
+    </section>
     <h3>저장된 기본 판단과 근거</h3>
     <UiEmpty v-if="state && !state.rows.length" description="아직 저장된 AI 판단이 없습니다. 판단 생성 후 결과와 근거가 여기에 남습니다." />
     <article v-for="row in state?.rows" :key="row.id" class="prediction">
@@ -200,6 +215,7 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
       <div v-if="expanded === row.id" class="evidence">
         <blockquote v-for="source in row.evidence.filter(e => e.usage !== 'historical-reference')" :key="source.id"><strong>{{ source.filename }} · {{ source.page }}쪽 · 자료 기준일 {{ source.date }} <span v-if="row.judgment.citations.includes(source.id)">· AI 인용</span></strong><p>{{ source.text }}</p></blockquote>
       </div>
+      <details v-if="row.record.priorAiReview"><summary>이번 판단에 전달된 이전 복기 · {{ row.record.priorAiReview.date }}</summary><p>{{ row.record.priorAiReview.summary || 'AI 요약 없이 집계 통계만 참고했습니다.' }}</p><p class="note">{{ row.record.priorAiReview.limitations.join(' · ') }}</p></details>
       <p v-if="row.referencePolicy" class="note">사례 검색 {{ row.referencePolicy.enabled ? '켬' : '끔' }} · {{ row.referencePolicy.version }} · 제공 {{ row.referencePolicy.count }}개</p>
       <details v-if="row.evidence.some(e => e.usage === 'historical-reference')" class="evidence"><summary>과거 참고 사례 {{ row.evidence.filter(e => e.usage === 'historical-reference').length }}개 · 오늘 신호 아님</summary><blockquote v-for="source in row.evidence.filter(e => e.usage === 'historical-reference')" :key="source.id"><strong>{{ source.date }} · {{ source.filename }} · {{ source.page }}쪽</strong><p>{{ source.text }}</p></blockquote></details>
     </article>

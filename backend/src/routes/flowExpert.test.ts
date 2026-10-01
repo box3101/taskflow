@@ -36,7 +36,7 @@ describe('expert analysis boundaries', () => {
   })
   it('scopes the saved list to the current owner', async () => {
     expect((await request(app).get('/flow/expert?date=2026-09-22').set('Authorization', auth)).status).toBe(200)
-    expect(m.list.mock.calls[0][0].where).toEqual({ userId: 12, date: sample.date })
+    expect(m.list.mock.calls[0][0].where).toEqual({ userId: 12, date: sample.date, task: { in: ['review', 'close'] } })
   })
   it('isolates owners and forbids future records and PDFs in point-in-time review', async () => {
     expect((await post({ ...body, userId: 999 })).status).toBe(201)

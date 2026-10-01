@@ -4,7 +4,7 @@ import { koreanClock } from './flowAnalysis'
 import { expertModels, ExpertProvider, judgmentSchema, modelJson } from './flowModels'
 import { type Evidence, HISTORICAL_REFERENCE_INSTRUCTIONS } from './flowRag'
 
-export const EXPERT_VERSION = 'flow-expert-v5-historical-reference'
+export const EXPERT_VERSION = 'flow-expert-v6-prior-review'
 export type ExpertTask = 'review' | 'close'
 export function closeAvailable(date: string, now = new Date()) {
   const local = koreanClock(now)
@@ -39,6 +39,7 @@ export async function generateExpert(provider: ExpertProvider, task: ExpertTask,
   const instructions = `너는 코스피 수급의 심층 검토 담당이다. 한국어로 간결하게 답한다.
 ${task === 'close' ? '장 마감 사후 복기다. direction은 neutral로 쓴다. 실제 관측 흐름과 장전 문서의 조건을 비교하고, 충족/불충족/확인 불가를 구분한다. 나중에 업로드된 PDF도 포함될 수 있다. 사후 설명을 당시 예측 성공으로 주장하지 않는다.' : '선택한 관측 시점의 종합 검토다. 현물/선물/비차익의 충돌, 헤지 등 대안 가설, 상승/하락 반대 시나리오와 확인 조건을 제시한다. 외국인의 실제 의도를 확정하지 않는다. 이후 실제 가격을 상상하지 않는다.'}
 ${INVESTOR_FLOW_INSTRUCTIONS}
+record.priorAiReview는 이전 날짜의 사후 복기 참고 자료다. 작은 표본·중첩 구간과 규칙 버전을 확인하고 원인이나 오늘 방향의 증거로 단정하지 않는다. 오늘 관측을 우선하며 규칙을 자동 변경하지 않는다.
 timeline은 15분 구간별 마지막 관측과 첫/마지막 관측을 추린 자료다. coverage로 관측 범위를 확인하고 누락된 시간대는 모른다고 쓴다.
 현재 문서 근거는 조회 날짜와 같은 날의 evidence만 사용한다. basicJudgments 안에 남은 과거 날짜 문서나 그 임계값을 오늘 근거로 재사용하지 않는다.
 basicJudgments는 저장된 기본 AI 판단이며 정답이 아니다. 제공된 당시 판단을 보존하며 검토한다.
