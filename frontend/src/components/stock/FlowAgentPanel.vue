@@ -156,9 +156,7 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
         <p>평가 {{ s.evaluated }}건 · 판단 비율 {{ percent(s.coverage) }} · 중립/보류 {{ s.abstained }}건</p>
         <p>대기 {{ s.pending }} · 누락 {{ s.missing }} · 장 종료 {{ s.closed }}</p>
         <div class="comparison">공통 {{ s.paired }}건 비교: AI {{ percent(s.pairedAiAccuracy) }} / 규칙 {{ percent(s.ruleAccuracy) }}</div>
-        <p v-if="row.referencePolicy" class="note">사례 검색 {{ row.referencePolicy.enabled ? '켬' : '끔' }} · {{ row.referencePolicy.version }} · 제공 {{ row.referencePolicy.count }}개</p>
-      <details v-if="row.evidence.some(e => e.usage === 'historical-reference')" class="evidence"><summary>과거 참고 사례 {{ row.evidence.filter(e => e.usage === 'historical-reference').length }}개 · 오늘 신호 아님</summary><blockquote v-for="source in row.evidence.filter(e => e.usage === 'historical-reference')" :key="source.id"><strong>{{ source.date }} · {{ source.filename }} · {{ source.page }}쪽</strong><p>{{ source.text }}</p></blockquote></details>
-    </article>
+      </article>
       <article v-for="s in state?.stats" :key="s.horizon">
         <h3>수급 + PDF · {{ s.horizon }}분 후 · {{ date }}</h3>
         <strong>{{ percent(s.accuracy) }} <small>방향 적중률</small></strong>
@@ -202,6 +200,8 @@ onUnmounted(() => { disposed = true; version++; controller?.abort() })
       <div v-if="expanded === row.id" class="evidence">
         <blockquote v-for="source in row.evidence.filter(e => e.usage !== 'historical-reference')" :key="source.id"><strong>{{ source.filename }} · {{ source.page }}쪽 · 자료 기준일 {{ source.date }} <span v-if="row.judgment.citations.includes(source.id)">· AI 인용</span></strong><p>{{ source.text }}</p></blockquote>
       </div>
+      <p v-if="row.referencePolicy" class="note">사례 검색 {{ row.referencePolicy.enabled ? '켬' : '끔' }} · {{ row.referencePolicy.version }} · 제공 {{ row.referencePolicy.count }}개</p>
+      <details v-if="row.evidence.some(e => e.usage === 'historical-reference')" class="evidence"><summary>과거 참고 사례 {{ row.evidence.filter(e => e.usage === 'historical-reference').length }}개 · 오늘 신호 아님</summary><blockquote v-for="source in row.evidence.filter(e => e.usage === 'historical-reference')" :key="source.id"><strong>{{ source.date }} · {{ source.filename }} · {{ source.page }}쪽</strong><p>{{ source.text }}</p></blockquote></details>
     </article>
     <h3>PDF 검색 준비</h3>
     <p class="note">아래에 PDF를 첨부한 뒤 검색 준비를 실행하세요. 텍스트 PDF 최대 100페이지를 지원합니다. 조회 날짜와 같은 날의 자료에서만 관련 문단을 찾습니다. 과거 자료는 사례·판단 틀로만 별도 검색합니다.</p>
