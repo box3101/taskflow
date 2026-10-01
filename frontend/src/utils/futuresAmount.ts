@@ -1,7 +1,7 @@
 import type { FlowRecord } from '../types/marketFlow'
 type Investor = 'frgn' | 'orgn' | 'prsn'
 const finite=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v)
-const signed=(v:number)=> (v>0?'+':'')+v.toLocaleString('ko-KR',{maximumFractionDigits:1})
+const signed=(v:number)=> (v>0?'+':'')+v.toLocaleString('ko-KR',{maximumFractionDigits:0})
 export function futuresAmountText(value:number|null|undefined,row:FlowRecord,records:FlowRecord[],minutes:number,investor:Investor='frgn',cumulative=false) {
  const activity=row.sample.marketActivity?.futures
  const unit=activity?.amountUnit

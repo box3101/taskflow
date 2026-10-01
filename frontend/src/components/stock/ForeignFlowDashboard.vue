@@ -311,12 +311,24 @@ const reviewLabels = { pending: '관측 대기', missing: '결과 데이터 없�
       <div class="section-heading"><h2>시간대별 투자자 수급</h2><span class="muted">{{ records.length }}건 · 원래 기록 보존</span></div>
       <UiEmpty v-if="!records.length" title="이 날짜에는 수집 기록이 없어요" description="연결 이후 장중 관측부터 저장합니다. 과거 수급을 예측 기록으로 소급하지 않습니다." />
       <p class="muted investor-units">최근 {{ windowMinutes }}분 변화 · 현물 {{ unitLabel('cash') }} · 선물 억원. 실대금은 단위 확인된 매수−매도 대금, ‘약’은 코스피200 × 25만원 명목금액 근사 · 외국인 비차익 {{ unitLabel('nonArb') }}. 증권·기금은 기관 현물의 세부 분류이며 중복 합산하지 않습니다. 비교·환산 자료가 없는 값은 —로 표시합니다.</p>
+      <div class="history-desktop">
       <UiTable v-if="records.length" :columns="historyColumns" :data="historyRows" size="sm">
         <template #cell-time="{ row }"><UiButton variant="ghost" size="xs" @click="selectRecord(row.record)">{{ row.time }}<template #icon-right><UiIcon name="arrow-up-right" :size="12" /></template></UiButton></template>
         <template #cell-foreign="{ row }"><div class="investor-values foreign-values"><span v-for="m in row.foreign" :key="m.label"><small><i class="mobile-investor">외국인 </i>{{ m.label }}</small><b :class="m.tone">{{ m.value }}</b></span></div></template>
         <template #cell-institution="{ row }"><div class="institution-line"><div class="investor-values"><span v-for="m in row.institution" :key="m.label"><small><i class="mobile-investor">기관 </i>{{ m.label }}</small><b :class="m.tone">{{ m.value }}</b></span></div><div class="institution-detail" title="기관 현물의 세부 분류 · 기관 합계에 추가로 합산하지 않습니다"><span v-for="m in row.institutionDetail" :key="m.label">{{ m.label }} <b :class="m.tone">{{ m.value }}</b></span></div></div></template>
         <template #cell-individual="{ row }"><div class="investor-values"><span v-for="m in row.individual" :key="m.label"><small><i class="mobile-investor">개인 </i>{{ m.label }}</small><b :class="m.tone">{{ m.value }}</b></span></div></template>
       </UiTable>
+      </div>
+      <div class="history-mobile" aria-label="모바일 시간대별 투자자 수급">
+        <article v-for="row in historyRows" :key="row.id" class="history-mobile-card">
+          <UiButton variant="ghost" size="xs" @click="selectRecord(row.record)">{{ row.time }}<template #icon-right><UiIcon name="arrow-up-right" :size="12" /></template></UiButton>
+          <div v-for="group in [{label:'외국인',items:row.foreign},{label:'기관',items:row.institution},{label:'개인',items:row.individual}]" :key="group.label" class="history-mobile-group">
+            <strong>{{ group.label }}</strong>
+            <div class="history-mobile-metrics"><span v-for="m in group.items" :key="m.label"><small>{{ m.label }}</small><b :class="m.tone">{{ m.value }}</b></span></div>
+          </div>
+          <div class="history-mobile-detail"><span>기관 세부</span><span v-for="m in row.institutionDetail" :key="m.label">{{ m.label }} <b :class="m.tone">{{ m.value }}</b></span></div>
+        </article>
+      </div>
     </section>
     <template v-else-if="activeTab === 'review'">
       <section class="review-summary"><article class="panel"><span>AI 방향 평가</span><strong>{{ reviewStats.count }}<small>건</small></strong><p>실시간 AI · 15분 예측 결과</p></article><article class="panel"><span>방향 일치</span><strong>{{ reviewStats.matched }}<small>/ {{ reviewStats.count }}건</small></strong><p>기록한 방향과 실제 지수 변화 비교</p></article><article class="panel"><span>AI 판단 보류·중립</span><strong>{{ reviewStats.held }}<small>건</small></strong><p>방향 적중률 계산에서 제외</p></article></section>
@@ -487,6 +499,20 @@ td { padding: 13px 12px; border-bottom: 1px solid #edf0f6; color: #56647f; }
 .investor-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;text-align:right}
 .foreign-values{grid-template-columns:repeat(3,minmax(0,1fr))}
 .investor-values span{min-width:0;display:flex;justify-content:flex-end;align-items:baseline;flex-wrap:wrap;gap:0 4px}.investor-values small{font-size:11px;color:#7c8ba2;font-weight:400;white-space:nowrap}.investor-values b{font-size:13px;font-weight:500;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.mobile-investor{display:none;font-style:normal}.investor-units{font-size:11px;line-height:1.6}
-@media(max-width:600px){.investor-history :deep(thead){display:none}.investor-history :deep(tbody){display:block}.investor-history :deep(tbody tr){display:grid;grid-template-columns:52px minmax(0,1fr) minmax(0,1fr);border-bottom:1px solid #e6ecf4}.investor-history :deep(tbody td){display:block;border:0}.investor-history :deep(tbody td:first-child){grid-row:span 2;align-self:center;padding:0}.investor-history :deep(tbody td:nth-child(2)){grid-column:span 2}.mobile-investor{display:inline}}
+
 .institution-line{display:flex;justify-content:flex-end;align-items:baseline;flex-wrap:wrap;gap:4px 12px}.institution-line .investor-values{display:flex;flex:0 0 auto;gap:0 12px}.institution-detail{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:4px 12px;font-size:11px;color:#7c8ba2;white-space:nowrap}.institution-detail b{font-weight:500;font-variant-numeric:tabular-nums}
+.history-mobile{display:none}
+@media(max-width:600px){
+ .history-desktop{display:none}
+ .history-mobile{display:grid;gap:12px;min-width:0}
+ .history-mobile-card{min-width:0;padding:10px 0;border-top:1px solid #e6ecf4}
+ .history-mobile-group{display:grid;grid-template-columns:42px minmax(0,1fr);align-items:start;gap:8px;margin-top:10px}
+ .history-mobile-group>strong{font-size:11px;line-height:1.5}
+ .history-mobile-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;min-width:0}
+ .history-mobile-metrics>span{display:flex;flex-direction:column;gap:3px;min-width:0}
+ .history-mobile-metrics small{font-size:10px;color:#7c8ba2}
+ .history-mobile-metrics b{font-size:12px;font-weight:500;line-height:1.5;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+ .history-mobile-detail{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;padding-left:50px;font-size:10px;color:#7c8ba2;line-height:1.6}
+ .history-mobile-detail b{font-weight:500}
+}
 </style>
