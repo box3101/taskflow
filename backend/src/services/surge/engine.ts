@@ -66,11 +66,12 @@ export function tickSurge(prior: SurgeState | undefined, pool: Pool, quotes: Rec
   state.themes = board.themes; state.complete = board.complete
   const gap = state.lastAt > 0 && at - state.lastAt > config.gapMs
   const tm = time(at), active = tm >= config.start && tm < config.end
+  const monitoring = tm >= config.start && tm < config.close
   for (const arm of state.arms) {
-    if (gap || !board.complete || !active) arm.timers = {}
+    if (gap || !board.complete || !monitoring) arm.timers = {}
     arm.blocked = {}
     const eligible = new Map<string, Candidate>()
-    if (board.complete && active) for (const theme of board.themes.filter(t => t.rank <= config.topThemes)) {
+    if (board.complete && monitoring) for (const theme of board.themes.filter(t => t.rank <= config.topThemes)) {
       const c = candidateFor(theme, pool, quotes, arm.gate, arm.timers[theme.id]?.code || arm.confirmed[theme.id])
       if (!c || !(c.dayPct > theme.median || (theme.codes.length === 1 && config.singleton))) continue
       if (!validQuote(quotes[c.code], at, config.executionAgeMs)) continue

@@ -43,8 +43,9 @@ export async function securityStatus(ticker: string) {
   const r = rows(data.output)[0]
   if (!r) throw new Error('SECURITY_STATUS_MISSING')
   const status = String(r.iscd_stat_cls_code || '')
-  // 51: management, 52: suspended, 55: liquidation. Missing status is not permission.
-  const excluded = !status || ['51', '52', '55'].includes(status) || r.trht_yn === 'Y' || r.mang_issu_cls_code === 'Y'
+  // Use the documented status flags. Code 55 also occurs on normal, credit-eligible
+  // stocks; it does not mean liquidation. Missing flags are not permission.
+  const excluded = !status || [r.temp_stop_yn, r.mang_issu_cls_code, r.sltr_yn].some(flag => flag !== 'N')
   return { excluded, vi: r.vi_cls_code != null ? !['0', '00', 'N', ''].includes(String(r.vi_cls_code)) : undefined,
     limitUp: apiNumber(r.stck_prpr) !== null && apiNumber(r.stck_mxpr) !== null && apiNumber(r.stck_prpr)! >= apiNumber(r.stck_mxpr)! }
 }

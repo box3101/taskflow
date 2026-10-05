@@ -64,7 +64,11 @@ npm run dev
 
 2026-10-06 검증: 백엔드 235개, 프론트엔드 61개, Python 배치 4개 테스트 통과. 백엔드 TypeScript/Prisma 생성과 프론트 Vite 빌드 통과. Railway 배포 `6d6c92e0-4f86-426b-ba76-4cd879f6c5fd` SUCCESS, migration 적용 완료. 운영 `/health` 200, `/spike` 200, 미인증 rotation API 401, 지정 소유자 API 200 확인. 소유자 ID는 41 (`chanyong@test.com`)이다.
 
-서버 설정 확인: Anthropic/KIS는 존재한다. Telegram bot/chat, 네이버 검색 client ID/secret, DART API key, KRX ID/PW는 연결된 production/taskflow 서비스에 없다. 이 때문에 새 모집단 백필·배치, 문서 실수집, Telegram 실발송은 완료되지 않았다. 모델 설정은 Sonnet 5로 연결했으며 실제 유료 요약 호출은 테스트하지 않았다. KRX 인증 실패를 빈 정상 데이터로 취급하지 않는다. 키를 Railway Variables에 추가하고 배치를 수행해야 확대 모집단 전략이 작동한다. NOTIFY_ENABLED는 false로 유지했다.
+2026-10-06 06:20 KST 재점검: Railway에 KRX, NAVER API HUB, Telegram 인증이 설정됐다. 뉴스 서버 호출 HTTP 200, Telegram 사용자 요청 예시 1건 발송 성공. NOTIFY_ENABLED=true이며 기본 100억·180초 variant만 알린다. DART_API_KEY는 아직 없다. Anthropic 모델 조회에서 claude-sonnet-5 HTTP 200을 확인했지만 실제 요약 생성 성공을 검증한 것은 아니다.
+
+현재 운영 준비 한계: SurgeHistory 0건, 당일 UniverseDay 0건, 배치 기록 0건이다. 08:30 정기 준비 전이므로 당일 모집단이 없는 것은 예상 상태이나, 3년 과거 이력 백필은 별도로 실행·완료해야 한다. 500개 이상 확보 및 실시간 3분 관측→DB 이벤트→알림 전체 흐름은 아직 검증하지 않았다. 장전 KIS 거래대금 순위 실제 응답은 28개이며 complete=false다. 현재 페이징 구현으로 상위 200개를 확보했다고 간주하면 안 된다. 장중 재검증 및 조회 방식 보완이 남아 있다.
+
+실서버 점검에서 삼성전자 응답은 iscd_stat_cls_code=55, temp_stop_yn=N, mang_issu_cls_code=N, sltr_yn=N이었다. 기존 55를 정리매매로 보는 해석을 제거하고 공식 현재가 응답의 임시정지·관리·정리매매 Y/N 필드로 자격을 판정하도록 수정했다. 필드가 누락되면 진입 자격을 부여하지 않는다. 또한 15:20 진입 종료와 보유 감시 종료를 분리해 대장 교체 청산은 15:30까지 계속한다. 이때 새 종목 진입은 하지 않는다. 관련 Vitest 35개와 Python 4개 통과.
 
 Vitest에서 최초 유지, 교체 대기, 출렁임 취소, 동률, 중앙값, 손절/테마 이탈, 공백, 한도, VI/상한가, 독립 게이트, 뉴스 날짜/종목 필터, 스키마/근거 검증, 테마 우선순위/만료, HTML 포맷과 HTTP 실패/429를 검증한다. 외부 Telegram/LLM은 모킹한다.
 

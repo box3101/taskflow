@@ -35,6 +35,25 @@ describe('100억 leader rotation (pure, no orders or LLM)', () => {
     expect(result!.events[0].next).toMatchObject({ code: 'b', name: 'B', dayPct: 12 })
     expect(state.arms[0].trades.map(t => t.status)).toEqual(['closed', 'holding'])
   })
+  it('continues replacement exits after entry cutoff without opening a new position', () => {
+    const cfg = { ...config(), end: '09:09:00' }
+    let state: SurgeState | undefined, result
+    for (let sec = 0; sec <= 420; sec += 10) {
+      const at = base + sec * 1000
+      result = tickSurge(state, pool, quotes(at, sec >= 240 ? 'b' : 'a'), at, cfg)
+      state = result.state
+    }
+    expect(result!.events.map(e => e.kind)).toEqual(['LEADER_CHANGE'])
+    expect(state!.arms[0].trades).toHaveLength(1)
+    expect(state!.arms[0].trades[0].status).toBe('closed')
+  })
+  it('closes at market close even though new entries have ended', () => {
+    const state = held(), at = Date.parse('2026-10-06T15:30:00+09:00')
+    state.lastAt = at - 10000; state.arms[0].trades[0].lastAt = at - 10000
+    const result = tickSurge(state, pool, quotes(at), at, config())
+    expect(result.events.map(e => e.kind)).toEqual(['CLOSE'])
+    expect(result.events[0].trade.excluded).toBe(false)
+  })
   it('cancels a flickering challenger and preserves incumbent on ties', () => {
     let state = held()
     state = tickSurge(state, pool, quotes(base + 190000, 'b'), base + 190000, config()).state
