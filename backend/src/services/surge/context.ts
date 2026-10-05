@@ -66,8 +66,8 @@ export async function collectEvidence(ticker: string, name: string, date: string
   const evidence: Evidence[] = [], errors: string[] = [], config = contextConfig()
   if (config.newsConfigured) {
     try {
-      const r = await fetch(`https://openapi.naver.com/v1/search/news.json?${new URLSearchParams({ query: `"${name}"`, display: '30', sort: 'date' })}`, {
-        headers: { 'X-Naver-Client-Id': process.env.NAVER_CLIENT_ID!, 'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET! }, signal: AbortSignal.timeout(10000),
+      const r = await fetch(`https://naverapihub.apigw.ntruss.com/search/v1/news?${new URLSearchParams({ query: `"${name}"`, display: '30', sort: 'date' })}`, {
+        headers: { 'X-NCP-APIGW-API-KEY-ID': process.env.NAVER_CLIENT_ID!, 'X-NCP-APIGW-API-KEY': process.env.NAVER_CLIENT_SECRET! }, signal: AbortSignal.timeout(10000),
       })
       if (!r.ok) throw new Error('NEWS_UNAVAILABLE')
       const body = await r.json() as any

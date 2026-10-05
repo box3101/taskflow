@@ -36,6 +36,8 @@
 
 뉴스 검색은 정확한 종목명이 제목에 들어간 당일 기사 최대 5건으로 제한하며 링크·발행시각을 보관한다. DART는 당일 목록을 페이지별로 읽고 종목 코드로 매칭한다. 기사 전문은 수집하지 않는다. 이는 제목 수준의 관련 자료 요약이며 상승 원인의 입증이 아니다.
 
+2026-10-06: 뉴스 공급자를 NAVER API HUB의 `/search/v1/news`로 변경했다. Railway의 `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`에는 Ncloud API HUB에서 뉴스 권한을 부여한 인증키를 저장한다. 기존 개발자센터/네이버 로그인 키와 호환되지 않는다. 인증 헤더는 `X-NCP-APIGW-API-KEY-ID`, `X-NCP-APIGW-API-KEY`다. API 실패는 자료 수집 오류로 격리하며 모의 전략을 중단하지 않는다.
+
 JSON 스키마, 입력에 있는 근거 ID, 문장 길이와 금지된 의견을 검사한다. 자료가 없으면 `확인된 당일 재료 없음`, 실패 시 기존 전략은 계속한다. 일일 한도는 실패/자료 없음 실행도 포함해 DB에서 예약한다. 자동 모델 대체와 자동 LLM 재시도는 없다. 뉴스와 모델 출력은 전략 엔진 입력으로 사용하지 않는다.
 
 신규 테마 자동 생성/반영은 마지막 합의에 따라 이번 버전에서 활성화하지 않는다. LLM 우선순위·high 신뢰도·당일 만료를 위한 순수 병합 함수는 검증하지만 실제 배치는 NAVER/SECTOR만 쓴다. 원래 09:40/매시간 그룹 추출 기능 대신 진입 관련 요약과 마감 자료 복기를 구현했다.
@@ -68,7 +70,7 @@ Vitest에서 최초 유지, 교체 대기, 출렁임 취소, 동률, 중앙값, 
 
 - [KIS 거래금액 순위 예제](https://github.com/koreainvestment/open-trading-api/tree/main/examples_llm/domestic_stock/volume_rank)
 - [KIS VI 현황](https://github.com/koreainvestment/open-trading-api/tree/main/examples_llm/domestic_stock/inquire_vi_status)
-- [네이버 뉴스 검색 API](https://developers.naver.com/docs/serviceapi/search/news/news.md)
+- [NAVER API HUB 뉴스 검색 API](https://api.ncloud-docs.com/docs/naver-api-hub-search-news)
 - [DART 공시 검색](https://opendart.fss.or.kr/guide/detail.do?apiGrpCd=DS001&apiId=2019001)
 - [Telegram sendMessage](https://core.telegram.org/bots/api#sendmessage)
 - [Sonnet 5](https://platform.claude.com/docs/en/docs/about-claude/models/whats-new-sonnet-5)
