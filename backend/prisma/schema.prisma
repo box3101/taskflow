@@ -7,6 +7,136 @@ datasource db {
   provider = "postgresql"
 }
 
+enum SurgeExitReason {
+  STOP_LOSS
+  THEME_DROP
+  LEADER_CHANGE
+  CLOSE
+}
+
+enum UniverseSource {
+  BASE
+  INTRADAY
+}
+
+enum ThemeSource {
+  NAVER
+  SECTOR
+  LLM
+}
+
+model SurgeHistory {
+  ticker  String
+  date    String
+  value   BigInt
+  chgRate Float
+  @@id([ticker, date])
+  @@index([date])
+  @@map("surge_history")
+}
+
+model UniverseDay {
+  date      String
+  ticker    String
+  name      String
+  source    UniverseSource
+  addedAt   DateTime @db.Timestamptz
+  rankAtAdd Int?
+  themeId   String
+  themeName String
+  highReady Boolean @default(false)
+  dayHigh   Float?
+  @@id([date, ticker])
+  @@map("surge_universe_days")
+}
+
+model ThemeMap {
+  ticker    String
+  themeId   String
+  themeName String
+  source    ThemeSource
+  validDate String
+  updatedAt DateTime @default(now()) @db.Timestamptz
+  evidence  Json?
+  @@id([ticker, themeId, source, validDate])
+  @@index([validDate])
+  @@map("surge_theme_maps")
+}
+
+model SurgeDay {
+  date      String @id
+  payload   Json
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  @@map("surge_days")
+}
+
+model SurgeTrade {
+  id        String @id
+  date      String
+  variant   String
+  ticker    String
+  entryAt   DateTime @db.Timestamptz
+  exitAt    DateTime? @db.Timestamptz
+  reason    SurgeExitReason?
+  netPct    Float?
+  excluded  Boolean @default(false)
+  payload   Json
+  @@index([date, variant])
+  @@map("surge_trades")
+}
+
+model SurgeEvent {
+  id        String @id
+  tradeId   String
+  date      String
+  variant   String
+  kind      String
+  at        DateTime @db.Timestamptz
+  payload   Json
+  @@index([date, at])
+  @@map("surge_events")
+}
+
+model NotificationLog {
+  id        String @id
+  tradeId   String
+  kind      String
+  sentAt    DateTime? @db.Timestamptz
+  ok        Boolean @default(false)
+  error     String?
+  attempts  Int @default(0)
+  nextAt    DateTime @default(now()) @db.Timestamptz
+  claimedAt DateTime? @db.Timestamptz
+  payload   Json
+  @@index([ok, nextAt])
+  @@map("surge_notification_logs")
+}
+
+model SurgeLlmRun {
+  id           String @id
+  date         String
+  kind         String
+  model        String
+  runAt        DateTime @default(now()) @db.Timestamptz
+  inputTickers String[]
+  input        Json
+  rawResponse  String?
+  parsedOk     Boolean @default(false)
+  tokens       Int?
+  error        String?
+  payload      Json?
+  @@index([date])
+  @@map("surge_llm_runs")
+}
+
+model SurgeBatch {
+  date      String @id
+  status    String
+  payload   Json
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  @@map("surge_batches")
+}
+
 model SpikeCloudDay {
   date      String   @id
   payload   Json

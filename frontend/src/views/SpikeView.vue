@@ -6,9 +6,10 @@ import api from '../api/client'
 import { marketCells } from '../utils/spikeMarket.mjs'
 import SpikeLeaderPanel from '../components/stock/SpikeLeaderPanel.vue'
 import LeaderStrategyPanel from '../components/stock/LeaderStrategyPanel.vue'
+import SurgeRotationPanel from '../components/stock/SurgeRotationPanel.vue'
 const strategyData = ref(null)
-const screen = ref('strategy')
-const screenTabs = [{ label: '주도주 전략', value: 'strategy' }, { label: '대장주 필터', value: 'leader' }, { label: '원본 기록·성적', value: 'original' }]
+const screen = ref('rotation')
+const screenTabs = [{ label: '대장 3분 · 모의', value: 'rotation' }, { label: '기존 돌파 기록', value: 'strategy' }, { label: '대장주 필터', value: 'leader' }, { label: '원본 기록·성적', value: 'original' }]
 const leaderData = ref({ records: {}, lastCapturedAt: null })
 const collector = ref(null)
 const tradeLog = ref(null)
@@ -228,7 +229,7 @@ onUnmounted(() => { disposed = true; clearInterval(timer); controller?.abort() }
 </script>
 <template>
 <section class="spike-view">
-<UiAlert v-if="error" variant="error" :description="error" />
+<UiAlert v-if="error && screen !== 'rotation'" variant="error" :description="error" />
 <p class="note" v-if="updatedAt">최근 조회 {{ updatedAt }} · {{ collector?.mode === 'cloud' ? '서버 10초 수집 · 화면 30초 갱신 · PC 종료 가능' : '30초마다 원본 기록 갱신' }}</p>
 <UiAlert v-if="collector?.lastError" variant="warning" :description="collector.lastError" />
     <ui-page-header class="page-head" title="급등 탐지기">
@@ -246,7 +247,8 @@ onUnmounted(() => { disposed = true; clearInterval(timer); controller?.abort() }
     </ui-page-header>
 
     <UiTab v-model="screen" :tabs="screenTabs" size="sm" aria-label="급등 탐지기 보기" />
-    <UiEmpty v-if="!updatedAt && (error || loading)" :title="error ? '급등 기록을 조회하지 못했습니다' : '급등 기록을 불러오는 중입니다'" :description="error ? '연결이 복구되면 기록과 성적을 표시합니다. 현재 기록 수는 확인할 수 없습니다.' : '서버에 저장된 기록을 확인하고 있습니다.'" />
+    <SurgeRotationPanel v-if="screen === 'rotation'" />
+    <UiEmpty v-if="screen !== 'rotation' && !updatedAt && (error || loading)" :title="error ? '급등 기록을 조회하지 못했습니다' : '급등 기록을 불러오는 중입니다'" :description="error ? '연결이 복구되면 기록과 성적을 표시합니다. 현재 기록 수는 확인할 수 없습니다.' : '서버에 저장된 기록을 확인하고 있습니다.'" />
     <LeaderStrategyPanel v-if="updatedAt && screen === 'strategy'" :data="strategyData" />
     <SpikeLeaderPanel v-if="updatedAt && screen === 'leader'" :rows="spikeRows" :board="leaderData.board || []" :loading="loading" :last-captured-at="leaderData.lastCapturedAt" :fee="spike?.rule?.fee" @detail="spikeSel = $event">
       <template #filters>

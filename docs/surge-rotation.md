@@ -1,0 +1,74 @@
+# 대장 3분 유지 모의 전략
+
+## 합의한 최종 동작
+
+기본 variant는 `GATE_10000000000_LEADER_STABLE_180`이다. 당일 누적 100억은 자격 게이트이며, 자격 통과 종목 중 등락률 1위를 대장으로 선정한다. 테마 거래대금 상위 3개에서 각각 평가한다. 테마 전체 유효 시세의 중앙값을 초과해야 하며 단독 UNMAPPED 테마는 예외다. 최초 진입은 09:05 이후 같은 후보가 조건을 180초 연속 유지했을 때다. 고점 돌파·09:30 대기를 사용하지 않는다.
+
+새 대장이 조건을 180초 연속 유지하면 기존 포지션을 `LEADER_CHANGE`로 청산하고, 새 대장이 진입 가능하면 진입한다. 청산과 진입은 서로 다른 이벤트다. 손절 -3%, 테마 상위 3위 이탈, 마감 청산은 교체 타이머와 독립적이다. 충돌 우선순위는 손절 → 마감 → 테마 이탈 → 대장 교체다. 종료시각 이후 신규 교체 진입은 하지 않는다. 같은 후보의 손절 후 무조건 반복 진입하지 않는다. 동률은 현재 관측 중인 후보를 유지하고, 최초 동률은 코드순으로 결정하되 중앙값 조건은 그대로 적용한다.
+
+진입은 variant 전체에서 하루 최대 3회이며 교체도 새 진입 1회다. 세 테마를 합산한다. 같은 틱에 복수 후보가 준비되면 테마 거래대금 순서로 남은 한도를 사용한다. 500억/1,000억은 독립 상태로 병행 기록한다. 소표본에 맞춘 자동 튜닝은 없다. 모든 수치 설정은 `backend/.env.example`에 있다. 당일 전략 설정은 상태에 고정해 재시작이나 장중 환경변수 변경으로 결과가 섞이지 않게 한다.
+
+기존 `leaderBreakout`은 고정 모집단과 원래 09:30·돌파·재확인·손절/마감 규칙을 그대로 실행하고 새 화면의 대조군에 표시한다. 기존 JSON 모의·관측 기록은 삭제하지 않는다. 이전 여러 탐지기의 스케줄러 대신 `startSurge`만 앱에서 실행하므로 중복 스케줄러를 만들지 않는다. 원본 기록 탭은 읽기 전용 아카이브다. 실제 주문 API는 추가하지 않는다.
+
+## 데이터와 수집
+
+- Python 배치는 로컬/서버에서만 네이버 테마를 수집하며 GitHub Actions는 거부한다. 기본 08:30 KST 거래일 배치다.
+- pykrx 완료 거래일 전종목 일봉에서 1,000억·10%를 통과한 행만 `SurgeHistory`에 저장한다. 과거 이력은 모집단 선정에만 쓰고 엔진에 전달하지 않는다. 완료일마다 체크포인트를 저장해 재실행 시 중복 수집을 줄인다.
+- 전일 거래대금 상위 400 + 최근 3년 급등 이력 종목의 합집합이다. 500종목 이상을 보장하기 위해 임의로 종목을 추가하지 않는다. 현재 이름/시장/거래량과 KIS 관리·정지 상태를 확인한다.
+- ThemeMap은 출처별로 보존한다. 한 종목의 기본 테마는 NAVER 우선, 없으면 SECTOR, 없으면 UNMAPPED다. 복수 NAVER 소속은 안정적인 themeId 순으로 하나를 선택하여 거래대금을 중복 합산하지 않는다. 당일 UniverseDay에 테마를 고정하고 보유 중 LLM 분류로 바꾸지 않는다.
+- KIS 거래금액 순위는 1분 주기로 최대 7회 연속조회한다. 최대 200건을 목표로 하지만 연속조회 종료/중복 페이지에서 중단하고 실제 확보 건수·완전성을 저장한다. 7회가 항상 200건을 보장한다고 가정하지 않는다.
+- 당일 테마 배치가 준비된 뒤에만 장중 편입한다. addedAt/rankAtAdd를 보존한다. 분봉 응답의 세션 고점을 1회 보충하며 실패 시 재시도한다. 기본 유지 전략은 고점을 사용하지 않으므로 의존하지 않는다. 기존 돌파 대조군은 기존 고정 모집단이라 신규 편입을 사용하지 않는다.
+- 확대 모집단 전체는 60초, 후보·상위 테마 종목·보유는 최대 60종목을 10초 주기로 갱신한다. 보유 종목은 우선한다. 기존 고정 대조군은 원래 표본을 보존하기 위한 별도 수집이며 `SURGE_LEGACY_ENABLED=false`로 중지 가능하다.
+- 모든 테마 시세가 당일·90초 이내인 경우에만 순위를 확정한다. 후보 시세는 20초 이내이며 소스 시각이 진행해야 한다. 30초 이상 수집 공백은 타이머를 초기화하고 보유 성적을 제외 표시한다. 결측 때문에 테마 이탈을 만들어내지 않는다. 장 마감 단일가 구간은 기존 전략과 같은 별도 공백 예외가 있다.
+- 모의 진입 직전 KIS 종목 상태와 VI 현황을 조회한다. 확인 실패는 `EXECUTION_STATUS_UNKNOWN`, VI·상한가는 차단한다. 호가 잔량에 따른 실제 체결을 보장하지 않는 관측가 모의 기록이다.
+
+## 이벤트와 텔레그램
+
+전략 상태·거래·이벤트는 동일 DB 트랜잭션으로 저장한다. 별도 subscriber가 이벤트를 읽어 `NotificationLog`를 만들고 전송한다. LLM과 Telegram 네트워크 호출은 전략 트랜잭션 안에서 실행하지 않는다.
+
+`NOTIFY_ENABLED=false`가 기본이다. 대상은 전체 variant ID 하나이며 기본 게이트·180초 전략이다. ENTRY, LEADER_CHANGE, THEME_DROP만 기본 발송한다. STOP_LOSS/CLOSE는 설정으로 켠다. 새 대장 알림에는 이름·코드·현재 등락률과 직전 대장 등락률을 기록 당시 값으로 표시한다. HTML 특수문자를 이스케이프한다. 수집 공백/새 진입 차단 이유를 첨부한다.
+
+이벤트 ID로 중복 enqueue를 막고 DB 원자적 claim으로 작업자 중복 전송을 막는다. 명시적 전송 실패는 재시도 1회, 429는 서버 retry_after와 지수 백오프 중 긴 시간을 따른다. 응답 타임아웃/전송 중 프로세스 종료는 성공 여부를 알 수 없어 자동 재전송하지 않는다. Telegram은 클라이언트 멱등 키를 지원하지 않으므로 네트워크 단절까지 포함한 정확히 한 번 전달을 보장하지 않는다. 최근 5분 이벤트만 새로 enqueue하여 활성화 시 옛 거래 알림이 쏟아지지 않게 한다.
+
+## Sonnet 역할
+
+사용 모델은 `claude-sonnet-5`이며 환경변수로 지정한다. 최초·교체 진입 이벤트 뒤 해당 종목의 당일 네이버 뉴스 검색 결과와 DART 공시 제목을 읽고 요약한다. 15:35 이후 해당 일 진입 종목의 문서들을 한 번 더 요약해 장 마감 자료 복기로 저장한다. 거래 성적은 코드 집계로 화면에 표시하며 LLM에 숫자 해석/임계값 개선을 맡기지 않는다.
+
+뉴스 검색은 정확한 종목명이 제목에 들어간 당일 기사 최대 5건으로 제한하며 링크·발행시각을 보관한다. DART는 당일 목록을 페이지별로 읽고 종목 코드로 매칭한다. 기사 전문은 수집하지 않는다. 이는 제목 수준의 관련 자료 요약이며 상승 원인의 입증이 아니다.
+
+JSON 스키마, 입력에 있는 근거 ID, 문장 길이와 금지된 의견을 검사한다. 자료가 없으면 `확인된 당일 재료 없음`, 실패 시 기존 전략은 계속한다. 일일 한도는 실패/자료 없음 실행도 포함해 DB에서 예약한다. 자동 모델 대체와 자동 LLM 재시도는 없다. 뉴스와 모델 출력은 전략 엔진 입력으로 사용하지 않는다.
+
+신규 테마 자동 생성/반영은 마지막 합의에 따라 이번 버전에서 활성화하지 않는다. LLM 우선순위·high 신뢰도·당일 만료를 위한 순수 병합 함수는 검증하지만 실제 배치는 NAVER/SECTOR만 쓴다. 원래 09:40/매시간 그룹 추출 기능 대신 진입 관련 요약과 마감 자료 복기를 구현했다.
+
+## 실행
+
+```powershell
+cd backend
+python -m pip install -r scripts/requirements-surge.txt
+npx prisma migrate deploy
+npx prisma generate
+npm run surge:batch -- backfill 2023-10-06 2026-10-05
+npm run surge:batch -- prepare 2026-10-06
+npm run dev
+```
+
+현재 날짜에 맞게 backfill 범위를 바꾼다. 명령 실행 전 `npm run build`가 필요하다. batch 실패일은 체크포인트가 생성되지 않으므로 재실행한다. 네이버·KRX·KIS 공급 장애나 포맷 변경을 실데이터 검증 전 성공으로 간주하지 않는다. pykrx 1.2.9 실조회에서 KRX 로그인이 필요함을 확인했으므로 `KRX_ID`, `KRX_PW`를 설정한다.
+
+운영은 Railway production/taskflow 환경변수를 사용한다. 비밀값을 로컬로 복사하지 않는다. Docker 이미지에 Python/pykrx와 Node를 포함하고 시작 시 Prisma migration을 적용한다. `SURGE_ENABLED=true`, 조회 소유자 `AVERAGE_SPIKE_OWNER_ID`를 지정한다. Telegram bot/chat, 네이버 검색 API, DART 키는 Railway Variables에 설정한다. LLM은 `SURGE_LLM_ENABLED=true`와 Anthropic 키를 요구한다. 뉴스·공시 키가 없으면 자료 없는 상태를 표시한다. 최초 모집단 준비가 안 되면 새 전략의 진입은 보류하고 기존 대조군만 관측한다.
+
+집계 쿼리는 `docs/surge-rotation.sql`. 완료·관측 경로가 유효한 거래만 평균 순수익/승률/청산사유 집계에 넣는다. 평균 진입시각은 KST 자정부터의 초다.
+
+## 검증과 출처
+
+2026-10-06 검증: 백엔드 235개, 프론트엔드 61개, Python 배치 4개 테스트 통과. 백엔드 TypeScript/Prisma 생성과 프론트 Vite 빌드 통과. Railway 배포 `6d6c92e0-4f86-426b-ba76-4cd879f6c5fd` SUCCESS, migration 적용 완료. 운영 `/health` 200, `/spike` 200, 미인증 rotation API 401, 지정 소유자 API 200 확인. 소유자 ID는 41 (`chanyong@test.com`)이다.
+
+서버 설정 확인: Anthropic/KIS는 존재한다. Telegram bot/chat, 네이버 검색 client ID/secret, DART API key, KRX ID/PW는 연결된 production/taskflow 서비스에 없다. 이 때문에 새 모집단 백필·배치, 문서 실수집, Telegram 실발송은 완료되지 않았다. 모델 설정은 Sonnet 5로 연결했으며 실제 유료 요약 호출은 테스트하지 않았다. KRX 인증 실패를 빈 정상 데이터로 취급하지 않는다. 키를 Railway Variables에 추가하고 배치를 수행해야 확대 모집단 전략이 작동한다. NOTIFY_ENABLED는 false로 유지했다.
+
+Vitest에서 최초 유지, 교체 대기, 출렁임 취소, 동률, 중앙값, 손절/테마 이탈, 공백, 한도, VI/상한가, 독립 게이트, 뉴스 날짜/종목 필터, 스키마/근거 검증, 테마 우선순위/만료, HTML 포맷과 HTTP 실패/429를 검증한다. 외부 Telegram/LLM은 모킹한다.
+
+- [KIS 거래금액 순위 예제](https://github.com/koreainvestment/open-trading-api/tree/main/examples_llm/domestic_stock/volume_rank)
+- [KIS VI 현황](https://github.com/koreainvestment/open-trading-api/tree/main/examples_llm/domestic_stock/inquire_vi_status)
+- [네이버 뉴스 검색 API](https://developers.naver.com/docs/serviceapi/search/news/news.md)
+- [DART 공시 검색](https://opendart.fss.or.kr/guide/detail.do?apiGrpCd=DS001&apiId=2019001)
+- [Telegram sendMessage](https://core.telegram.org/bots/api#sendmessage)
+- [Sonnet 5](https://platform.claude.com/docs/en/docs/about-claude/models/whats-new-sonnet-5)

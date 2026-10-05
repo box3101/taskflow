@@ -1,9 +1,17 @@
 import { Router } from 'express'
 import { authenticate } from '../middleware/auth'
 import { averageSpike, spikeOwner } from '../services/averageSpike'
+import { surgeDashboard } from '../services/surge/service'
 
 const router = Router()
 router.use(authenticate)
+router.get('/rotation', async (req, res) => {
+  const owner = spikeOwner()
+  if (!owner) { res.status(503).json({ message: '급등 기록 소유자 설정이 필요합니다.' }); return }
+  if (req.user!.id !== owner) { res.status(403).json({ message: '소유자만 조회할 수 있습니다.' }); return }
+  try { res.set('Cache-Control', 'no-store').json({ data: await surgeDashboard() }) }
+  catch { res.status(503).json({ message: '새 모의 전략 DB 준비가 필요합니다. 마이그레이션 상태를 확인하세요.' }) }
+})
 router.get('/', async (req, res) => {
   const owner = spikeOwner()
   if (!owner) { res.status(503).json({ message: '급등 기록 연결이 아직 설정되지 않았습니다.' }); return }

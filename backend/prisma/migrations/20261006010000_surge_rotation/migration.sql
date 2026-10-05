@@ -1,0 +1,18 @@
+CREATE TYPE "SurgeExitReason" AS ENUM ('STOP_LOSS', 'THEME_DROP', 'LEADER_CHANGE', 'CLOSE');
+CREATE TYPE "UniverseSource" AS ENUM ('BASE', 'INTRADAY');
+CREATE TYPE "ThemeSource" AS ENUM ('NAVER', 'SECTOR', 'LLM');
+CREATE TABLE surge_history (ticker TEXT NOT NULL, date TEXT NOT NULL, value BIGINT NOT NULL, "chgRate" DOUBLE PRECISION NOT NULL, PRIMARY KEY(ticker,date));
+CREATE INDEX surge_history_date_idx ON surge_history(date);
+CREATE TABLE surge_universe_days (date TEXT NOT NULL, ticker TEXT NOT NULL, name TEXT NOT NULL, source "UniverseSource" NOT NULL, "addedAt" TIMESTAMPTZ NOT NULL, "rankAtAdd" INTEGER, "themeId" TEXT NOT NULL, "themeName" TEXT NOT NULL, "highReady" BOOLEAN NOT NULL DEFAULT false, "dayHigh" DOUBLE PRECISION, PRIMARY KEY(date,ticker));
+CREATE TABLE surge_theme_maps (ticker TEXT NOT NULL, "themeId" TEXT NOT NULL, "themeName" TEXT NOT NULL, source "ThemeSource" NOT NULL, "validDate" TEXT NOT NULL, "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, evidence JSONB, PRIMARY KEY(ticker,"themeId",source,"validDate"));
+CREATE INDEX surge_theme_maps_validDate_idx ON surge_theme_maps("validDate");
+CREATE TABLE surge_days (date TEXT PRIMARY KEY, payload JSONB NOT NULL, "updatedAt" TIMESTAMPTZ NOT NULL);
+CREATE TABLE surge_trades (id TEXT PRIMARY KEY, date TEXT NOT NULL, variant TEXT NOT NULL, ticker TEXT NOT NULL, "entryAt" TIMESTAMPTZ NOT NULL, "exitAt" TIMESTAMPTZ, reason "SurgeExitReason", "netPct" DOUBLE PRECISION, excluded BOOLEAN NOT NULL DEFAULT false, payload JSONB NOT NULL);
+CREATE INDEX surge_trades_date_variant_idx ON surge_trades(date,variant);
+CREATE TABLE surge_events (id TEXT PRIMARY KEY, "tradeId" TEXT NOT NULL, date TEXT NOT NULL, variant TEXT NOT NULL, kind TEXT NOT NULL, at TIMESTAMPTZ NOT NULL, payload JSONB NOT NULL);
+CREATE INDEX surge_events_date_at_idx ON surge_events(date,at);
+CREATE TABLE surge_notification_logs (id TEXT PRIMARY KEY, "tradeId" TEXT NOT NULL, kind TEXT NOT NULL, "sentAt" TIMESTAMPTZ, ok BOOLEAN NOT NULL DEFAULT false, error TEXT, attempts INTEGER NOT NULL DEFAULT 0, "nextAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, "claimedAt" TIMESTAMPTZ, payload JSONB NOT NULL);
+CREATE INDEX surge_notification_logs_ok_nextAt_idx ON surge_notification_logs(ok,"nextAt");
+CREATE TABLE surge_llm_runs (id TEXT PRIMARY KEY, date TEXT NOT NULL, kind TEXT NOT NULL, model TEXT NOT NULL, "runAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, "inputTickers" TEXT[] NOT NULL, input JSONB NOT NULL, "rawResponse" TEXT, "parsedOk" BOOLEAN NOT NULL DEFAULT false, tokens INTEGER, error TEXT, payload JSONB);
+CREATE INDEX surge_llm_runs_date_idx ON surge_llm_runs(date);
+CREATE TABLE surge_batches (date TEXT PRIMARY KEY, status TEXT NOT NULL, payload JSONB NOT NULL, "updatedAt" TIMESTAMPTZ NOT NULL);

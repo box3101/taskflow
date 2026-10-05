@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "surge:batch": "node dist/src/scripts/surgeBatch.js",
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
-    "build": "prisma generate && tsc",
+    "build": "prisma generate && tsc && tsc -p tsconfig.surge.json",
     "start": "node dist/src/app.js",
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "ts-node-dev src/seed.ts",

@@ -32,7 +32,7 @@ import movieRouter from './routes/movies'
 import { startStockGuardCron } from './services/stockGuardCron'
 import { startScoreMaturityCron } from './services/scoreMaturityCron'
 import { startSyncMoviesCron } from './services/syncMoviesCron'
-import { startSpikeCloud } from './services/spikeCloud'
+import { startSurge } from './services/surge/service'
 
 const app = express()
 
@@ -117,7 +117,7 @@ app.listen(PORT, () => {
   console.log(`서버 실행: http://localhost:${PORT}`)
   startStockGuardCron()
   startFlowCollector(async () => { await runFlowAutomation(); await runCloseReview() })
-  startSpikeCloud()
+  startSurge()
   console.log(`[flow-auto] enabled=${automationConfig().enabled} configured=${automationConfig().configured} interval=15m`)
   startScoreMaturityCron()
   startSyncMoviesCron()

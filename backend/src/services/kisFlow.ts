@@ -2,7 +2,7 @@ import { emptyValues, FlowSample, FlowSource, FlowKey, InvestorFlowKey, koreanCl
 
 const ORIGIN = 'https://openapi.koreainvestment.com:9443'
 type Row = Record<string, unknown>
-type Body = { rt_cd?: string; msg_cd?: string; output?: unknown; output1?: unknown }
+type Body = { rt_cd?: string; msg_cd?: string; output?: unknown; output1?: unknown; output2?: unknown; continuation?: string }
 let token: { value: string; expiresAt: number } | null = null
 let tokenPending: Promise<string> | null = null
 let lastAuthAttempt = 0
@@ -46,10 +46,10 @@ async function getToken(): Promise<string> {
   try { return await tokenPending } finally { tokenPending = null }
 }
 
-export async function kisGet(path: string, tr: string, params: Record<string, string>): Promise<Body> {
+export async function kisGet(path: string, tr: string, params: Record<string, string>, continuation = ''): Promise<Body> {
   const accessToken = await getToken()
   const response = await fetch(`${ORIGIN}${path}?${new URLSearchParams(params)}`, {
-    headers: { authorization: `Bearer ${accessToken}`, appkey: process.env.KIS_APP_KEY!, appsecret: process.env.KIS_APP_SECRET!, tr_id: tr, custtype: 'P', 'content-type': 'application/json; charset=utf-8' },
+    headers: { authorization: `Bearer ${accessToken}`, appkey: process.env.KIS_APP_KEY!, appsecret: process.env.KIS_APP_SECRET!, tr_id: tr, tr_cont: continuation, custtype: 'P', 'content-type': 'application/json; charset=utf-8' },
     signal: AbortSignal.timeout(8000),
   })
   if (response.status === 401) token = null
@@ -59,7 +59,7 @@ export async function kisGet(path: string, tr: string, params: Record<string, st
     if (body.msg_cd === 'EGW00123' || body.msg_cd === 'EGW00121') token = null
     throw new Error('KIS_QUERY_FAILED')
   }
-  return body
+  return { ...body, continuation: response.headers.get('tr_cont') || '' }
 }
 
 export async function isKisTradingDay(date: string): Promise<boolean> {
