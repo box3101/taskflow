@@ -14,12 +14,23 @@ export type Event = { id: string; tradeId: string; date: string; variant: string
   themeRank?: number; topTheme?: string; blockedReason?: string }
 type Timer = { code: string; since: number; sourceAt: number; lastAt: number }
 export type Arm = { variant: string; gate: number; timers: Record<string, Timer>; confirmed: Record<string, string>; trades: Trade[]; blocked: Record<string, string> }
-export type SurgeState = { version: string; date: string; config: SurgeConfig; lastAt: number; arms: Arm[]; themes: Theme[]; complete: boolean }
+export type SurgeState = { version: string; date: string; config: SurgeConfig; lastAt: number; arms: Arm[]; themes: Theme[]; complete: boolean;
+  missing?: { count: number; sample: { code: string; reason: string }[] } }
 const time = (at: number) => clock(at).slice(11, 19)
 export function validQuote(q: MarketQuote | undefined, at: number, age: number): q is MarketQuote {
   return !!q && [q.price, q.dayPct, q.value, q.sourceAt, q.receivedAt].every(v => typeof v === 'number' && Number.isFinite(v)) &&
     q.price > 0 && q.value! >= 0 && q.sourceAt <= at && at - q.sourceAt <= age && q.receivedAt <= at && at - q.receivedAt <= age &&
     clock(q.sourceAt).slice(0, 10) === clock(at).slice(0, 10)
+}
+// Board membership only needs a quote we received recently for today. A stale trade time
+// (VI single-price auction, thin trading) is the current state, not a collection failure.
+// Entry candidates still use validQuote with the stricter execution age.
+export function boardQuoteIssue(q: MarketQuote | undefined, at: number, age: number) {
+  if (!q) return 'NO_QUOTE'
+  if (![q.price, q.dayPct, q.value, q.sourceAt, q.receivedAt].every(v => typeof v === 'number' && Number.isFinite(v)) || q.price <= 0 || q.value! < 0) return 'INVALID'
+  if (q.receivedAt > at || at - q.receivedAt > age) return 'STALE_RECEIVED'
+  if (q.sourceAt > at || clock(q.sourceAt).slice(0, 10) !== clock(at).slice(0, 10)) return 'NOT_TODAY'
+  return null
 }
 export function themeBoard(pool: Pool, quotes: Record<string, MarketQuote>, at: number, config: SurgeConfig) {
   const groups = new Map<string, string[]>()
@@ -28,14 +39,19 @@ export function themeBoard(pool: Pool, quotes: Record<string, MarketQuote>, at: 
     const theme = p.themes[0] || `UNMAPPED:${code}`
     groups.set(theme, [...(groups.get(theme) || []), code])
   }
-  const complete = Object.keys(pool).length > 0 && Object.keys(pool).every(c => validQuote(quotes[c], at, config.quoteAgeMs))
+  const issues = Object.keys(pool).flatMap(code => {
+    const reason = boardQuoteIssue(quotes[code], at, config.quoteAgeMs)
+    return reason ? [{ code, reason }] : []
+  })
+  const bad = new Set(issues.map(i => i.code))
+  const complete = Object.keys(pool).length > 0 && !issues.length
   const themes: Theme[] = [...groups].flatMap(([id, codes]) => {
-    if (codes.some(c => !validQuote(quotes[c], at, config.quoteAgeMs))) return []
+    if (codes.some(c => bad.has(c))) return []
     return [{ id, name: id.startsWith('UNMAPPED:') ? `미분류 · ${pool[codes[0]].name}` : id, codes,
       turnover: codes.reduce((s, c) => s + quotes[c].value!, 0), median: median(codes.map(c => quotes[c].dayPct)), rank: 0 }]
   }).sort((a, b) => b.turnover - a.turnover || a.id.localeCompare(b.id))
   themes.forEach((t, i) => { t.rank = i + 1 })
-  return { themes, complete }
+  return { themes, complete, missing: { count: issues.length, sample: issues.slice(0, 20) } }
 }
 export function candidateFor(theme: Theme, pool: Pool, quotes: Record<string, MarketQuote>, gate: number, incumbent?: string): Candidate | undefined {
   const qualified = theme.codes.filter(c => !quotes[c].halted && quotes[c].value! >= gate)
@@ -63,7 +79,7 @@ export function tickSurge(prior: SurgeState | undefined, pool: Pool, quotes: Rec
   if (at <= state.lastAt) return { state, events }
   config = state.config
   const board = themeBoard(pool, quotes, at, config)
-  state.themes = board.themes; state.complete = board.complete
+  state.themes = board.themes; state.complete = board.complete; state.missing = board.missing
   const gap = state.lastAt > 0 && at - state.lastAt > config.gapMs
   const tm = time(at), active = tm >= config.start && tm < config.end
   const monitoring = tm >= config.start && tm < config.close

@@ -75,6 +75,13 @@ describe('100억 leader rotation (pure, no orders or LLM)', () => {
     expect(state.complete).toBe(false); expect(state.arms[0].timers).toEqual({})
     expect(state.arms[0].trades[0].status).toBe('holding')
   })
+  it('keeps the board complete when a peer only has an old trade time (VI, thin trading)', () => {
+    const at = base + 60000, qs = quotes(at); qs.c.sourceAt = at - 150000
+    const board = themeBoard(pool, qs, at, config())
+    expect(board.complete).toBe(true); expect(board.themes[0].codes).toHaveLength(3)
+    const late = quotes(at); late.c.receivedAt = at - 150000; delete (late as any).b
+    expect(themeBoard(pool, late, at, config()).missing).toEqual({ count: 2, sample: [{ code: 'b', reason: 'NO_QUOTE' }, { code: 'c', reason: 'STALE_RECEIVED' }] })
+  })
   it('does not bridge a collector gap and excludes unseen stop paths', () => {
     const result = tickSurge(held(), pool, quotes(base + 240000, 'b'), base + 240000, config())
     expect(result.state.arms[0].timers['조선'].since).toBe(base + 240000)

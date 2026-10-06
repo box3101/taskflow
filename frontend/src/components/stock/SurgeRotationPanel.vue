@@ -18,6 +18,11 @@ const time = n => n ? new Date(n).toLocaleTimeString('ko-KR', { timeZone: 'Asia/
 const reasons = { STOP_LOSS: '손절', THEME_DROP: '테마 순위 이탈', LEADER_CHANGE: '대장 교체 확정', CLOSE: '마감' }
 const blocked = { DAILY_LIMIT: '하루 진입 한도', HALTED: '거래정지', VI: 'VI', LIMIT_UP: '상한가 구간', STALE_QUOTE: '시세 지연', EXECUTION_STATUS_UNKNOWN: '체결 가능 상태 미확인', ALREADY_HELD: '이미 보유' }
 const stale = computed(() => day.value === today() && record.value?.engine?.lastAt && Date.now() - record.value.engine.lastAt > 90000)
+const missingReasons = { NO_QUOTE: '시세 없음', INVALID: '값 이상', STALE_RECEIVED: '수신 지연', NOT_TODAY: '당일 체결 없음' }
+const missingText = computed(() => {
+  const m = record.value?.engine?.missing
+  return m?.count ? ` 누락 ${m.count}종목: ${m.sample.slice(0, 5).map(i => `${i.code}(${missingReasons[i.reason] || i.reason})`).join(', ')}` : ''
+})
 const runs = computed(() => (data.value?.runs || []).filter(r => r.date === day.value))
 let timer, controller, disposed = false
 async function refresh() {
@@ -46,7 +51,7 @@ onUnmounted(() => { disposed = true; clearInterval(timer); controller?.abort() }
   <p v-if="data?.llm?.enabled">뉴스 {{ data.llm.newsConfigured ? '연결 설정됨' : '네이버 API 설정 필요' }} · 공시 {{ data.llm.dartConfigured ? '연결 설정됨' : 'DART API 설정 필요' }}</p>
   <div class="filters"><UiSelect v-model="day" :options="dates" label="관측 날짜" size="sm" /><UiSelect v-if="variants.length" v-model="variant" :options="variants" label="비교 전략" size="sm" /></div>
   <UiAlert v-if="stale" variant="warning" description="최근 관측이 지연됐습니다. 마지막 기록을 표시하며 현재 순위나 체결을 보장하지 않습니다." />
-  <UiAlert v-if="record?.engine && !record.engine.complete" variant="warning" description="모집단 시세가 불완전합니다. 대장 유지 타이머와 테마 순위 청산을 보류합니다." />
+  <UiAlert v-if="record?.engine && !record.engine.complete" variant="warning" :description="`모집단 시세가 불완전합니다. 대장 유지 타이머와 테마 순위 청산을 보류합니다.${missingText}`" />
   <div class="stats"><article><b>{{ stats?.count || 0 }} / {{ config?.maxEntries || 3 }}</b><span>진입 횟수</span></article><article><b>{{ stats?.holding || 0 }}</b><span>보유</span></article><article><b>{{ pct(stats?.mean) }}</b><span>완료 거래 평균 순수익</span></article><article><b>{{ pct(stats?.win) }}</b><span>비용후 승률</span></article></div>
   <p>관측 {{ record?.count || 0 }}종목 · 마지막 관측 {{ time(record?.engine?.lastAt) }} · 성적 제외 {{ stats?.excluded || 0 }}건</p>
   <UiEmpty v-if="!record" title="당일 모의 관측 기록이 없습니다" description="모집단 배치와 서버 수집 설정이 준비되면 거래일에 기록을 시작합니다." />
