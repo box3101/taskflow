@@ -7,7 +7,7 @@ import { isKisTradingDay, kisConfigured } from '../kisFlow'
 import { surgeConfig, notificationConfig } from './config'
 import { tickSurge, SurgeState, MarketQuote, summarize, themeBoard, candidateFor } from './engine'
 import { fetchQuotes, executionStatus } from './market'
-import { prepareUniverse, expandIntraday, loadUniverse } from './universe'
+import { prepareUniverse, expandIntraday, loadUniverse, backfillHistory } from './universe'
 import { drainNotifications } from './notifications'
 import { contextConfig, runContextWorker } from './context'
 
@@ -116,6 +116,8 @@ export function startSurge() {
     lastPrepareAt = Date.now()
     void isKisTradingDay(date).then(open => open ? prepareUniverse(date) : undefined).catch(() => {})
   }, { timezone: 'Asia/Seoul' })
+  // After the close (every day, weekends included) fill missing 3-year surge history in chunks.
+  cron.schedule('5 16 * * *', () => { void backfillHistory().catch(() => {}) }, { timezone: 'Asia/Seoul' })
   // Restart after the scheduled batch: prepare once, without backdating membership.
   const local = clock(Date.now()), date = local.slice(0, 10)
   if (local.slice(11, 19) >= '08:30:00') {

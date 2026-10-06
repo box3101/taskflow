@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-const m = vi.hoisted(() => ({ batch: null as any, universe: [] as any[], status: {} as Record<string, number>, python: null as any }))
+const m = vi.hoisted(() => ({ history: [] as string[], checkpoints: ['history:2026-10-02'], batch: null as any, universe: [] as any[], status: {} as Record<string, number>, python: null as any }))
 vi.mock('node:child_process', () => ({ execFile: (_bin: string, args: string[], _opts: unknown, cb: any) => {
   const mode = args[1]
   if (m.python && mode === 'prepare') return cb(m.python)
@@ -10,7 +10,8 @@ vi.mock('node:child_process', () => ({ execFile: (_bin: string, args: string[], 
 } }))
 vi.mock('../../prisma', () => {
   const db: any = {
-    surgeBatch: { findUnique: async () => m.batch, upsert: async ({ create }: any) => { m.batch = create } },
+    surgeBatch: { findUnique: async () => m.batch, findMany: async () => m.checkpoints.map(date => ({ date })),
+      upsert: async ({ create }: any) => { if (create.date.startsWith('history:')) m.history.push(create.date.slice(8)); else m.batch = create } },
     surgeHistory: { upsert: async () => {}, findMany: async () => [] },
     themeMap: { createMany: async () => ({ count: 0 }) },
     universeDay: { createMany: async ({ data }: any) => { m.universe.push(...data); return { count: data.length } } },
@@ -18,14 +19,15 @@ vi.mock('../../prisma', () => {
   }
   return { default: db }
 })
+vi.mock('../kisFlow', () => ({ kisConfigured: () => true, isKisTradingDay: async (date: string) => date !== '2026-10-03' }))
 vi.mock('./market', () => ({ securityStatus: async (ticker: string) => {
   m.status[ticker] = (m.status[ticker] || 0) + 1
   if (ticker === 'b') throw new Error('KIS_QUERY_FAILED')
   if (ticker === 'c' && m.status.c === 1) throw new Error('KIS_QUERY_FAILED')
   return { excluded: false }
 }, intradayHigh: async () => 0, turnoverRanking: async () => ({ rows: [] }) }))
-import { batchError, prepareUniverse } from './universe'
-afterEach(() => { vi.unstubAllEnvs(); m.batch = null; m.universe = []; m.status = {}; m.python = null })
+import { backfillHistory, batchError, prepareUniverse } from './universe'
+afterEach(() => { vi.unstubAllEnvs(); m.history = []; m.batch = null; m.universe = []; m.status = {}; m.python = null })
 describe('universe batch', () => {
   it('retries transient status failures and skips only names that stay unavailable', async () => {
     vi.stubEnv('KRX_ID', 'id'); vi.stubEnv('KRX_PW', 'pw'); vi.stubEnv('SURGE_STATUS_DELAY_MS', '0')
@@ -39,6 +41,12 @@ describe('universe batch', () => {
     m.python = Object.assign(new Error('Command failed'), { stderr: 'Traceback\n  File "x"\nRuntimeError: UNIVERSE_DATA_MISSING\n' })
     await expect(prepareUniverse('2026-10-06')).rejects.toThrow('PYTHON_PREPARE:RuntimeError: UNIVERSE_DATA_MISSING')
     expect(m.batch).toMatchObject({ status: 'failed', payload: { error: 'PYTHON_PREPARE:RuntimeError: UNIVERSE_DATA_MISSING' } })
+  })
+  it('backfills missing trading days newest first, skipping weekends, holidays and checkpoints', async () => {
+    vi.stubEnv('KRX_ID', 'id'); vi.stubEnv('KRX_PW', 'pw'); vi.stubEnv('SURGE_BATCH_DELAY_SECONDS', '0')
+    // 10-06 Tue: 10-05 Mon, 10-04/03 weekend, 10-02 already checkpointed, then 10-01, 09-30
+    expect(await backfillHistory('2026-10-06', 3)).toEqual({ saved: 3, failed: 0 })
+    expect(m.history).toEqual(['2026-10-05', '2026-10-01', '2026-09-30'])
   })
   it('marks timeouts', () => {
     expect(batchError('PYTHON_PREPARE', { killed: true, signal: 'SIGTERM' })).toBe('PYTHON_PREPARE:TIMEOUT')

@@ -5,6 +5,7 @@ import prisma from '../../prisma'
 import { clock, Pool } from '../spikeCloudRules'
 import { resolveTheme } from './context'
 import { securityStatus, intradayHigh, turnoverRanking } from './market'
+import { isKisTradingDay, kisConfigured } from '../kisFlow'
 const exec = promisify(execFile)
 export async function pythonBatch(mode: 'prepare' | 'history', date: string) {
   const { stdout } = await exec(process.env.PYTHON_BIN || 'python', [path.resolve(process.cwd(), 'scripts/surge_batch.py'), mode, date], {
@@ -37,6 +38,31 @@ export async function importHistory(date: string) {
       create: { ticker: r.ticker, date, value: BigInt(r.value), chgRate: r.chgRate }, update: { value: BigInt(r.value), chgRate: r.chgRate } })
     await tx.surgeBatch.upsert({ where: { date: `history:${date}` }, create: { date: `history:${date}`, status: 'ready', payload: { rows: data.rows.length } }, update: { status: 'ready', payload: { rows: data.rows.length } } })
   }, { timeout: 60000 })
+}
+let backfilling = false
+// History was only ever filled by a manual backfill command; fill missing completed dates a
+// little each evening (newest first) so the 3-year surge list builds up without console work.
+export async function backfillHistory(today = clock(Date.now()).slice(0, 10), limit = Number(process.env.SURGE_BACKFILL_DAYS || 120)) {
+  if (backfilling || !process.env.KRX_ID || !process.env.KRX_PW || !kisConfigured()) return { saved: 0, failed: 0 }
+  backfilling = true
+  let saved = 0, failed = 0
+  try {
+    const start = new Date(`${today}T00:00:00Z`); start.setUTCFullYear(start.getUTCFullYear() - Number(process.env.SURGE_HISTORY_YEARS || 3))
+    const done = new Set((await prisma.surgeBatch.findMany({ where: { date: { startsWith: 'history:' } }, select: { date: true } })).map(b => b.date.slice(8)))
+    for (let at = Date.parse(today) - 86400000; at >= start.getTime() && saved + failed < limit; at -= 86400000) {
+      const date = new Date(at).toISOString().slice(0, 10), day = new Date(at).getUTCDay()
+      if (day === 0 || day === 6 || done.has(date)) continue
+      try {
+        if (!await isKisTradingDay(date)) continue
+        await importHistory(date); saved++
+      } catch (error) {
+        failed++; console.warn('[surge-history] backfill failed', date, batchError('PYTHON_HISTORY', error))
+      }
+      await sleep(Number(process.env.SURGE_BATCH_DELAY_SECONDS || 1) * 1000)
+    }
+    if (saved || failed) console.log(`[surge-history] backfill saved=${saved} failed=${failed}`)
+    return { saved, failed }
+  } finally { backfilling = false }
 }
 let preparing = false
 export async function prepareUniverse(date = clock(Date.now()).slice(0, 10)) {
