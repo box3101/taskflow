@@ -12,6 +12,24 @@ export async function pythonBatch(mode: 'prepare' | 'history', date: string) {
   })
   return JSON.parse(stdout)
 }
+// Keep only the Python exception class/message line; never store raw stderr.
+export function batchError(stage: string, error: unknown) {
+  const e = error as { killed?: boolean; signal?: string; stderr?: string; message?: string }
+  if (e?.killed || e?.signal === 'SIGTERM') return `${stage}:TIMEOUT`
+  const line = String(e?.stderr || '').trim().split('\n').reverse().find(l => /^\w+(Error|Exception)\b/.test(l.trim()))
+  return `${stage}:${(line || (error instanceof Error ? error.message : 'UNKNOWN')).trim().slice(0, 160)}`
+}
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+// KIS rejects bursts; one transient failure must not discard the whole universe.
+async function statusWithRetry(ticker: string) {
+  const attempts = Number(process.env.SURGE_STATUS_ATTEMPTS || 3), delay = Number(process.env.SURGE_STATUS_DELAY_MS || 80)
+  for (let i = 1; ; i++) {
+    try { return await securityStatus(ticker) } catch (error) {
+      if (i >= attempts) throw error
+      await sleep(delay * 10 * i)
+    }
+  }
+}
 export async function importHistory(date: string) {
   const data = await pythonBatch('history', date)
   await prisma.$transaction(async tx => {
@@ -24,21 +42,29 @@ let preparing = false
 export async function prepareUniverse(date = clock(Date.now()).slice(0, 10)) {
   if (preparing) return
   preparing = true
+  let stage = 'PYTHON_PREPARE'
   try {
     if (!process.env.KRX_ID || !process.env.KRX_PW) throw new Error('KRX_LOGIN_REQUIRED')
     if ((await prisma.surgeBatch.findUnique({ where: { date } }))?.status === 'ready') return
     const data = await pythonBatch('prepare', date)
+    stage = 'PYTHON_HISTORY'
     await importHistory(data.previousDate)
+    stage = 'SECURITY_STATUS'
     const cutoff = new Date(`${date}T00:00:00Z`); cutoff.setUTCFullYear(cutoff.getUTCFullYear() - Number(process.env.SURGE_HISTORY_YEARS || 3))
     const history = await prisma.surgeHistory.findMany({ where: { date: { gte: cutoff.toISOString().slice(0, 10), lt: date } }, distinct: ['ticker'], select: { ticker: true } })
     const historyCodes = new Set(history.map(r => r.ticker)), top = Number(process.env.SURGE_BASE_TOP || 400)
     const securities = data.securities.filter((r: any) => r.rank <= top || historyCodes.has(r.ticker))
     const accepted: any[] = []
+    let unknown = 0
     // Verify security status before inclusion; no guessed eligibility for managed/suspended names.
+    // A name whose status stays unavailable after retries is left out, not assumed eligible.
     for (const r of securities) {
-      if (!(await securityStatus(r.ticker)).excluded) accepted.push(r)
+      try { if (!(await statusWithRetry(r.ticker)).excluded) accepted.push(r) } catch { unknown++ }
+      await sleep(Number(process.env.SURGE_STATUS_DELAY_MS || 80))
     }
-    if (!accepted.length) throw new Error('UNIVERSE_EMPTY')
+    if (!accepted.length) throw new Error(unknown ? 'UNIVERSE_EMPTY_STATUS_UNAVAILABLE' : 'UNIVERSE_EMPTY')
+    const warnings = unknown ? [...data.warnings, `SECURITY_STATUS_UNKNOWN:${unknown}`] : data.warnings
+    stage = 'DB_SAVE'
     await prisma.$transaction(async tx => {
       for (const row of data.maps) await tx.themeMap.upsert({ where: { ticker_themeId_source_validDate: {
         ticker: row.ticker, themeId: row.themeId, source: row.source, validDate: date,
@@ -49,13 +75,14 @@ export async function prepareUniverse(date = clock(Date.now()).slice(0, 10)) {
           themeId: map?.themeId || `UNMAPPED:${r.ticker}`, themeName: map?.themeName || `UNMAPPED:${r.ticker}`, highReady: true }
         await tx.universeDay.upsert({ where: { date_ticker: { date, ticker: r.ticker } }, create, update: {} })
       }
-      await tx.surgeBatch.upsert({ where: { date }, create: { date, status: 'ready', payload: { count: accepted.length, warnings: data.warnings, previousDate: data.previousDate } },
-        update: { status: 'ready', payload: { count: accepted.length, warnings: data.warnings, previousDate: data.previousDate } } })
+      await tx.surgeBatch.upsert({ where: { date }, create: { date, status: 'ready', payload: { count: accepted.length, warnings, previousDate: data.previousDate } },
+        update: { status: 'ready', payload: { count: accepted.length, warnings, previousDate: data.previousDate } } })
     }, { timeout: 120000 })
   } catch (error) {
-    const code = error instanceof Error && error.message === 'KRX_LOGIN_REQUIRED' ? 'KRX_LOGIN_REQUIRED' : 'UNIVERSE_PREPARATION_FAILED'
-    await prisma.surgeBatch.upsert({ where: { date }, create: { date, status: 'failed', payload: { error: code } }, update: { status: 'failed', payload: { error: code } } }).catch(() => {})
-    console.warn('[surge-universe] batch failed; expanded universe not ready')
+    const code = error instanceof Error && error.message === 'KRX_LOGIN_REQUIRED' ? 'KRX_LOGIN_REQUIRED' : batchError(stage, error)
+    const failedAt = new Date().toISOString()
+    await prisma.surgeBatch.upsert({ where: { date }, create: { date, status: 'failed', payload: { error: code, failedAt } }, update: { status: 'failed', payload: { error: code, failedAt } } }).catch(() => {})
+    console.warn('[surge-universe] batch failed; expanded universe not ready:', code)
     throw new Error(code)
   } finally { preparing = false }
 }

@@ -12,7 +12,13 @@ import { drainNotifications } from './notifications'
 import { contextConfig, runContextWorker } from './context'
 
 type Payload = { engine?: SurgeState; quotes: Record<string, MarketQuote>; pool: Pool; broadAt: number; legacy?: ReturnType<typeof tickLeaderBreakout>; ranking?: unknown; error?: string }
-let busy = false, started = false, lastError: string | null = null
+let busy = false, started = false, lastError: string | null = null, lastPrepareAt = 0
+// The 08:30 batch runs once; retry during market hours until the universe is ready.
+export function retryPrepare(date: string, now: number) {
+  if (now - lastPrepareAt < Number(process.env.SURGE_PREPARE_RETRY_MS || 600000)) return
+  lastPrepareAt = now
+  void prepareUniverse(date).catch(() => {})
+}
 export const surgeEnabled = () => process.env.SURGE_ENABLED === 'true' || (process.env.SURGE_ENABLED !== 'false' &&
   (process.env.SPIKE_CLOUD_ENABLED === 'true' || (process.env.SPIKE_CLOUD_ENABLED !== 'false' && !!process.env.RAILWAY_ENVIRONMENT_ID)))
 export function hotCodes(p: Payload, at: number) {
@@ -46,6 +52,7 @@ export async function collectSurge(now = Date.now()) {
       try { p.ranking = await expandIntraday(date, now) } catch { p.ranking = { error: 'RANKING_UNAVAILABLE' } }
       p.pool = await loadUniverse(date)
       p.error = Object.keys(p.pool).length ? undefined : '당일 모집단 배치가 준비되지 않았습니다. 기존 대조군만 관측합니다.'
+      if (!Object.keys(p.pool).length) retryPrepare(date, now)
       Object.assign(p.quotes, await fetchQuotes(Object.keys(p.pool)))
       p.broadAt = Date.now()
     } else Object.assign(p.quotes, await fetchQuotes(hotCodes(p, now)))
@@ -98,11 +105,15 @@ export function startSurge() {
   cron.schedule(`*/${surgeConfig().intervalSeconds} * * * * *`, () => { void collectSurge() }, { timezone: 'Asia/Seoul' })
   cron.schedule('30 8 * * 1-5', () => {
     const date = clock(Date.now()).slice(0, 10)
+    lastPrepareAt = Date.now()
     void isKisTradingDay(date).then(open => open ? prepareUniverse(date) : undefined).catch(() => {})
   }, { timezone: 'Asia/Seoul' })
   // Restart after the scheduled batch: prepare once, without backdating membership.
   const local = clock(Date.now()), date = local.slice(0, 10)
-  if (local.slice(11, 19) >= '08:30:00') void isKisTradingDay(date).then(open => open ? prepareUniverse(date) : undefined).catch(() => {})
+  if (local.slice(11, 19) >= '08:30:00') {
+    lastPrepareAt = Date.now()
+    void isKisTradingDay(date).then(open => open ? prepareUniverse(date) : undefined).catch(() => {})
+  }
   void collectSurge()
 }
 export async function surgeDashboard() {
