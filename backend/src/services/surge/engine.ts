@@ -8,7 +8,7 @@ export type Theme = { id: string; name: string; codes: string[]; turnover: numbe
 export type Trade = { id: string; variant: string; code: string; name: string; theme: string; themeName: string;
   entryAt: number; entry: number; dayPct: number; turnover: number; median: number; themeRank: number;
   lastAt: number; lastPrice: number; status: 'holding' | 'closed'; exitAt?: number; exit?: number;
-  reason?: ExitReason; grossPct?: number; netPct?: number; excluded: boolean; exclusion?: string }
+  reason?: ExitReason; grossPct?: number; netPct?: number; excluded: boolean; exclusion?: string; seenAt?: number }
 export type Event = { id: string; tradeId: string; date: string; variant: string; at: number;
   kind: 'ENTRY' | ExitReason; trade: Trade; next?: Candidate; previousPct?: number;
   themeRank?: number; topTheme?: string; blockedReason?: string }
@@ -118,7 +118,10 @@ export function tickSurge(prior: SurgeState | undefined, pool: Pool, quotes: Rec
       const q = quotes[trade.code]
       // A missing price path cannot be scored as if stop-loss monitoring had continued.
       const auction = time(trade.lastAt) >= '15:19:30' && tm <= '15:32:00'
-      if ((gap || at - trade.lastAt > config.gapMs) && !auction) {
+      // Exclude only when our observation stopped (collector gap or no fresh receipt), not when the
+      // stock itself had no trade for a while (VI single-price auction, thin trading).
+      if (q && Number.isFinite(q.receivedAt) && q.receivedAt <= at && at - q.receivedAt <= config.executionAgeMs) trade.seenAt = Math.max(trade.seenAt || 0, q.receivedAt)
+      if ((gap || at - (trade.seenAt ?? trade.lastAt) > config.gapMs) && !auction) {
         trade.excluded = true; trade.exclusion = 'OBSERVATION_GAP'
       }
       if (!validQuote(q, at, config.executionAgeMs) || q.halted || q.vi || q.sourceAt <= trade.lastAt) continue
@@ -147,7 +150,7 @@ export function tickSurge(prior: SurgeState | undefined, pool: Pool, quotes: Rec
       arm.confirmed[theme] = c.code
       const q = quotes[c.code], id = `${date}:${arm.variant}:${arm.trades.length + 1}`
       const trade: Trade = { id, variant: arm.variant, ...c, entryAt: at, entry: q.price, lastAt: q.sourceAt,
-        lastPrice: q.price, status: 'holding', excluded: false }
+        lastPrice: q.price, status: 'holding', excluded: false, seenAt: at }
       arm.trades.push(trade)
       events.push({ id: `${id}:ENTRY`, tradeId: id, date, variant: arm.variant, at, kind: 'ENTRY', trade: { ...trade } })
     }

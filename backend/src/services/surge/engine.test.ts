@@ -88,6 +88,15 @@ describe('100억 leader rotation (pure, no orders or LLM)', () => {
     expect(result.state.arms[0].trades[0].excluded).toBe(true)
     expect(result.events).toHaveLength(0)
   })
+  it('keeps scoring a holding whose stock has no new trades while quotes keep arriving (VI)', () => {
+    let state = held()
+    const frozen = base + 180000
+    for (let sec = 190; sec <= 300; sec += 10) {
+      const at = base + sec * 1000, qs = quotes(at); qs.a.sourceAt = frozen
+      state = tickSurge(state, pool, qs, at, config()).state
+    }
+    expect(state.arms[0].trades[0]).toMatchObject({ status: 'holding', excluded: false })
+  })
   it('stops immediately while challenger timer is pending', () => {
     const at = base + 190000, qs = quotes(at, 'b'); qs.a.price = 96
     const result = tickSurge(held(), pool, qs, at, config())

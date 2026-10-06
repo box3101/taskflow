@@ -12,7 +12,6 @@ import re
 import sys
 import time
 import urllib.request
-from html.parser import HTMLParser
 
 
 def excluded_name(name):
@@ -28,61 +27,55 @@ def surge_rows(frame, date, min_value, min_rate):
             if float(row["거래대금"]) >= min_value and float(row["등락률"]) >= min_rate]
 
 
-class Links(HTMLParser):
-    def __init__(self):
-        super().__init__()
-        self.links, self.href, self.text = [], None, []
-
-    def handle_starttag(self, tag, attrs):
-        if tag == "a":
-            self.href = dict(attrs).get("href", "")
-            self.text = []
-
-    def handle_data(self, data):
-        if self.href is not None:
-            self.text.append(data)
-
-    def handle_endtag(self, tag):
-        if tag == "a" and self.href is not None:
-            self.links.append((self.href, "".join(self.text).strip()))
-            self.href = None
+NAVER_API = "https://m.stock.naver.com/api/stocks/theme"
 
 
-def naver_links(url):
-    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(request, timeout=15) as response:
-        text = response.read().decode("euc-kr", errors="replace")
-    parser = Links()
-    parser.feed(text)
-    return parser.links
+def naver_json(url, attempts=3):
+    # finance.naver.com theme pages now redirect to a JS-rendered app; use its JSON API.
+    for attempt in range(1, attempts + 1):
+        try:
+            request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(request, timeout=15) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except Exception:
+            if attempt == attempts:
+                raise
+            time.sleep(attempt * 2)
 
 
-def theme_maps(date):
+def paged(url, key, fetch, page_size=100, max_pages=50):
+    rows = []
+    for page in range(1, max_pages + 1):
+        data = fetch(f"{url}?page={page}&pageSize={page_size}")
+        items = data.get(key) or []
+        rows.extend(items)
+        total = data.get("totalCount")
+        if not items or len(items) < page_size or (isinstance(total, int) and len(rows) >= total):
+            break
+    return rows
+
+
+def theme_maps(date, fetch=naver_json, delay=None):
+    """Returns (maps, failed theme count). One failing theme never discards the others."""
     if os.environ.get("GITHUB_ACTIONS") == "true":
         raise RuntimeError("NAVER_REQUIRES_LOCAL_OR_SERVER")
-    delay = float(os.environ.get("SURGE_BATCH_DELAY_SECONDS", "1"))
-    themes = {}
-    max_pages = int(os.environ.get("SURGE_NAVER_THEME_PAGES", "20"))
-    for page in range(1, max_pages + 1):
-        links = naver_links(f"https://finance.naver.com/sise/theme.naver?page={page}")
-        before = len(themes)
-        for href, name in links:
-            match = re.search(r"sise_group_detail.naver\?type=theme&no=(\d+)", href)
-            if match and name:
-                themes[match.group(1)] = name
-        if len(themes) == before:
-            break
-        time.sleep(delay)
+    delay = float(os.environ.get("SURGE_BATCH_DELAY_SECONDS", "1")) if delay is None else delay
+    themes = {str(g["no"]): g["name"] for g in paged(NAVER_API, "groups", fetch) if g.get("no") and g.get("name")}
     if not themes:
         raise RuntimeError("NAVER_THEME_MAP_EMPTY")
-    result = []
+    result, failed = [], 0
     for identifier, name in themes.items():
-        for href, _ in naver_links(f"https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no={identifier}"):
-            match = re.search(r"/item/main.naver\?code=(\d{6})", href)
-            if match:
-                result.append({"ticker": match.group(1), "themeId": f"NAVER:{identifier}", "themeName": name, "source": "NAVER", "validDate": date})
+        try:
+            for item in paged(f"{NAVER_API}/{identifier}", "stocks", fetch):
+                code = str(item.get("itemCode") or "")
+                if re.fullmatch(r"\d{6}", code):
+                    result.append({"ticker": code, "themeId": f"NAVER:{identifier}", "themeName": name, "source": "NAVER", "validDate": date})
+        except Exception:
+            failed += 1
         time.sleep(delay)
-    return list({(r["ticker"], r["themeId"]): r for r in result}.values())
+    if not result:
+        raise RuntimeError("NAVER_THEME_STOCKS_EMPTY")
+    return list({(r["ticker"], r["themeId"]): r for r in result}.values()), failed
 
 
 def run(args):
@@ -105,9 +98,11 @@ def run(args):
             securities.append({"ticker": code, "name": name, "rank": len(securities) + 1})
     maps, warnings = [], []
     try:
-        maps = theme_maps(args.date)
+        maps, failed = theme_maps(args.date)
+        if failed:
+            warnings.append(f"NAVER_THEME_PARTIAL:{failed}")
     except Exception as error:
-        warnings.append(type(error).__name__ + ":NAVER_MAP_FAILED")
+        warnings.append(type(error).__name__ + ":NAVER_MAP_FAILED:" + str(error)[:80])
     for market in ("KOSPI", "KOSDAQ"):
         try:
             sectors = stock.get_market_sector_classifications(previous, market)

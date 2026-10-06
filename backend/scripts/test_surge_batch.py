@@ -1,6 +1,6 @@
 import unittest
 import pandas as pd
-from surge_batch import excluded_name, surge_rows, Links
+from surge_batch import excluded_name, surge_rows, theme_maps
 
 
 class BatchTests(unittest.TestCase):
@@ -17,10 +17,22 @@ class BatchTests(unittest.TestCase):
             self.assertTrue(excluded_name(name))
         self.assertFalse(excluded_name("삼성전자"))
 
-    def test_theme_html(self):
-        parser = Links()
-        parser.feed('<a href="/sise/sise_group_detail.naver?type=theme&amp;no=1"><b>조선</b></a>')
-        self.assertEqual(parser.links, [("/sise/sise_group_detail.naver?type=theme&no=1", "조선")])
+    def test_theme_api_pages_and_partial_failure(self):
+        def fetch(url):
+            if url.startswith("https://m.stock.naver.com/api/stocks/theme?"):
+                page = int(url.split("page=")[1].split("&")[0])
+                groups = [{"no": 1, "name": "조선"}, {"no": 2, "name": "원전"}] if page == 1 else []
+                return {"groups": groups, "totalCount": 2}
+            if "/theme/2?" in url:
+                raise TimeoutError()
+            return {"stocks": [{"itemCode": "009540"}, {"itemCode": "ABC"}], "totalCount": 2}
+        maps, failed = theme_maps("2026-10-07", fetch, delay=0)
+        self.assertEqual(failed, 1)
+        self.assertEqual(maps, [{"ticker": "009540", "themeId": "NAVER:1", "themeName": "조선", "source": "NAVER", "validDate": "2026-10-07"}])
+
+    def test_empty_theme_list_fails(self):
+        with self.assertRaises(RuntimeError):
+            theme_maps("2026-10-07", lambda url: {"groups": []}, delay=0)
 
 
 if __name__ == '__main__':
