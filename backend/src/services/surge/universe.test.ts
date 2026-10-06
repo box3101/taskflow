@@ -12,8 +12,8 @@ vi.mock('../../prisma', () => {
   const db: any = {
     surgeBatch: { findUnique: async () => m.batch, upsert: async ({ create }: any) => { m.batch = create } },
     surgeHistory: { upsert: async () => {}, findMany: async () => [] },
-    themeMap: { upsert: async () => {} },
-    universeDay: { upsert: async ({ create }: any) => { m.universe.push(create) } },
+    themeMap: { createMany: async () => ({ count: 0 }) },
+    universeDay: { createMany: async ({ data }: any) => { m.universe.push(...data); return { count: data.length } } },
     $transaction: async (fn: any) => fn(db),
   }
   return { default: db }

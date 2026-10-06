@@ -65,16 +65,21 @@ export async function prepareUniverse(date = clock(Date.now()).slice(0, 10)) {
     if (!accepted.length) throw new Error(unknown ? 'UNIVERSE_EMPTY_STATUS_UNAVAILABLE' : 'UNIVERSE_EMPTY')
     const warnings = unknown ? [...data.warnings, `SECURITY_STATUS_UNKNOWN:${unknown}`] : data.warnings
     stage = 'DB_SAVE'
+    const mapsByTicker = new Map<string, any[]>()
+    for (const m of data.maps) {
+      if (!mapsByTicker.has(m.ticker)) mapsByTicker.set(m.ticker, [])
+      mapsByTicker.get(m.ticker)!.push(m)
+    }
+    const universe = accepted.map(r => {
+      const map = resolveTheme(mapsByTicker.get(r.ticker) || [], date)
+      return { date, ticker: r.ticker, name: r.name, source: 'BASE' as const, addedAt: new Date(), rankAtAdd: r.rank,
+        themeId: map?.themeId || `UNMAPPED:${r.ticker}`, themeName: map?.themeName || `UNMAPPED:${r.ticker}`, highReady: true }
+    })
+    // Bulk insert (ON CONFLICT DO NOTHING): row-by-row upserts of thousands of maps exceeded the transaction timeout.
+    const chunk = 1000
     await prisma.$transaction(async tx => {
-      for (const row of data.maps) await tx.themeMap.upsert({ where: { ticker_themeId_source_validDate: {
-        ticker: row.ticker, themeId: row.themeId, source: row.source, validDate: date,
-      } }, create: row, update: {} })
-      for (const r of accepted) {
-        const map = resolveTheme(data.maps.filter((m: any) => m.ticker === r.ticker), date)
-        const create = { date, ticker: r.ticker, name: r.name, source: 'BASE' as const, addedAt: new Date(), rankAtAdd: r.rank,
-          themeId: map?.themeId || `UNMAPPED:${r.ticker}`, themeName: map?.themeName || `UNMAPPED:${r.ticker}`, highReady: true }
-        await tx.universeDay.upsert({ where: { date_ticker: { date, ticker: r.ticker } }, create, update: {} })
-      }
+      for (let i = 0; i < data.maps.length; i += chunk) await tx.themeMap.createMany({ data: data.maps.slice(i, i + chunk), skipDuplicates: true })
+      for (let i = 0; i < universe.length; i += chunk) await tx.universeDay.createMany({ data: universe.slice(i, i + chunk), skipDuplicates: true })
       await tx.surgeBatch.upsert({ where: { date }, create: { date, status: 'ready', payload: { count: accepted.length, warnings, previousDate: data.previousDate } },
         update: { status: 'ready', payload: { count: accepted.length, warnings, previousDate: data.previousDate } } })
     }, { timeout: 120000 })
