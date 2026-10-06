@@ -46,6 +46,7 @@ model UniverseDay {
   themeName String
   highReady Boolean @default(false)
   dayHigh   Float?
+  high60    Float?
   @@id([date, ticker])
   @@map("surge_universe_days")
 }

@@ -78,6 +78,19 @@ def theme_maps(date, fetch=naver_json, delay=None):
     return list({(r["ticker"], r["themeId"]): r for r in result}.values()), failed
 
 
+def recent_highs(frames):
+    """Max daily high per ticker over the given completed-day frames (each indexed by ticker)."""
+    highs = {}
+    for frame in frames:
+        if "고가" not in frame.columns:
+            continue
+        for code, value in frame["고가"].items():
+            value = float(value)
+            if value > 0 and value > highs.get(str(code), 0):
+                highs[str(code)] = value
+    return highs
+
+
 def run(args):
     from pykrx import stock
     if args.mode == "history":
@@ -114,7 +127,21 @@ def run(args):
             warnings.append(f"SECTOR_MAP_FAILED:{market}")
     if not maps:
         raise RuntimeError("THEME_MAPPING_REQUIRED")
-    return {"date": args.date, "previousDate": f"{previous[:4]}-{previous[4:6]}-{previous[6:]}", "securities": securities, "maps": maps, "warnings": warnings}
+    # Daily-chart position for the checklist (near/at the N-day high). Failure leaves highs empty,
+    # which blocks the high condition rather than guessing it.
+    highs = {}
+    try:
+        days = int(os.environ.get("SURGE_HIGH_DAYS", "60"))
+        start = (dt.datetime.strptime(previous, "%Y%m%d") - dt.timedelta(days=days * 2)).strftime("%Y%m%d")
+        dates = [d.strftime("%Y%m%d") for d in stock.get_previous_business_days(fromdate=start, todate=previous)][-days:]
+        wanted = {s["ticker"] for s in securities}
+        frames = [frame] + [stock.get_market_ohlcv(d, market="ALL") for d in dates if d != previous]
+        highs = {k: v for k, v in recent_highs(frames).items() if k in wanted}
+        if not highs:
+            warnings.append("HIGH_DATA_EMPTY")
+    except Exception as error:
+        warnings.append(type(error).__name__ + ":HIGH_DATA_FAILED")
+    return {"date": args.date, "previousDate": f"{previous[:4]}-{previous[4:6]}-{previous[6:]}", "securities": securities, "maps": maps, "warnings": warnings, "highs": highs}
 
 
 if __name__ == "__main__":

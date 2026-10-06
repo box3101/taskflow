@@ -20,11 +20,11 @@ vi.mock('./market', () => ({ fetchQuotes: async (codes: string[]) => Object.from
 }])), executionStatus: async () => ({ vi: false, limitUp: false, halted: false, executionUnknown: false }) }))
 vi.mock('./notifications', () => ({ drainNotifications: async () => {} }))
 vi.mock('./context', () => ({ runContextWorker: async () => {}, contextConfig: () => ({}) }))
-import { collectSurge } from './service'
+import { collectSurge, updateMinuteValues } from './service'
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); m.saved = null; m.writes = 0; m.events = [] })
 describe('collector persistence', () => {
   it('persists every successive tick and emits a single durable entry after restart-style reloads', async () => {
-    vi.stubEnv('SURGE_ENABLED', 'true'); vi.stubEnv('SURGE_LEGACY_ENABLED', 'false')
+    vi.stubEnv('SURGE_ENABLED', 'true'); vi.stubEnv('SURGE_LEGACY_ENABLED', 'false'); vi.stubEnv('SURGE_CHECKLIST', 'false')
     vi.spyOn(Date, 'now').mockImplementation(() => m.now)
     const base = Date.parse('2026-10-06T09:05:00+09:00')
     for (let sec = 0; sec <= 180; sec += 10) { m.now = base + sec * 1000; await collectSurge(m.now) }
@@ -34,5 +34,16 @@ describe('collector persistence', () => {
     expect(m.events.map(e => e.kind)).toEqual(['ENTRY'])
     m.now += 10000; await collectSurge(m.now)
     expect(m.events).toHaveLength(1)
+  })
+})
+describe('last-minute turnover', () => {
+  it('uses the newest sample at least 60s old and stays unknown before that', () => {
+    const p: any = { quotes: { a: { value: 10e9, receivedAt: 0 } }, pool: {}, broadAt: 0 }
+    updateMinuteValues(p, 0); expect(p.quotes.a.minuteValue).toBeUndefined()
+    p.quotes.a = { value: 13e9, receivedAt: 30_000 }; updateMinuteValues(p, 30_000)
+    p.quotes.a = { value: 20e9, receivedAt: 70_000 }; updateMinuteValues(p, 70_000)
+    expect(p.quotes.a.minuteValue).toBe(10e9)
+    p.quotes.a = { value: 26e9, receivedAt: 95_000 }; updateMinuteValues(p, 95_000)
+    expect(p.quotes.a.minuteValue).toBe(13e9)
   })
 })

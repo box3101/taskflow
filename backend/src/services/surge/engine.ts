@@ -2,7 +2,9 @@ import { clock, median, Pool, Quote } from '../spikeCloudRules'
 import { SurgeConfig, variantId } from './config'
 
 export type ExitReason = 'STOP_LOSS' | 'THEME_DROP' | 'LEADER_CHANGE' | 'CLOSE'
-export type MarketQuote = Quote & { vi?: boolean; limitUp?: boolean; executionUnknown?: boolean }
+export type MarketQuote = Quote & { vi?: boolean; limitUp?: boolean; executionUnknown?: boolean; minuteValue?: number }
+// Pool entries carry checklist inputs prepared from the daily batch and surge history.
+export type SurgePool = Record<string, Pool[string] & { high60?: number; surges?: number; hotTheme?: boolean; historyReady?: boolean }>
 export type Candidate = { code: string; name: string; theme: string; themeName: string; dayPct: number; turnover: number; median: number; themeRank: number }
 export type Theme = { id: string; name: string; codes: string[]; turnover: number; median: number; rank: number }
 export type Trade = { id: string; variant: string; code: string; name: string; theme: string; themeName: string;
@@ -32,7 +34,7 @@ export function boardQuoteIssue(q: MarketQuote | undefined, at: number, age: num
   if (q.sourceAt > at || clock(q.sourceAt).slice(0, 10) !== clock(at).slice(0, 10)) return 'NOT_TODAY'
   return null
 }
-export function themeBoard(pool: Pool, quotes: Record<string, MarketQuote>, at: number, config: SurgeConfig) {
+export function themeBoard(pool: SurgePool, quotes: Record<string, MarketQuote>, at: number, config: SurgeConfig) {
   const groups = new Map<string, string[]>()
   for (const [code, p] of Object.entries(pool)) {
     // One primary daily mapping per stock avoids double-counting turnover.
@@ -47,14 +49,26 @@ export function themeBoard(pool: Pool, quotes: Record<string, MarketQuote>, at: 
   const complete = Object.keys(pool).length > 0 && !issues.length
   const themes: Theme[] = [...groups].flatMap(([id, codes]) => {
     if (codes.some(c => bad.has(c))) return []
+    // Checklist: only recently hot themes compete for the top slots (once surge history exists).
+    if (config.checklist && pool[codes[0]].historyReady && !pool[codes[0]].hotTheme) return []
     return [{ id, name: id.startsWith('UNMAPPED:') ? `미분류 · ${pool[codes[0]].name}` : id, codes,
       turnover: codes.reduce((s, c) => s + quotes[c].value!, 0), median: median(codes.map(c => quotes[c].dayPct)), rank: 0 }]
   }).sort((a, b) => b.turnover - a.turnover || a.id.localeCompare(b.id))
   themes.forEach((t, i) => { t.rank = i + 1 })
   return { themes, complete, missing: { count: issues.length, sample: issues.slice(0, 20) } }
 }
-export function candidateFor(theme: Theme, pool: Pool, quotes: Record<string, MarketQuote>, gate: number, incumbent?: string): Candidate | undefined {
-  const qualified = theme.codes.filter(c => !quotes[c].halted && quotes[c].value! >= gate)
+// Checklist (when config.checklist): last-minute turnover, daily-chart high position, and a
+// record of leading surges. Unknown inputs fail the check instead of passing it.
+export function checklistIssue(code: string, pool: SurgePool, q: MarketQuote, config?: Partial<SurgeConfig>) {
+  if (!config?.checklist) return null
+  const p = pool[code]
+  if (!(Number(q.minuteValue) >= config.minuteGateWon!)) return 'MINUTE_TURNOVER'
+  if (!(p.high60! > 0) || q.price < p.high60! * (1 - config.nearHighPct! / 100)) return 'NOT_NEAR_HIGH'
+  if (p.historyReady && (p.surges || 0) < config.leaderMin!) return 'NO_LEADER_HISTORY'
+  return null
+}
+export function candidateFor(theme: Theme, pool: SurgePool, quotes: Record<string, MarketQuote>, gate: number, incumbent?: string, config?: Partial<SurgeConfig>): Candidate | undefined {
+  const qualified = theme.codes.filter(c => !quotes[c].halted && quotes[c].value! >= gate && !checklistIssue(c, pool, quotes[c], config))
     .sort((a, b) => quotes[b].dayPct - quotes[a].dayPct || Number(b === incumbent) - Number(a === incumbent) || a.localeCompare(b))
   const code = qualified[0]
   if (!code) return
@@ -69,7 +83,7 @@ export function blockedExecution(q: MarketQuote | undefined, at: number, config:
   if (q.limitUp || q.dayPct >= config.limitPct) return 'LIMIT_UP'
   return null
 }
-export function tickSurge(prior: SurgeState | undefined, pool: Pool, quotes: Record<string, MarketQuote>, at: number, config: SurgeConfig) {
+export function tickSurge(prior: SurgeState | undefined, pool: SurgePool, quotes: Record<string, MarketQuote>, at: number, config: SurgeConfig) {
   const date = clock(at).slice(0, 10)
   const state: SurgeState = prior?.date === date ? prior : { version: config.version, date, config,
     lastAt: 0, arms: [...new Set([config.gateWon, ...config.comparisonGates])].map(gate => ({
@@ -88,7 +102,7 @@ export function tickSurge(prior: SurgeState | undefined, pool: Pool, quotes: Rec
     arm.blocked = {}
     const eligible = new Map<string, Candidate>()
     if (board.complete && monitoring) for (const theme of board.themes.filter(t => t.rank <= config.topThemes)) {
-      const c = candidateFor(theme, pool, quotes, arm.gate, arm.timers[theme.id]?.code || arm.confirmed[theme.id])
+      const c = candidateFor(theme, pool, quotes, arm.gate, arm.timers[theme.id]?.code || arm.confirmed[theme.id], config)
       if (!c || !(c.dayPct > theme.median || (theme.codes.length === 1 && config.singleton))) continue
       if (!validQuote(quotes[c.code], at, config.executionAgeMs)) continue
       eligible.set(theme.id, c)

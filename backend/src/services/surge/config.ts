@@ -7,7 +7,10 @@ const number = (key: string, fallback: number, min = 0) => {
 }
 export function surgeConfig() {
   return {
-    version: 'surge-rotation-v1', gateWon: number('SURGE_GATE_WON', 10_000_000_000),
+    version: process.env.SURGE_CHECKLIST === 'false' ? 'surge-rotation-v1' : 'surge-rotation-v2-checklist', gateWon: number('SURGE_GATE_WON', 10_000_000_000),
+    // Checklist: hot theme, last-minute turnover, near the N-day daily high, prior leading surges.
+    checklist: process.env.SURGE_CHECKLIST !== 'false', minuteGateWon: number('SURGE_MINUTE_GATE_WON', 5_000_000_000),
+    nearHighPct: number('SURGE_NEAR_HIGH_PCT', 2), leaderMin: number('SURGE_LEADER_MIN', 1),
     stableMs: number('SURGE_STABLE_SECONDS', 180, 1) * 1000,
     topThemes: number('SURGE_TOP_THEMES', 3, 1), maxEntries: number('SURGE_MAX_ENTRIES', 3, 1),
     start: process.env.SURGE_START || '09:05:00', end: process.env.SURGE_ENTRY_END || '15:20:00',

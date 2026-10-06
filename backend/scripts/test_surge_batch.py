@@ -1,6 +1,6 @@
 import unittest
 import pandas as pd
-from surge_batch import excluded_name, surge_rows, theme_maps
+from surge_batch import excluded_name, surge_rows, theme_maps, recent_highs
 
 
 class BatchTests(unittest.TestCase):
@@ -29,6 +29,11 @@ class BatchTests(unittest.TestCase):
         maps, failed = theme_maps("2026-10-07", fetch, delay=0)
         self.assertEqual(failed, 1)
         self.assertEqual(maps, [{"ticker": "009540", "themeId": "NAVER:1", "themeName": "조선", "source": "NAVER", "validDate": "2026-10-07"}])
+
+    def test_recent_highs(self):
+        a = pd.DataFrame({"고가": [100, 50]}, index=["000001", "000002"])
+        b = pd.DataFrame({"고가": [120, 0]}, index=["000001", "000002"])
+        self.assertEqual(recent_highs([a, b, pd.DataFrame({"종가": [1]})]), {"000001": 120.0, "000002": 50.0})
 
     def test_empty_theme_list_fails(self):
         with self.assertRaises(RuntimeError):

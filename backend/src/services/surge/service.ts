@@ -1,17 +1,17 @@
 import cron from 'node-cron'
 import prisma from '../../prisma'
-import { clock, Pool } from '../spikeCloudRules'
+import { clock } from '../spikeCloudRules'
 import { strategyPool as legacyPool } from '../leaderUniverse'
 import { tickLeaderBreakout, breakoutSummary } from '../leaderBreakout'
 import { isKisTradingDay, kisConfigured } from '../kisFlow'
 import { surgeConfig, notificationConfig } from './config'
-import { tickSurge, SurgeState, MarketQuote, summarize, themeBoard, candidateFor } from './engine'
+import { tickSurge, SurgeState, SurgePool, MarketQuote, summarize, themeBoard, candidateFor } from './engine'
 import { fetchQuotes, executionStatus } from './market'
 import { prepareUniverse, expandIntraday, loadUniverse, backfillHistory } from './universe'
 import { drainNotifications } from './notifications'
 import { contextConfig, runContextWorker } from './context'
 
-type Payload = { engine?: SurgeState; quotes: Record<string, MarketQuote>; pool: Pool; broadAt: number; legacy?: ReturnType<typeof tickLeaderBreakout>; ranking?: unknown; error?: string; inactive?: string[] }
+type Payload = { engine?: SurgeState; quotes: Record<string, MarketQuote>; pool: SurgePool; broadAt: number; trail?: Record<string, [number, number][]>; legacy?: ReturnType<typeof tickLeaderBreakout>; ranking?: unknown; error?: string; inactive?: string[] }
 let busy = false, started = false, lastError: string | null = null, lastPrepareAt = 0
 // The 08:30 batch runs once; retry during market hours until the universe is ready.
 export function retryPrepare(date: string, now: number) {
@@ -22,14 +22,28 @@ export function retryPrepare(date: string, now: number) {
 export const surgeEnabled = () => process.env.SURGE_ENABLED === 'true' || (process.env.SURGE_ENABLED !== 'false' &&
   (process.env.SPIKE_CLOUD_ENABLED === 'true' || (process.env.SPIKE_CLOUD_ENABLED !== 'false' && !!process.env.RAILWAY_ENVIRONMENT_ID)))
 // Names with no usable quote today are left out of the board instead of blocking it.
-export const activePool = (p: Payload): Pool => p.inactive?.length
+export const activePool = (p: Payload): SurgePool => p.inactive?.length
   ? Object.fromEntries(Object.entries(p.pool).filter(([code]) => !p.inactive!.includes(code))) : p.pool
+// Last-minute turnover from cumulative turnover samples: value now minus the newest sample that is
+// at least 60s old (and no older than 150s). Without such a sample it stays unknown.
+export function updateMinuteValues(p: Payload, at: number) {
+  const trail = p.trail || (p.trail = {})
+  for (const [code, q] of Object.entries(p.quotes)) {
+    if (!Number.isFinite(q.value) || !Number.isFinite(q.receivedAt)) continue
+    const rows = (trail[code] || []).filter(([t]) => at - t <= 150_000)
+    if (!rows.length || rows[rows.length - 1][0] < q.receivedAt) rows.push([q.receivedAt, q.value!])
+    trail[code] = rows
+    const base = [...rows].reverse().find(([t]) => q.receivedAt - t >= 60_000)
+    q.minuteValue = base && q.value! >= base[1] ? q.value! - base[1] : undefined
+  }
+  for (const code of Object.keys(trail)) if (!p.quotes[code]) delete trail[code]
+}
 export function hotCodes(p: Payload, at: number) {
   const config = p.engine?.config || surgeConfig(), pool = activePool(p), board = themeBoard(pool, p.quotes, at, config)
   const held = p.engine?.arms.flatMap(a => a.trades.filter(t => t.status === 'holding').map(t => t.code)) || []
   const leaders = board.themes.filter(t => t.rank <= config.topThemes).flatMap(theme =>
     [...new Set([config.gateWon, ...config.comparisonGates])].flatMap(gate => {
-      const c = candidateFor(theme, pool, p.quotes, gate); return c ? [c.code] : []
+      const c = candidateFor(theme, pool, p.quotes, gate, undefined, config); return c ? [c.code] : []
     }))
   const peers = board.themes.filter(t => t.rank <= config.topThemes).flatMap(t => t.codes)
     .sort((a, b) => p.quotes[b].dayPct - p.quotes[a].dayPct)
@@ -80,6 +94,7 @@ export async function collectSurge(now = Date.now()) {
     // from the expanded universe, which is never polled wholesale every ten seconds.
     const legacyQuotes = process.env.SURGE_LEGACY_ENABLED === 'false' ? null : await fetchQuotes(Object.keys(legacyPool))
     const capturedAt = Date.now()
+    updateMinuteValues(p, capturedAt)
     const result = tickSurge(p.engine, activePool(p), p.quotes, capturedAt, config)
     p.engine = result.state
     if (legacyQuotes) p.legacy = tickLeaderBreakout(p.legacy, legacyPool, legacyQuotes, capturedAt)

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-const m = vi.hoisted(() => ({ history: [] as string[], checkpoints: ['history:2026-10-02'], batch: null as any, universe: [] as any[], status: {} as Record<string, number>, python: null as any }))
+const m = vi.hoisted(() => ({ rows: [] as any[], surgeRows: [] as any[], history: [] as string[], checkpoints: ['history:2026-10-02'], batch: null as any, universe: [] as any[], status: {} as Record<string, number>, python: null as any }))
 vi.mock('node:child_process', () => ({ execFile: (_bin: string, args: string[], _opts: unknown, cb: any) => {
   const mode = args[1]
   if (m.python && mode === 'prepare') return cb(m.python)
@@ -12,9 +12,9 @@ vi.mock('../../prisma', () => {
   const db: any = {
     surgeBatch: { findUnique: async () => m.batch, findMany: async () => m.checkpoints.map(date => ({ date })),
       upsert: async ({ create }: any) => { if (create.date.startsWith('history:')) m.history.push(create.date.slice(8)); else m.batch = create } },
-    surgeHistory: { upsert: async () => {}, findMany: async () => [] },
+    surgeHistory: { upsert: async () => {}, findMany: async () => m.surgeRows },
     themeMap: { createMany: async () => ({ count: 0 }) },
-    universeDay: { createMany: async ({ data }: any) => { m.universe.push(...data); return { count: data.length } } },
+    universeDay: { findMany: async () => m.rows, createMany: async ({ data }: any) => { m.universe.push(...data); return { count: data.length } } },
     $transaction: async (fn: any) => fn(db),
   }
   return { default: db }
@@ -26,7 +26,7 @@ vi.mock('./market', () => ({ securityStatus: async (ticker: string) => {
   if (ticker === 'c' && m.status.c === 1) throw new Error('KIS_QUERY_FAILED')
   return { excluded: false }
 }, intradayHigh: async () => 0, turnoverRanking: async () => ({ rows: [] }) }))
-import { backfillHistory, batchError, prepareUniverse } from './universe'
+import { backfillHistory, batchError, loadUniverse, prepareUniverse } from './universe'
 afterEach(() => { vi.unstubAllEnvs(); m.history = []; m.batch = null; m.universe = []; m.status = {}; m.python = null })
 describe('universe batch', () => {
   it('retries transient status failures and skips only names that stay unavailable', async () => {
@@ -47,6 +47,15 @@ describe('universe batch', () => {
     // 10-06 Tue: 10-05 Mon, 10-04/03 weekend, 10-02 already checkpointed, then 10-01, 09-30
     expect(await backfillHistory('2026-10-06', 3)).toEqual({ saved: 3, failed: 0 })
     expect(m.history).toEqual(['2026-10-05', '2026-10-01', '2026-09-30'])
+  })
+  it('marks hot themes and counts leading surges from history', async () => {
+    m.rows = [{ ticker: 'a', name: 'A', themeName: '태양광', high60: 100 }, { ticker: 'b', name: 'B', themeName: '태양광', high60: null }, { ticker: 'c', name: 'C', themeName: '조선', high60: 50 }]
+    m.surgeRows = [{ ticker: 'a', date: '2026-10-02' }, { ticker: 'b', date: '2026-09-30' }, { ticker: 'c', date: '2026-08-01' }]
+    const pool = await loadUniverse('2026-10-06')
+    expect(pool.a).toEqual({ name: 'A', themes: ['태양광'], high60: 100, surges: 1, hotTheme: true, historyReady: true })
+    expect(pool.b.high60).toBeUndefined()
+    expect(pool.c).toMatchObject({ surges: 1, hotTheme: false })
+    m.rows = []; m.surgeRows = []
   })
   it('marks timeouts', () => {
     expect(batchError('PYTHON_PREPARE', { killed: true, signal: 'SIGTERM' })).toBe('PYTHON_PREPARE:TIMEOUT')

@@ -2,7 +2,8 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import path from 'node:path'
 import prisma from '../../prisma'
-import { clock, Pool } from '../spikeCloudRules'
+import { clock } from '../spikeCloudRules'
+import type { SurgePool } from './engine'
 import { resolveTheme } from './context'
 import { securityStatus, intradayHigh, turnoverRanking } from './market'
 import { isKisTradingDay, kisConfigured } from '../kisFlow'
@@ -99,7 +100,8 @@ export async function prepareUniverse(date = clock(Date.now()).slice(0, 10)) {
     const universe = accepted.map(r => {
       const map = resolveTheme(mapsByTicker.get(r.ticker) || [], date)
       return { date, ticker: r.ticker, name: r.name, source: 'BASE' as const, addedAt: new Date(), rankAtAdd: r.rank,
-        themeId: map?.themeId || `UNMAPPED:${r.ticker}`, themeName: map?.themeName || `UNMAPPED:${r.ticker}`, highReady: true }
+        themeId: map?.themeId || `UNMAPPED:${r.ticker}`, themeName: map?.themeName || `UNMAPPED:${r.ticker}`, highReady: true,
+        high60: Number(data.highs?.[r.ticker]) > 0 ? Number(data.highs[r.ticker]) : null }
     })
     // Bulk insert (ON CONFLICT DO NOTHING): row-by-row upserts of thousands of maps exceeded the transaction timeout.
     const chunk = 1000
@@ -136,7 +138,22 @@ export async function expandIntraday(date: string, at: number) {
   }
   return { count: ranked.rows.length, complete: ranked.complete, target: ranked.target }
 }
-export async function loadUniverse(date: string): Promise<Pool> {
+const daysBefore = (date: string, days: number) => new Date(Date.parse(`${date}T00:00:00Z`) - days * 86400000).toISOString().slice(0, 10)
+// Checklist inputs from the surge history (1,000억·10% days): how often each name led, and which
+// themes produced such days recently ("hot"). historyReady=false means no recent history at all,
+// in which case the engine does not apply those two filters rather than blocking everything.
+export async function loadUniverse(date: string): Promise<SurgePool> {
   const rows = await prisma.universeDay.findMany({ where: { date } })
-  return Object.fromEntries(rows.map(r => [r.ticker, { name: r.name, themes: [r.themeName] }]))
+  const leaderDays = Number(process.env.SURGE_LEADER_LOOKBACK_DAYS || 90), hotDays = Number(process.env.SURGE_HOT_LOOKBACK_DAYS || 14)
+  const history = rows.length ? await prisma.surgeHistory.findMany({ where: { date: { gte: daysBefore(date, leaderDays), lt: date } }, select: { ticker: true, date: true } }) : []
+  const surges = new Map<string, number>(), recent = new Map<string, number>(), hotFrom = daysBefore(date, hotDays)
+  for (const h of history) {
+    surges.set(h.ticker, (surges.get(h.ticker) || 0) + 1)
+    if (h.date >= hotFrom) recent.set(h.ticker, (recent.get(h.ticker) || 0) + 1)
+  }
+  const themeHeat = new Map<string, number>()
+  for (const r of rows) themeHeat.set(r.themeName, (themeHeat.get(r.themeName) || 0) + (recent.get(r.ticker) || 0))
+  const hotMin = Number(process.env.SURGE_HOT_MIN || 2), historyReady = recent.size > 0
+  return Object.fromEntries(rows.map(r => [r.ticker, { name: r.name, themes: [r.themeName], high60: r.high60 ?? undefined,
+    surges: surges.get(r.ticker) || 0, hotTheme: (themeHeat.get(r.themeName) || 0) >= hotMin, historyReady }]))
 }

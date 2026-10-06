@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { surgeConfig } from './config'
-import { tickSurge, SurgeState, MarketQuote, themeBoard, candidateFor, summarize } from './engine'
+import { tickSurge, SurgeState, MarketQuote, themeBoard, candidateFor, summarize, checklistIssue } from './engine'
 const base = Date.parse('2026-10-06T09:05:00+09:00')
-const config = () => ({ ...surgeConfig(), comparisonGates: [] })
+const config = () => ({ ...surgeConfig(), comparisonGates: [], checklist: false })
 const pool = { a: { name: 'A', themes: ['조선'] }, b: { name: 'B', themes: ['조선'] }, c: { name: 'C', themes: ['조선'] } }
 const q = (at: number, dayPct: number, value = 20e9, price = 100): MarketQuote => ({ price, high: 130, low: 80, dayPct, value, sourceAt: at, receivedAt: at, halted: false })
 const quotes = (at: number, leader = 'a') => ({ a: q(at, leader === 'a' ? 10 : 8), b: q(at, leader === 'b' ? 12 : 5), c: q(at, 0) })
@@ -146,5 +146,33 @@ describe('100억 leader rotation (pure, no orders or LLM)', () => {
     expect(summarize(state!.arms)[0].count).toBe(1)
     const at = base + 190000
     expect(tickSurge(state, pool, quotes(at), at, { ...cfg, gateWon: 999e9 }).state.config.gateWon).toBe(10e9)
+  })
+})
+
+describe('checklist rules (B)', () => {
+  const rules = () => ({ ...surgeConfig(), comparisonGates: [] })
+  const meta = (extra: object = {}) => Object.fromEntries(Object.entries(pool).map(([c, p]) => [c, { ...p, high60: 100, surges: 2, hotTheme: true, historyReady: true, ...extra }]))
+  const qs = (at: number) => { const x = quotes(at); for (const q of Object.values(x)) q.minuteValue = 6e9; return x }
+  it('requires last-minute turnover, a near-high price and leading history', () => {
+    const p = meta(), q = qs(base).a
+    expect(checklistIssue('a', p, q, rules())).toBeNull()
+    expect(checklistIssue('a', p, { ...q, minuteValue: 4e9 }, rules())).toBe('MINUTE_TURNOVER')
+    expect(checklistIssue('a', p, { ...q, minuteValue: undefined }, rules())).toBe('MINUTE_TURNOVER')
+    expect(checklistIssue('a', p, { ...q, price: 97 }, rules())).toBe('NOT_NEAR_HIGH')
+    expect(checklistIssue('a', meta({ high60: undefined }), q, rules())).toBe('NOT_NEAR_HIGH')
+    expect(checklistIssue('a', meta({ surges: 0 }), q, rules())).toBe('NO_LEADER_HISTORY')
+    expect(checklistIssue('a', meta({ surges: 0, historyReady: false }), q, rules())).toBeNull()
+  })
+  it('skips a qualified top riser that fails the checklist and picks the next one', () => {
+    const at = base, q = qs(at); q.a.minuteValue = 1e9
+    const board = themeBoard(meta(), q, at, rules())
+    expect(candidateFor(board.themes[0], meta(), q, 10e9, undefined, rules())?.code).toBe('b')
+  })
+  it('lets only hot themes compete once history exists, and enters after the hold', () => {
+    expect(themeBoard(meta({ hotTheme: false }), qs(base), base, rules()).themes).toEqual([])
+    expect(themeBoard(meta({ hotTheme: false, historyReady: false }), qs(base), base, rules()).themes).toHaveLength(1)
+    let state: SurgeState | undefined
+    for (let sec = 0; sec <= 180; sec += 10) state = tickSurge(state, meta(), qs(base + sec * 1000), base + sec * 1000, rules()).state
+    expect(state!.arms[0].trades[0]).toMatchObject({ code: 'a', status: 'holding' })
   })
 })
