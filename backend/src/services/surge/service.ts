@@ -11,7 +11,7 @@ import { prepareUniverse, expandIntraday, loadUniverse } from './universe'
 import { drainNotifications } from './notifications'
 import { contextConfig, runContextWorker } from './context'
 
-type Payload = { engine?: SurgeState; quotes: Record<string, MarketQuote>; pool: Pool; broadAt: number; legacy?: ReturnType<typeof tickLeaderBreakout>; ranking?: unknown; error?: string }
+type Payload = { engine?: SurgeState; quotes: Record<string, MarketQuote>; pool: Pool; broadAt: number; legacy?: ReturnType<typeof tickLeaderBreakout>; ranking?: unknown; error?: string; inactive?: string[] }
 let busy = false, started = false, lastError: string | null = null, lastPrepareAt = 0
 // The 08:30 batch runs once; retry during market hours until the universe is ready.
 export function retryPrepare(date: string, now: number) {
@@ -21,12 +21,15 @@ export function retryPrepare(date: string, now: number) {
 }
 export const surgeEnabled = () => process.env.SURGE_ENABLED === 'true' || (process.env.SURGE_ENABLED !== 'false' &&
   (process.env.SPIKE_CLOUD_ENABLED === 'true' || (process.env.SPIKE_CLOUD_ENABLED !== 'false' && !!process.env.RAILWAY_ENVIRONMENT_ID)))
+// Names with no usable quote today are left out of the board instead of blocking it.
+export const activePool = (p: Payload): Pool => p.inactive?.length
+  ? Object.fromEntries(Object.entries(p.pool).filter(([code]) => !p.inactive!.includes(code))) : p.pool
 export function hotCodes(p: Payload, at: number) {
-  const config = p.engine?.config || surgeConfig(), board = themeBoard(p.pool, p.quotes, at, config)
+  const config = p.engine?.config || surgeConfig(), pool = activePool(p), board = themeBoard(pool, p.quotes, at, config)
   const held = p.engine?.arms.flatMap(a => a.trades.filter(t => t.status === 'holding').map(t => t.code)) || []
   const leaders = board.themes.filter(t => t.rank <= config.topThemes).flatMap(theme =>
     [...new Set([config.gateWon, ...config.comparisonGates])].flatMap(gate => {
-      const c = candidateFor(theme, p.pool, p.quotes, gate); return c ? [c.code] : []
+      const c = candidateFor(theme, pool, p.quotes, gate); return c ? [c.code] : []
     }))
   const peers = board.themes.filter(t => t.rank <= config.topThemes).flatMap(t => t.codes)
     .sort((a, b) => p.quotes[b].dayPct - p.quotes[a].dayPct)
@@ -53,7 +56,12 @@ export async function collectSurge(now = Date.now()) {
       p.pool = await loadUniverse(date)
       p.error = Object.keys(p.pool).length ? undefined : '당일 모집단 배치가 준비되지 않았습니다. 기존 대조군만 관측합니다.'
       if (!Object.keys(p.pool).length) retryPrepare(date, now)
-      Object.assign(p.quotes, await fetchQuotes(Object.keys(p.pool)))
+      const absent: string[] = []
+      Object.assign(p.quotes, await fetchQuotes(Object.keys(p.pool), absent))
+      // Holdings stay in the pool so their exit rules keep the last observed state.
+      const held = new Set(p.engine?.arms.flatMap(a => a.trades.filter(t => t.status === 'holding').map(t => t.code)) || [])
+      p.inactive = absent.filter(code => !held.has(code))
+      for (const code of p.inactive) delete p.quotes[code]
       p.broadAt = Date.now()
     } else Object.assign(p.quotes, await fetchQuotes(hotCodes(p, now)))
     const at = Date.now()
@@ -72,7 +80,7 @@ export async function collectSurge(now = Date.now()) {
     // from the expanded universe, which is never polled wholesale every ten seconds.
     const legacyQuotes = process.env.SURGE_LEGACY_ENABLED === 'false' ? null : await fetchQuotes(Object.keys(legacyPool))
     const capturedAt = Date.now()
-    const result = tickSurge(p.engine, p.pool, p.quotes, capturedAt, config)
+    const result = tickSurge(p.engine, activePool(p), p.quotes, capturedAt, config)
     p.engine = result.state
     if (legacyQuotes) p.legacy = tickLeaderBreakout(p.legacy, legacyPool, legacyQuotes, capturedAt)
     await prisma.$transaction(async tx => {
@@ -127,7 +135,7 @@ export async function surgeDashboard() {
   return { config, enabled: surgeEnabled(), lastError, notifications: { enabled: notify.enabled, configured: !!(notify.token && notify.chatId), variant: notify.variant, recent: notifications },
     llm: contextConfig(), batchConfigured: !!(process.env.KRX_ID && process.env.KRX_PW), runs, batches, days: days.map(d => {
       const p = d.payload as unknown as Payload
-      return { date: d.date, engine: p.engine, count: Object.keys(p.pool).length, ranking: p.ranking,
+      return { date: d.date, engine: p.engine, count: Object.keys(p.pool).length, inactive: p.inactive || [], ranking: p.ranking,
         summary: p.engine ? summarize(p.engine.arms) : [], legacy: p.legacy ? breakoutSummary(p.legacy) : null }
     }) }
 }

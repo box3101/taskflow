@@ -2,7 +2,9 @@ import { kisGet, rows, apiNumber } from '../kisFlow'
 import { parseQuotes } from '../spikeCloudRules'
 import { MarketQuote } from './engine'
 
-export async function fetchQuotes(codes: string[]): Promise<Record<string, MarketQuote>> {
+// `absent` collects codes the provider answered for but without a usable quote (no trade today,
+// suspended); a failed request leaves its codes out of `absent` so they still count as missing.
+export async function fetchQuotes(codes: string[], absent?: string[]): Promise<Record<string, MarketQuote>> {
   const out: Record<string, MarketQuote> = {}
   const size = Number(process.env.SURGE_QUOTE_BATCH_SIZE || 50)
   for (let offset = 0; offset < codes.length; offset += size) {
@@ -12,7 +14,9 @@ export async function fetchQuotes(codes: string[]): Promise<Record<string, Marke
         headers: { 'User-Agent': 'Mozilla/5.0', Referer: 'https://m.stock.naver.com' }, signal: AbortSignal.timeout(8000),
       })
       if (!r.ok) continue
-      Object.assign(out, parseQuotes(await r.json(), Date.now()))
+      const parsed = parseQuotes(await r.json(), Date.now())
+      Object.assign(out, parsed)
+      if (absent && Object.keys(parsed).length) absent.push(...batch.filter(code => !parsed[code]))
     } catch { /* Missing batches are explicitly rejected by completeness checks. */ }
   }
   return out
