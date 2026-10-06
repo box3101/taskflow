@@ -22,11 +22,11 @@ function setup() {
 afterEach(() => { vi.restoreAllMocks(); vi.resetAllMocks(); vi.unstubAllEnvs(); vi.unstubAllGlobals() })
 describe('LLM subscriber isolation', () => {
   it('reserves budget then sends only documents and identity to mocked Sonnet', async () => {
-    setup(); m.model.mockResolvedValue('{"summary":"수주 관련 제목이 있습니다.","evidenceIds":["NEWS:000001:0"]}')
+    setup(); m.model.mockResolvedValue('{"summary":"수주 관련 제목이 있습니다.","drivers":[],"outlook":[],"risks":[],"evidenceIds":["NEWS:000001:0"]}')
     await runContextWorker(now)
     expect(m.create).toHaveBeenCalledOnce(); expect(m.model).toHaveBeenCalledOnce()
     const input = m.model.mock.calls[0][3]
-    expect(Object.keys(input).sort()).toEqual(['date', 'documents', 'purpose', 'stocks'])
+    expect(Object.keys(input).sort()).toEqual(['date', 'documents', 'purpose', 'stocks', 'webResearch'])
     expect(m.model.mock.calls[0][1]).toBe('claude-sonnet-5')
     expect(m.update.mock.calls.at(-1)?.[0].data.parsedOk).toBe(true)
   })
