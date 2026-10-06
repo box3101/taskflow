@@ -8,7 +8,7 @@ import { resolveTheme } from './context'
 import { securityStatus, intradayHigh, turnoverRanking } from './market'
 import { isKisTradingDay, kisConfigured } from '../kisFlow'
 const exec = promisify(execFile)
-export async function pythonBatch(mode: 'prepare' | 'history', date: string) {
+export async function pythonBatch(mode: 'prepare' | 'history' | 'replay', date: string) {
   const { stdout } = await exec(process.env.PYTHON_BIN || 'python', [path.resolve(process.cwd(), 'scripts/surge_batch.py'), mode, date], {
     windowsHide: true, timeout: Number(process.env.SURGE_BATCH_TIMEOUT_MS || 900000), maxBuffer: 20 * 1024 * 1024,
   })
@@ -143,7 +143,9 @@ const daysBefore = (date: string, days: number) => new Date(Date.parse(`${date}T
 // themes produced such days recently ("hot"). historyReady=false means no recent history at all,
 // in which case the engine does not apply those two filters rather than blocking everything.
 export async function loadUniverse(date: string): Promise<SurgePool> {
-  const rows = await prisma.universeDay.findMany({ where: { date } })
+  return annotatePool(await prisma.universeDay.findMany({ where: { date } }), date)
+}
+export async function annotatePool(rows: { ticker: string; name: string; themeName: string; high60: number | null }[], date: string): Promise<SurgePool> {
   const leaderDays = Number(process.env.SURGE_LEADER_LOOKBACK_DAYS || 90), hotDays = Number(process.env.SURGE_HOT_LOOKBACK_DAYS || 14)
   const history = rows.length ? await prisma.surgeHistory.findMany({ where: { date: { gte: daysBefore(date, leaderDays), lt: date } }, select: { ticker: true, date: true } }) : []
   const surges = new Map<string, number>(), recent = new Map<string, number>(), hotFrom = daysBefore(date, hotDays)

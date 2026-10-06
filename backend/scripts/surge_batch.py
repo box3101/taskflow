@@ -91,8 +91,21 @@ def recent_highs(frames):
     return highs
 
 
+def daily_highs(stock, previous, last_frame=None):
+    days = int(os.environ.get("SURGE_HIGH_DAYS", "60"))
+    start = (dt.datetime.strptime(previous, "%Y%m%d") - dt.timedelta(days=days * 2)).strftime("%Y%m%d")
+    dates = [d.strftime("%Y%m%d") for d in stock.get_previous_business_days(fromdate=start, todate=previous)][-days:]
+    frames = [stock.get_market_ohlcv(d, market="ALL") for d in dates if d != previous or last_frame is None]
+    return recent_highs(frames + ([last_frame] if last_frame is not None else []))
+
+
 def run(args):
     from pykrx import stock
+    if args.mode == "replay":
+        # Inputs for an after-hours replay of the given day: theme maps and prior N-day highs.
+        previous = stock.get_nearest_business_day_in_a_week((dt.date.fromisoformat(args.date) - dt.timedelta(days=1)).strftime("%Y%m%d"))
+        maps, failed = theme_maps(args.date)
+        return {"date": args.date, "maps": maps, "failedThemes": failed, "highs": daily_highs(stock, previous)}
     if args.mode == "history":
         frame = stock.get_market_ohlcv(args.date.replace("-", ""), market="ALL")
         if frame.empty:
@@ -131,12 +144,8 @@ def run(args):
     # which blocks the high condition rather than guessing it.
     highs = {}
     try:
-        days = int(os.environ.get("SURGE_HIGH_DAYS", "60"))
-        start = (dt.datetime.strptime(previous, "%Y%m%d") - dt.timedelta(days=days * 2)).strftime("%Y%m%d")
-        dates = [d.strftime("%Y%m%d") for d in stock.get_previous_business_days(fromdate=start, todate=previous)][-days:]
         wanted = {s["ticker"] for s in securities}
-        frames = [frame] + [stock.get_market_ohlcv(d, market="ALL") for d in dates if d != previous]
-        highs = {k: v for k, v in recent_highs(frames).items() if k in wanted}
+        highs = {k: v for k, v in daily_highs(stock, previous, frame).items() if k in wanted}
         if not highs:
             warnings.append("HIGH_DATA_EMPTY")
     except Exception as error:
@@ -146,7 +155,7 @@ def run(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=["history", "prepare"])
+    parser.add_argument("mode", choices=["history", "prepare", "replay"])
     parser.add_argument("date")
     args = parser.parse_args()
     with contextlib.redirect_stdout(sys.stderr):

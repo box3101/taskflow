@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "surge:batch": "node dist/src/scripts/surgeBatch.js",
+    "surge:replay": "node dist/src/scripts/surgeReplay.js",
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
     "build": "prisma generate && tsc && tsc -p tsconfig.surge.json",
     "start": "node dist/src/app.js",

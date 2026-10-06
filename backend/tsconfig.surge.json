@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["src/scripts/surgeBatch.ts"],
+  "include": ["src/scripts/surgeBatch.ts", "src/scripts/surgeReplay.ts"],
   "exclude": ["src/**/*.test.ts"]
 }
