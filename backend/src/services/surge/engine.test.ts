@@ -82,6 +82,17 @@ describe('100억 leader rotation (pure, no orders or LLM)', () => {
     const late = quotes(at); late.c.receivedAt = at - 150000; delete (late as any).b
     expect(themeBoard(pool, late, at, config()).missing).toEqual({ count: 2, sample: [{ code: 'b', reason: 'NO_QUOTE' }, { code: 'c', reason: 'STALE_RECEIVED' }] })
   })
+  it('leaves a not-yet-traded stock out of its theme instead of blocking the board', () => {
+    const at = base, many = { ...pool, ...Object.fromEntries(['d', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm'].map(c => [c, { name: c, themes: ['x'] }])) }
+    const qs: Record<string, MarketQuote> = { ...quotes(at), ...Object.fromEntries(['d', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm'].map(c => [c, q(at, 1)])) }
+    qs.c.sourceAt = NaN
+    const board = themeBoard(many, qs, at, config())
+    expect(board.complete).toBe(true); expect(board.themes.find(t => t.id === '조선')?.codes).toEqual(['a', 'b'])
+    expect(board.missing).toEqual({ count: 1, sample: [{ code: 'c', reason: 'INVALID' }] })
+    // An implausible share of empty quotes (provider-wide problem) still blocks.
+    const empty = Object.fromEntries(Object.keys(many).map(c => [c, { ...q(at, 1), sourceAt: NaN }]))
+    expect(themeBoard(many, empty, at, config()).complete).toBe(false)
+  })
   it('does not bridge a collector gap and excludes unseen stop paths', () => {
     const result = tickSurge(held(), pool, quotes(base + 240000, 'b'), base + 240000, config())
     expect(result.state.arms[0].timers['조선'].since).toBe(base + 240000)

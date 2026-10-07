@@ -45,10 +45,15 @@ export function themeBoard(pool: SurgePool, quotes: Record<string, MarketQuote>,
     const reason = boardQuoteIssue(quotes[code], at, config.quoteAgeMs)
     return reason ? [{ code, reason }] : []
   })
-  const bad = new Set(issues.map(i => i.code))
-  const complete = Object.keys(pool).length > 0 && !issues.length
-  const themes: Theme[] = [...groups].flatMap(([id, codes]) => {
-    if (codes.some(c => bad.has(c))) return []
+  // A quote that arrived but has no trade yet / empty fields (opening minutes, illiquid names) is
+  // left out of its theme instead of blocking the whole board. Missing or late receipt still
+  // blocks, as does an implausibly large share of empty quotes (provider-wide problem).
+  const untraded = new Set(issues.filter(i => i.reason === 'INVALID' || i.reason === 'NOT_TODAY').map(i => i.code))
+  const bad = new Set(issues.filter(i => !untraded.has(i.code)).map(i => i.code))
+  const complete = Object.keys(pool).length > 0 && !bad.size && untraded.size <= Object.keys(pool).length * 0.1
+  const themes: Theme[] = [...groups].flatMap(([id, all]) => {
+    const codes = all.filter(c => !untraded.has(c))
+    if (!codes.length || codes.some(c => bad.has(c))) return []
     // Checklist: only recently hot themes compete for the top slots (once surge history exists).
     if (config.checklist && pool[codes[0]].historyReady && !pool[codes[0]].hotTheme) return []
     return [{ id, name: id.startsWith('UNMAPPED:') ? `미분류 · ${pool[codes[0]].name}` : id, codes,
